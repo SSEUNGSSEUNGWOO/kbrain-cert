@@ -26,7 +26,7 @@ export default function ExamPage() {
   const proctoringDisabled = currentSet?.proctoringDisabled ?? false;
 
   const answered = useMemo(() => {
-    const set = new Set<number>();
+    const s = new Set<number>();
     mockQuestions.forEach((q, i) => {
       const a = answers[q.id];
       if (!a) return;
@@ -36,153 +36,230 @@ export default function ExamPage() {
         (q.type === "essay" && (a as { text?: string }).text?.trim()) ||
         (q.type === "work_based" && Object.keys(a).length > 0)
       ) {
-        set.add(i);
+        s.add(i);
       }
     });
-    return set;
+    return s;
   }, [answers]);
 
   const remainingWarn = remaining < 5 * 60;
+  const totalSeconds = mockExam.durationMinutes * 60;
+  const progressPct = ((totalSeconds - remaining) / totalSeconds) * 100;
 
   return (
-    <div className="flex flex-col min-h-screen relative">
+    <div className="min-h-screen flex flex-col">
       <ExamHeader
         title={mockExam.title}
-        grade={mockExam.grade}
         applicantName={mockSession.applicantName}
         remaining={remaining}
         remainingWarn={remainingWarn}
-        proctoring={mockSession.proctoring}
+        progressPct={progressPct}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <QuestionSidebar
+      <ProctorStrip proctoring={mockSession.proctoring} />
+
+      {proctoringDisabled && (
+        <div className="border-b border-[--color-border]">
+          <div className="mx-auto max-w-6xl px-6 py-3 rounded-none">
+            <div className="rounded-2xl bg-[--color-orange-soft] px-5 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[--color-orange] text-white flex items-center justify-center text-lg">
+                ⚙️
+              </div>
+              <div className="text-sm text-[--color-orange]">
+                <span className="font-bold">감독 일시 비활성 구간</span> · 이 문제
+                세트는 외부 도구 사용이 허용됩니다. 얼굴·음성·전체화면 감지가 중지
+                되며, 다른 세트로 이동 시 자동 재활성화됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 mx-auto max-w-6xl w-full px-6 py-6 flex gap-6">
+        <QuestionRail
           questions={mockQuestions}
           currentIdx={currentIdx}
           answered={answered}
           onSelect={setCurrentIdx}
         />
 
-        <main className="flex-1 overflow-y-auto surface-muted">
-          <div className="max-w-3xl mx-auto p-10">
-            <SetBanner set={currentSet} proctoringDisabled={proctoringDisabled} />
-            <QuestionCard
-              question={currentQuestion}
-              answer={answers[currentQuestion.id]}
-              onChange={(v) =>
-                setAnswers((prev) => ({ ...prev, [currentQuestion.id]: v }))
-              }
-            />
-            <ExamFooter
-              canPrev={currentIdx > 0}
-              canNext={currentIdx < mockQuestions.length - 1}
-              onPrev={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-              onNext={() =>
-                setCurrentIdx((i) => Math.min(mockQuestions.length - 1, i + 1))
-              }
-            />
+        <main className="flex-1 min-w-0">
+          <QuestionCard
+            question={currentQuestion}
+            answer={answers[currentQuestion.id]}
+            onChange={(v) =>
+              setAnswers((prev) => ({ ...prev, [currentQuestion.id]: v }))
+            }
+          />
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <button
+              onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+              disabled={currentIdx === 0}
+              className="h-12 px-5 rounded-2xl bg-white shadow-[var(--shadow-card)] text-sm font-bold hover:bg-[--color-surface-hover] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              ← 이전 문항
+            </button>
+            {currentIdx < mockQuestions.length - 1 ? (
+              <button
+                onClick={() =>
+                  setCurrentIdx((i) => Math.min(mockQuestions.length - 1, i + 1))
+                }
+                className="h-12 px-6 rounded-2xl bg-[--color-primary] hover:bg-[--color-primary-hover] text-white text-sm font-bold shadow-[var(--shadow-card)] transition"
+              >
+                다음 문항 →
+              </button>
+            ) : (
+              <button className="h-12 px-6 rounded-2xl bg-[--color-red] hover:opacity-90 text-white text-sm font-bold shadow-[var(--shadow-card)] transition">
+                최종 제출
+              </button>
+            )}
           </div>
         </main>
       </div>
-
-      {!proctoringDisabled && (
-        <Watermark name={mockSession.applicantName} sessionId={mockSession.id} />
-      )}
     </div>
   );
 }
 
-/* ─────────── 상단 헤더 ─────────── */
+/* ────── Header ────── */
 
 function ExamHeader({
   title,
-  grade,
   applicantName,
   remaining,
   remainingWarn,
-  proctoring,
+  progressPct,
 }: {
   title: string;
-  grade: string;
   applicantName: string;
   remaining: number;
   remainingWarn: boolean;
-  proctoring: typeof mockSession.proctoring;
+  progressPct: number;
 }) {
   return (
-    <header className="border-b border-strong bg-white flex items-center px-6 h-14 z-10">
-      <div className="flex-1 flex items-center gap-3 min-w-0">
-        <Link
-          href="/"
-          className="text-xs font-semibold tracking-widest text-muted-fg hover:text-primary"
-        >
-          kbrain-cert
+    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[--color-border]">
+      <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-[--color-primary] text-white flex items-center justify-center font-bold text-sm">
+            k
+          </div>
+          <div>
+            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted]">
+              KBRAIN CERT · 응시
+            </div>
+            <div className="font-bold text-sm truncate max-w-md">{title}</div>
+          </div>
         </Link>
-        <span className="text-muted">|</span>
-        <span className="text-sm font-medium text-primary truncate">{title}</span>
-        <span className="inline-flex items-center h-6 px-2 rounded-sm bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
-          {grade}
-        </span>
-      </div>
 
-      <div
-        className={cn(
-          "flex flex-col items-center px-8 py-1 rounded-md border transition",
-          remainingWarn
-            ? "border-[--color-danger] bg-[--color-danger-muted]"
-            : "border-[--color-border-strong] bg-white"
-        )}
-      >
-        <span className="text-[10px] text-muted-fg tracking-widest">남은 시간</span>
-        <span
+        <div
           className={cn(
-            "font-tabular text-xl font-bold leading-none",
-            remainingWarn ? "text-[--color-danger]" : "text-primary"
+            "flex flex-col items-center px-5 py-1.5 rounded-2xl border-2",
+            remainingWarn
+              ? "border-[--color-red] bg-[--color-red-soft]"
+              : "border-[--color-primary-soft] bg-[--color-primary-soft]"
           )}
         >
-          {formatTime(remaining)}
-        </span>
-      </div>
-
-      <div className="flex-1 flex items-center justify-end gap-4">
-        <div className="flex items-center gap-2">
-          <ProctorDot label="얼굴" state={proctoring.face === "ok" ? "ok" : "err"} />
-          <ProctorDot label="음성" state={proctoring.voice === "ok" ? "ok" : "err"} />
-          <ProctorDot
-            label="화면"
-            state={proctoring.fullscreen === "ok" ? "ok" : "err"}
-          />
-          <ProctorDot
-            label="녹화"
-            state={proctoring.recording === "recording" ? "rec" : "err"}
-          />
+          <div
+            className={cn(
+              "text-[9px] font-bold tracking-[0.15em]",
+              remainingWarn ? "text-[--color-red]" : "text-[--color-primary]"
+            )}
+          >
+            남은 시간
+          </div>
+          <div
+            className={cn(
+              "font-tabular text-2xl font-bold leading-none",
+              remainingWarn ? "text-[--color-red]" : "text-[--color-primary]"
+            )}
+          >
+            {formatTime(remaining)}
+          </div>
         </div>
-        <div className="text-sm text-primary font-medium">{applicantName}</div>
+
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted]">
+              응시자
+            </div>
+            <div className="font-bold text-sm">{applicantName}</div>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[--color-purple] to-[--color-pink] text-white flex items-center justify-center text-xs font-bold">
+            {applicantName.slice(0, 1)}
+          </div>
+        </div>
+      </div>
+      <div className="h-1 bg-[--color-subtle]">
+        <div
+          className={cn(
+            "h-full transition-all",
+            remainingWarn ? "bg-[--color-red]" : "bg-[--color-primary]"
+          )}
+          style={{ width: `${progressPct}%` }}
+        />
       </div>
     </header>
   );
 }
 
-function ProctorDot({ label, state }: { label: string; state: "ok" | "err" | "rec" }) {
-  const color =
-    state === "ok"
-      ? "bg-[--color-success]"
-      : state === "rec"
-      ? "bg-[--color-danger]"
-      : "bg-[--color-warning]";
+function ProctorStrip({
+  proctoring,
+}: {
+  proctoring: typeof mockSession.proctoring;
+}) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span
-        className={cn("w-1.5 h-1.5 rounded-full", color, state === "rec" && "animate-pulse")}
-      />
-      <span className="text-[10px] text-muted-fg tracking-wider">{label}</span>
+    <div className="border-b border-[--color-border] bg-[--color-surface-soft]">
+      <div className="mx-auto max-w-6xl px-6 py-2.5 flex items-center gap-4">
+        <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted]">
+          감독 상태
+        </div>
+        <ProctorPill label="얼굴 감지" ok={proctoring.face === "ok"} icon="👤" />
+        <ProctorPill label="음성" ok={proctoring.voice === "ok"} icon="🎤" />
+        <ProctorPill label="전체화면" ok={proctoring.fullscreen === "ok"} icon="🖥" />
+        <ProctorPill
+          label="녹화 중"
+          ok={proctoring.recording === "recording"}
+          icon="🔴"
+          recording
+        />
+      </div>
     </div>
   );
 }
 
-/* ─────────── 좌측 문제 그리드 ─────────── */
+function ProctorPill({
+  label,
+  ok,
+  icon,
+  recording = false,
+}: {
+  label: string;
+  ok: boolean;
+  icon: string;
+  recording?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold",
+        recording && ok
+          ? "bg-[--color-red-soft] text-[--color-red]"
+          : ok
+          ? "bg-[--color-emerald-soft] text-[--color-emerald]"
+          : "bg-[--color-orange-soft] text-[--color-orange]"
+      )}
+    >
+      <span>{icon}</span>
+      {label}
+      {recording && ok && (
+        <span className="w-1.5 h-1.5 rounded-full bg-[--color-red] animate-pulse ml-0.5" />
+      )}
+    </div>
+  );
+}
 
-function QuestionSidebar({
+/* ────── Question Rail ────── */
+
+function QuestionRail({
   questions,
   currentIdx,
   answered,
@@ -194,115 +271,105 @@ function QuestionSidebar({
   onSelect: (i: number) => void;
 }) {
   return (
-    <aside className="w-60 border-r border-[--color-border] bg-white overflow-y-auto p-5 space-y-6">
-      <div>
-        <div className="text-[10px] font-semibold tracking-widest text-muted-fg mb-2">
-          문제 진행 현황
-        </div>
-        <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-primary font-medium">
-            {answered.size} / {questions.length}
-          </span>
-          <span className="font-tabular text-muted-fg">
-            {Math.round((answered.size / questions.length) * 100)}%
-          </span>
-        </div>
-        <div className="w-full h-1 bg-[--color-subtle] rounded-sm overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${(answered.size / questions.length) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {mockSets.map((set) => {
-        const qs = questions.filter((q) => q.setId === set.id);
-        return (
-          <div key={set.id}>
-            <div className="text-[10px] font-semibold text-muted-fg mb-2 tracking-wider flex items-center gap-1.5">
-              {set.proctoringDisabled && (
-                <span className="w-1 h-1 rounded-full bg-[--color-warning]" />
-              )}
-              {set.title}
-            </div>
-            <div className="grid grid-cols-5 gap-1">
-              {qs.map((q) => {
-                const i = questions.findIndex((qq) => qq.id === q.id);
-                const isCurrent = i === currentIdx;
-                const isAnswered = answered.has(i);
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => onSelect(i)}
-                    className={cn(
-                      "aspect-square rounded-sm text-xs font-tabular font-medium border transition",
-                      isCurrent && "bg-primary text-primary-foreground border-primary",
-                      !isCurrent && isAnswered
-                        ? "bg-[--color-accent-muted] border-[--color-accent] text-[--color-accent]"
-                        : !isCurrent &&
-                            "bg-white border-[--color-border] text-muted-fg hover:border-[--color-border-strong] hover:text-primary"
-                    )}
-                  >
-                    {q.index}
-                  </button>
-                );
-              })}
-            </div>
+    <aside className="w-64 shrink-0">
+      <div className="sticky top-32 rounded-3xl bg-white p-5 shadow-[var(--shadow-card)]">
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="text-xs font-bold tracking-widest text-[--color-muted]">
+            진행 현황
           </div>
-        );
-      })}
-
-      <div className="pt-4 border-t border-[--color-border] text-[10px] leading-relaxed text-muted-fg">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="w-1 h-1 rounded-full bg-[--color-warning]" />
-          <span>감독 비활성 세트</span>
+          <div className="text-xs font-bold text-[--color-primary] font-tabular">
+            {answered.size}/{questions.length}
+          </div>
         </div>
-        <div className="pl-2.5">외부 도구 사용이 허용된 구간</div>
+
+        <div className="mb-5">
+          <div className="h-2 bg-[--color-subtle] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[--color-primary] rounded-full transition-all"
+              style={{
+                width: `${(answered.size / questions.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {mockSets.map((set) => {
+            const qs = questions.filter((q) => q.setId === set.id);
+            return (
+              <div key={set.id}>
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-widest">
+                  {set.proctoringDisabled ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[--color-orange]" />
+                      <span className="text-[--color-orange]">외부도구 허용</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[--color-primary]" />
+                      <span className="text-[--color-muted-foreground]">감독 활성</span>
+                    </>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {qs.map((q) => {
+                    const i = questions.findIndex((qq) => qq.id === q.id);
+                    const isCurrent = i === currentIdx;
+                    const isAnswered = answered.has(i);
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => onSelect(i)}
+                        className={cn(
+                          "aspect-square rounded-lg text-xs font-bold tabular-nums transition",
+                          isCurrent
+                            ? "bg-[--color-primary] text-white scale-110 shadow-[var(--shadow-card)]"
+                            : isAnswered
+                            ? "bg-[--color-primary-soft] text-[--color-primary]"
+                            : "bg-[--color-surface-soft] text-[--color-muted] hover:bg-[--color-subtle]"
+                        )}
+                      >
+                        {q.index}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </aside>
   );
 }
 
-/* ─────────── 세트 배너 (핵심 이슈 #1 시각화) ─────────── */
+/* ────── Question Card ────── */
 
-function SetBanner({
-  set,
-  proctoringDisabled,
-}: {
-  set: typeof mockSets[number] | undefined;
-  proctoringDisabled: boolean;
-}) {
-  if (!set) return null;
-
-  if (proctoringDisabled) {
-    return (
-      <div className="mb-6 border-l-2 border-[--color-warning] bg-[--color-warning-muted] px-5 py-4 rounded-r-md">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-bold tracking-widest text-[--color-warning] uppercase">
-            감독 일시 비활성 · Set Level Waiver
-          </span>
-        </div>
-        <div className="text-sm text-primary font-medium mb-1">
-          이 구간은 외부 도구 사용이 허용됩니다.
-        </div>
-        <div className="text-xs text-muted-fg leading-relaxed">
-          전체화면 이탈 · 얼굴 · 음성 감지가 이 문제 세트 동안 일시 중지됩니다.
-          다른 세트 문제로 이동하면 감독이 자동 재활성화됩니다.
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="mb-6 border-l-2 border-[--color-border-strong] px-5 py-3">
-      <div className="text-[10px] font-semibold tracking-widest text-muted-fg mb-0.5">
-        {set.title}
-      </div>
-      {set.scenario && <div className="text-sm text-primary">{set.scenario}</div>}
-    </div>
-  );
-}
-
-/* ─────────── 문제 카드 ─────────── */
+const TYPE_STYLE: Record<
+  Question["type"],
+  { label: string; tone: string; icon: string }
+> = {
+  multiple_choice: {
+    label: "객관식",
+    tone: "bg-[--color-primary-soft] text-[--color-primary]",
+    icon: "◉",
+  },
+  short_answer: {
+    label: "단답형",
+    tone: "bg-[--color-emerald-soft] text-[--color-emerald]",
+    icon: "≡",
+  },
+  essay: {
+    label: "서술형",
+    tone: "bg-[--color-purple-soft] text-[--color-purple]",
+    icon: "✎",
+  },
+  work_based: {
+    label: "작업형",
+    tone: "bg-[--color-orange-soft] text-[--color-orange]",
+    icon: "🔧",
+  },
+};
 
 function QuestionCard({
   question,
@@ -313,33 +380,58 @@ function QuestionCard({
   answer: unknown;
   onChange: (v: unknown) => void;
 }) {
+  const t = TYPE_STYLE[question.type];
   return (
-    <div className="bg-white border border-[--color-border] rounded-md p-8 shadow-sm">
-      <div className="flex items-baseline justify-between mb-5">
-        <div className="flex items-baseline gap-3">
-          <span className="text-[10px] font-semibold text-muted-fg tracking-widest">
-            문제 {question.index.toString().padStart(2, "0")}
-          </span>
-          <span className="text-[10px] text-muted tracking-wider uppercase">
-            {questionTypeLabel(question.type)}
-          </span>
+    <div className="rounded-3xl bg-white shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="px-8 pt-6 pb-4 border-b border-[--color-border] flex items-center gap-3 flex-wrap">
+        <div className="w-11 h-11 rounded-xl bg-[--color-primary] text-white flex items-center justify-center text-sm font-bold tabular-nums">
+          Q{question.index}
         </div>
-        <span className="text-sm font-tabular font-medium text-primary">
-          배점 {question.maxScore}
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 text-[11px] font-bold tracking-wide px-2.5 py-1 rounded-md",
+            t.tone
+          )}
+        >
+          {t.icon} {t.label}
         </span>
-      </div>
-
-      <div className="mb-8 text-base leading-relaxed text-primary whitespace-pre-line">
-        {question.content}
-      </div>
-
-      {question.policy && (
-        <div className="mb-6 text-xs text-[--color-warning] border border-[--color-warning] rounded-sm px-3 py-2 bg-[--color-warning-muted]">
-          {question.policy}
+        <span className="text-xs font-bold text-[--color-muted]">
+          배점 {question.maxScore}점
+        </span>
+        <div className="ml-auto">
+          <button className="inline-flex items-center gap-1 rounded-lg bg-[--color-surface-soft] text-xs font-bold text-[--color-muted-foreground] px-3 py-1.5 hover:bg-[--color-yellow-soft] hover:text-[--color-yellow] transition">
+            🔖 검토 표시
+          </button>
         </div>
-      )}
+      </div>
 
-      <AnswerBody question={question} answer={answer} onChange={onChange} />
+      <div className="px-8 py-6">
+        {question.type === "work_based" && (
+          <div className="mb-5 rounded-2xl bg-gradient-to-br from-[--color-orange-soft] to-[--color-yellow-soft] p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-[--color-orange] text-white flex items-center justify-center text-xl shrink-0">
+                🔓
+              </div>
+              <div className="text-sm text-[--color-orange]">
+                <div className="font-bold mb-1">
+                  작업형 · 외부 도구 사용 가능
+                </div>
+                <div className="text-xs leading-relaxed">
+                  Claude · GPT · IDE · CLI 등 자유 사용 · 전체화면 이탈 자유 · 서버
+                  기준 마감 시각은 계속 흐릅니다
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="text-base leading-relaxed whitespace-pre-line text-[--color-foreground]">
+          {question.content}
+        </div>
+      </div>
+
+      <div className="px-8 pb-8">
+        <AnswerBody question={question} answer={answer} onChange={onChange} />
+      </div>
     </div>
   );
 }
@@ -356,7 +448,7 @@ function AnswerBody({
   if (question.type === "multiple_choice") {
     const selected = (answer as { selected?: string })?.selected;
     return (
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {question.options?.map((opt) => {
           const active = selected === opt.id;
           return (
@@ -364,25 +456,33 @@ function AnswerBody({
               key={opt.id}
               onClick={() => onChange({ selected: opt.id })}
               className={cn(
-                "w-full text-left border rounded-sm p-4 flex gap-3 items-start transition",
+                "w-full text-left px-5 py-4 rounded-2xl border-2 transition",
                 active
-                  ? "border-primary bg-[--color-accent-muted]"
-                  : "border-[--color-border] hover:border-[--color-border-strong] bg-white"
+                  ? "border-[--color-primary] bg-[--color-primary-soft]"
+                  : "border-[--color-border] bg-white hover:border-[--color-primary]"
               )}
             >
-              <div
-                className={cn(
-                  "flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition",
-                  active
-                    ? "border-primary bg-primary"
-                    : "border-[--color-border-strong]"
-                )}
-              >
-                {active && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-              </div>
-              <div className="text-sm text-primary flex-1">{opt.text}</div>
-              <div className="text-xs font-tabular text-muted-fg uppercase">
-                {opt.id}
+              <div className="flex items-center gap-4">
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+                    active
+                      ? "bg-[--color-primary] text-white"
+                      : "bg-[--color-surface-soft] text-[--color-muted]"
+                  )}
+                >
+                  {opt.id.toUpperCase()}
+                </div>
+                <div
+                  className={cn(
+                    "flex-1 text-base",
+                    active
+                      ? "font-bold text-[--color-primary]"
+                      : "text-[--color-foreground]"
+                  )}
+                >
+                  {opt.text}
+                </div>
               </div>
             </button>
           );
@@ -394,12 +494,11 @@ function AnswerBody({
   if (question.type === "short_answer") {
     const text = (answer as { text?: string })?.text ?? "";
     return (
-      <input
-        type="text"
+      <textarea
         value={text}
         onChange={(e) => onChange({ text: e.target.value })}
-        placeholder="답을 입력하세요"
-        className="w-full border border-[--color-border-strong] rounded-sm px-4 py-3 font-tabular text-base focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="w-full min-h-32 rounded-2xl border-2 border-[--color-border] bg-white px-5 py-4 text-base focus:border-[--color-primary] focus:outline-none focus:ring-4 focus:ring-[--color-primary-soft] resize-none"
+        placeholder="답변을 입력하세요"
       />
     );
   }
@@ -411,11 +510,11 @@ function AnswerBody({
         <textarea
           value={text}
           onChange={(e) => onChange({ text: e.target.value })}
-          placeholder="여기에 서술하세요."
           rows={8}
-          className="w-full border border-[--color-border-strong] rounded-sm px-4 py-3 text-sm leading-relaxed focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y"
+          className="w-full rounded-2xl border-2 border-[--color-border] bg-white px-5 py-4 text-base focus:border-[--color-purple] focus:outline-none focus:ring-4 focus:ring-[--color-purple-soft] resize-y"
+          placeholder="여기에 서술하세요 (200~300자 권장)"
         />
-        <div className="mt-2 flex justify-end text-xs text-muted-fg font-tabular">
+        <div className="mt-2 flex justify-end text-xs font-bold text-[--color-muted-foreground] font-tabular">
           {text.length}자
         </div>
       </div>
@@ -426,13 +525,19 @@ function AnswerBody({
     const slots = (answer as Record<string, unknown>) ?? {};
     return (
       <div className="space-y-5">
-        {question.slots?.map((slot) => (
+        {question.slots?.map((slot, idx) => (
           <div key={slot.id}>
-            <div className="flex items-baseline justify-between mb-1.5">
-              <label className="text-xs font-semibold text-primary">
-                {slot.label}
-              </label>
-              <span className="text-[10px] font-tabular text-muted-fg">
+            <div className="flex items-baseline justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-[--color-orange] text-white text-xs font-bold flex items-center justify-center tabular-nums">
+                  {idx + 1}
+                </span>
+                <span className="font-bold text-sm">{slot.label}</span>
+                <span className="text-[10px] font-bold text-[--color-red]">
+                  필수
+                </span>
+              </div>
+              <span className="text-xs font-bold text-[--color-muted]">
                 배점 {slot.maxScore}
               </span>
             </div>
@@ -443,12 +548,16 @@ function AnswerBody({
                   onChange({ ...slots, [slot.id]: e.target.value })
                 }
                 rows={4}
-                className="w-full border border-[--color-border-strong] rounded-sm px-3 py-2 text-sm font-tabular focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full rounded-2xl border-2 border-[--color-border] bg-white px-5 py-4 text-sm focus:border-[--color-orange] focus:outline-none focus:ring-4 focus:ring-[--color-orange-soft] resize-none font-tabular"
+                placeholder="여기에 작성하세요"
               />
             ) : slot.type === "file" ? (
-              <div className="border border-dashed border-[--color-border-strong] rounded-sm px-4 py-6 text-center text-sm text-muted-fg hover:border-primary transition cursor-pointer">
-                파일을 드래그하거나 클릭하여 업로드
-                <div className="text-[10px] mt-1">
+              <div className="rounded-2xl border-2 border-dashed border-[--color-border-strong] bg-[--color-surface-soft] hover:border-[--color-orange] hover:bg-[--color-orange-soft] p-8 text-center cursor-pointer transition">
+                <div className="text-4xl mb-2">📎</div>
+                <div className="text-sm font-bold text-[--color-foreground]">
+                  파일 드래그 또는 클릭 업로드
+                </div>
+                <div className="text-xs text-[--color-muted-foreground] mt-1">
                   .py, .ipynb, .zip · 최대 20MB
                 </div>
               </div>
@@ -459,7 +568,7 @@ function AnswerBody({
                 onChange={(e) =>
                   onChange({ ...slots, [slot.id]: e.target.value })
                 }
-                className="w-full border border-[--color-border-strong] rounded-sm px-3 py-2 text-sm font-tabular focus:outline-none focus:border-primary"
+                className="w-full rounded-2xl border-2 border-[--color-border] bg-white px-5 py-3 text-sm focus:border-[--color-orange] focus:outline-none focus:ring-4 focus:ring-[--color-orange-soft]"
               />
             )}
           </div>
@@ -468,90 +577,4 @@ function AnswerBody({
     );
   }
   return null;
-}
-
-/* ─────────── 하단 액션 ─────────── */
-
-function ExamFooter({
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-}: {
-  canPrev: boolean;
-  canNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className="mt-8 flex items-center gap-3 justify-between">
-      <button
-        disabled={!canPrev}
-        onClick={onPrev}
-        className={cn(
-          "px-5 h-11 rounded-sm border text-sm font-medium transition",
-          canPrev
-            ? "border-[--color-border-strong] bg-white text-primary hover:bg-[--color-surface-hover]"
-            : "border-[--color-border] text-muted cursor-not-allowed"
-        )}
-      >
-        ← 이전 문제
-      </button>
-      <div className="flex items-center gap-2">
-        <button className="px-5 h-11 rounded-sm border border-[--color-border-strong] bg-white text-sm text-primary font-medium hover:bg-[--color-surface-hover]">
-          저장
-        </button>
-        {canNext ? (
-          <button
-            onClick={onNext}
-            className="px-5 h-11 rounded-sm bg-primary text-primary-foreground text-sm font-medium hover:bg-[--color-primary-hover]"
-          >
-            다음 문제 →
-          </button>
-        ) : (
-          <button className="px-5 h-11 rounded-sm bg-[--color-danger] text-white text-sm font-semibold hover:opacity-90">
-            최종 제출
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────── OCR 방지 워터마크 ─────────── */
-
-function Watermark({ name, sessionId }: { name: string; sessionId: string }) {
-  const rows = 6;
-  const cols = 5;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
-      style={{ mixBlendMode: "multiply" }}
-    >
-      <div
-        className="w-full h-full flex flex-wrap opacity-[0.035] font-tabular text-sm tracking-widest"
-        style={{ transform: "rotate(-18deg) scale(1.4)" }}
-      >
-        {Array.from({ length: rows * cols }).map((_, i) => (
-          <div key={i} className="flex-1 min-w-[20%] text-center">
-            {name} · {sessionId} · {new Date().toISOString().slice(0, 16)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function questionTypeLabel(t: Question["type"]) {
-  switch (t) {
-    case "multiple_choice":
-      return "객관식";
-    case "short_answer":
-      return "단답형";
-    case "essay":
-      return "서술형";
-    case "work_based":
-      return "작업형";
-  }
 }

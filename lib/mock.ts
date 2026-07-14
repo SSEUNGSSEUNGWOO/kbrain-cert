@@ -343,6 +343,132 @@ export const mockRecentEvents: ProctoringEvent[] = [
 
 /* ─────────── 대기실 환경체크 데이터 ─────────── */
 
+/* ─────────── 홈·대시보드용 확장 데이터 ─────────── */
+
+export type ExamCard = {
+  id: string;
+  title: string;
+  category: string;
+  categoryTone: "blue" | "purple" | "emerald" | "orange" | "pink" | "teal";
+  grade: string;
+  gradeTone: "emerald" | "indigo" | "red" | "yellow";
+  date: string;
+  time: string;
+  registered: number;
+  capacity: number;
+  status: "upcoming" | "live" | "closed";
+  progress?: number;
+};
+
+export const mockExamCards: ExamCard[] = [
+  {
+    id: "exam-1",
+    title: "2026 하반기 AI 챔피언 자격 검정",
+    category: "생성형AI 활용",
+    categoryTone: "purple",
+    grade: "Black",
+    gradeTone: "red",
+    date: "2026.07.15",
+    time: "14:00 ~ 15:30",
+    registered: 287,
+    capacity: 300,
+    status: "live",
+    progress: 42,
+  },
+  {
+    id: "exam-2",
+    title: "데이터 분석 실무 검정 4기",
+    category: "데이터 분석",
+    categoryTone: "teal",
+    grade: "Blue",
+    gradeTone: "indigo",
+    date: "2026.07.20",
+    time: "10:00 ~ 12:00",
+    registered: 156,
+    capacity: 200,
+    status: "upcoming",
+  },
+  {
+    id: "exam-3",
+    title: "서비스 구현 실기 평가",
+    category: "서비스 구현",
+    categoryTone: "orange",
+    grade: "Green",
+    gradeTone: "emerald",
+    date: "2026.07.22",
+    time: "13:00 ~ 15:00",
+    registered: 89,
+    capacity: 150,
+    status: "upcoming",
+  },
+];
+
+export type ActivityItem = {
+  id: string;
+  time: string;
+  actor: string;
+  action: string;
+  target: string;
+  tone: "blue" | "emerald" | "orange" | "red" | "purple";
+};
+
+export const mockRecentActivity: ActivityItem[] = [
+  {
+    id: "a1",
+    time: "방금 전",
+    actor: "정예린",
+    action: "복수 인원 감지",
+    target: "AI 챔피언 자격 · Q3",
+    tone: "red",
+  },
+  {
+    id: "a2",
+    time: "1분 전",
+    actor: "김민준",
+    action: "답안 제출",
+    target: "AI 챔피언 자격",
+    tone: "emerald",
+  },
+  {
+    id: "a3",
+    time: "3분 전",
+    actor: "이서연",
+    action: "응시 시작",
+    target: "AI 챔피언 자격",
+    tone: "blue",
+  },
+  {
+    id: "a4",
+    time: "8분 전",
+    actor: "관리자 이명희",
+    action: "새 시험 생성",
+    target: "데이터 분석 실무 4기",
+    tone: "purple",
+  },
+  {
+    id: "a5",
+    time: "12분 전",
+    actor: "박지훈",
+    action: "전체화면 이탈",
+    target: "AI 챔피언 자격 · Q2",
+    tone: "orange",
+  },
+];
+
+export const mockAdminStats = {
+  totalActive: 287,
+  totalSubmitted: 3,
+  totalAlerts: mockMonitorApplicants.filter(
+    (a) => a.lastEvent?.severity === "high"
+  ).length,
+  averageProgress: Math.round(
+    mockMonitorApplicants.reduce((sum, a) => sum + a.progress, 0) /
+      mockMonitorApplicants.length
+  ),
+};
+
+/* ─────────── 대기실 환경체크 데이터 ─────────── */
+
 export const mockWaitingChecks = [
   {
     id: "webcam",
