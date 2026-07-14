@@ -146,13 +146,13 @@
   - 음성 감지: WebAudio RMS (임계값 0.15, 지속 15프레임)
   - 전체화면 이탈: Fullscreen API (최대 5회 후 강제 제출)
   - 탭 전환: Page Visibility API
-- **Daily.co 웹캠·화면공유 실시간 스트림** — 감독관 관찰용
+- **Agora Web SDK 웹캠·화면공유 실시간 스트림** — 감독관 관찰용 (Seoul 리전 · SD simulcast)
 - **R2 녹화** — MediaRecorder 500ms 청크, 웹캠+화면 이중 트랙
 - **이벤트 배치 전송** (5s window → POST bulk)
 - ⚠️ `proctoring_disabled=true` 세트 진입 시 감독 3개 unmount + 배너 표시 (이슈 #1)
 
 ### 응시자 ↔ 감독관 채팅 [핵심]
-- Daily chat API 기반 실시간 채팅 (기술적 문제·질문)
+- **Supabase Realtime 채널 기반 실시간 채팅** (Agora RTM 대신 자체 구현 · 비용 절감 · 이벤트/채팅 통합 저장)
 
 ### 제출 [핵심]
 - 명시적 제출 (미답 확인 dialog)
@@ -221,7 +221,7 @@
 | `multiple_faces` | face-api.js | high |
 | `voice_detected` | WebAudio RMS | warn (15프레임 지속) |
 | `fullscreen_exit` / `tab_switch` | Fullscreen · Page Visibility API | high (5회 후 강제제출) |
-| `screen_share_off` | Daily.co 화면공유 종료 감지 | high |
+| `screen_share_off` | Agora 화면공유 트랙 종료 감지 | high |
 | `recording_error` | MediaRecorder 오류 | high |
 | `identity_mismatch` (수동) | 관리자 신분증 사후 검토 반려 | high |
 

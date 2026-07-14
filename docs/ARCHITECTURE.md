@@ -1,6 +1,6 @@
 # kbrain-cert — 아키텍처
 
-**핵심 목표**: 동시 응시 300명이 시험 진행하는 동안 답안 유실 0건, p95 응답 시간 500ms 이하 유지, 실시간 화상 관찰·전면 녹화 안정 동작.
+**핵심 목표**: 동시 응시 100명·120분·회당 시험 진행하는 동안 답안 유실 0건, p95 응답 시간 500ms 이하 유지, 실시간 화상 관찰·전면 녹화 안정 동작. (2026-07-14 초기 300명 가정에서 축소)
 
 ---
 
@@ -12,7 +12,7 @@
 | UI | **shadcn/ui + Tailwind CSS + Radix Primitives** | 원본과 동일 |
 | 상태 관리 | **TanStack Query v5** | 서버 상태 캐싱, 답안 저장 debounce · retry |
 | DB · Auth · Storage · Realtime | **Supabase Pro** | RLS·Realtime·PgBouncer·Storage 통합 |
-| **화상회의 (감독관 관찰)** | **Daily.co (Prime 플랜)** | 원본과 동일 (SFU, 300명 동시 스트림) |
+| **화상회의 (감독관 관찰)** | **Agora Web SDK** (`agora-rtc-sdk-ng`) | Seoul 리전 · SD simulcast (그리드 저해상도) · Daily.co 대비 비용 1/6 (2026-07-14 재확정) |
 | **응시 녹화 스토리지** | **Cloudflare R2** + WebAssembly MediaRecorder + AWS SigV4 | 원본과 동일 (S3보다 저렴, egress 무료) |
 | **이메일 발송** | **Resend** (or Supabase Auth 내장, 최종결정 대기) | 초대 · OTP 이메일 |
 | 감독 (얼굴) | **face-api.js (TinyFaceDetector, v0.22.2)** | 브라우저 로컬 추론 (원본 유지) |
@@ -21,7 +21,7 @@
 | 문제 렌더링 | **remark-gfm (Markdown)** | 원본과 동일 |
 | E2E 테스트 | **Playwright** | WebRTC 부분은 실기기 리허설 필요 |
 | Unit 테스트 | **Vitest** | Next.js 15 호환 |
-| 배포 | **Vercel** (Frontend) + Supabase (Backend) + Daily.co + R2 | 서버리스 · 자동 스케일 |
+| 배포 | **Vercel** (Frontend) + Supabase (Backend) + Agora + R2 | 서버리스 · 자동 스케일 |
 | 코드 품질 | ESLint (flat) + Prettier + TypeScript strict | |
 
 **의도적으로 제외**: AWS Rekognition (신분증 → 업로드만), Lovable Gemini (AI 채점 미사용), Zoom SDK.
@@ -73,7 +73,7 @@ kbrain-cert/
 │       ├── proctoring/events/          # 감독 이벤트 배치
 │       ├── exam/submit/                # 최종 제출
 │       ├── invitation/otp/             # 초대 OTP 발송·검증
-│       ├── daily/room/                 # Daily.co 룸 생성 · 토큰
+│       ├── agora/token/                # Agora RTC 토큰 발급
 │       ├── r2/presign/                 # R2 Presigned URL
 │       ├── r2/playback/                # R2 재생 프록시
 │       └── export/answers/             # 답안 CSV/JSON export
@@ -226,7 +226,7 @@ monitoring_events (
   severity text,
   is_reviewed boolean default false, reviewer_note text
 )
--- session_id · 월 파티셔닝 (300명 * 이벤트 다수)
+-- session_id · 월 파티셔닝 (100명 * 이벤트 다수)
 
 -- 녹화 청크
 recording_chunks (
@@ -276,7 +276,7 @@ create view questions_for_applicant as
 
 ---
 
-## 300명 동시 응시 처리
+## 100명 동시 응시 처리 (상세는 `CAPACITY.md`)
 
 ### 병목 & 대응
 
@@ -285,8 +285,8 @@ create view questions_for_applicant as
 | 시험 시작 순간 문제 페치 | 300 req/s | `unstable_cache` + Vercel Edge Cache (문제 payload는 응시자 공용) |
 | 답안 저장 | 지속적 write (debounce 3s) | React Query mutation + PgBouncer transaction mode + upsert |
 | 감독 이벤트 | 최악 초당 600+ | 클라 **5s 배치** → bulk insert. 파티셔닝(월/세션) |
-| Daily.co 스트림 | 300 SFU 스트림 | Daily Prime 플랜, 감독관은 그리드 페이지네이션(30~50명 단위) |
-| R2 녹화 업로드 | 청크 500ms × 300명 × 2트랙 = ~1200 upload/s peak | Presigned URL로 클라 → R2 직접 업로드, 서버 개입 최소 |
+| Agora 스트림 | 100 SFU 스트림 (SD 그리드) | Seoul 리전 · dual-stream mode(simulcast) 활성. 감독관은 저해상도 receive, 이벤트 발생 시만 HD 확대 |
+| R2 녹화 업로드 | 청크 5s × 100명 × 2트랙 = ~40 upload/s peak | Presigned URL로 클라 → R2 직접 업로드, 서버 개입 최소 |
 | 관리자 실시간 모니터링 | Realtime 채널 확산 | 관리자 대시보드 = 5s 폴링. Realtime은 개별 상세 진입 시만 |
 | 최종 제출 폭주 | 종료 시각 근처 300 요청 동시 | 서버 액션 idempotency key(`session_id`) |
 | Resend 이메일 발송 | 초대 명단 300건 배치 | Resend 배치 API, 백엔드 큐 |
@@ -294,7 +294,7 @@ create view questions_for_applicant as
 ### 티어 요구사항
 
 - **Supabase Pro** (커넥션 200+, PgBouncer, Realtime 상향)
-- **Daily.co Prime** (300명 동시 SFU)
+- **Agora Web SDK** (Seoul 리전 · 100명 동시 SFU · Free 10,000분/월 활용)
 - **R2**: 저장 무제한(사용량 과금), egress 무료 (S3 대비 큰 이점)
 - **Vercel Pro** (Edge Config, longer function timeout)
 
@@ -369,13 +369,14 @@ async function recomputeTimeLeft(session) {
 
 ---
 
-## Daily.co 통합 요약
+## Agora 통합 요약
 
-- **룸 생성**: 시험 오픈 시 `daily-room` Edge Function이 방 생성 → `exams.daily_room_url` 저장
-- **응시자 토큰**: 응시 시작 시 서명 토큰 발급 (owner=false, 화면공유 send 권한)
-- **감독관 토큰**: 감독관 로그인 시 owner=true 토큰 (모든 스트림 receive)
-- **채팅**: Daily chat API (응시자↔감독관)
-- **비용 관리**: 시험 시작 전엔 방 생성 안 함, 종료 후 방 자동 destroy
+- **채널명**: 시험별 (`exam-{exam_id}`) 하나. 응시자·감독관 같은 채널 join
+- **응시자 토큰**: 응시 시작 시 서명 토큰 발급 (role=publisher · 웹캠·화면공유 send)
+- **감독관 토큰**: 감독관 로그인 시 role=subscriber 토큰 (전체 receive) + role=publisher(개별 음성 안내 시)
+- **Simulcast**: 응시자 dual-stream (HD + SD) 발행 → 감독관 그리드는 SD 요청 (비용 절감)
+- **채팅**: Agora RTM 대신 **Supabase Realtime 자체 구현** (Agora 비용 절감 · 이벤트·채팅 통합 관리)
+- **비용 관리**: 채널은 참여자·분 단위 과금 · Free 10,000분/월 활용 · 종료 후 leave
 
 ## R2 녹화 통합 요약
 
@@ -420,9 +421,9 @@ SUPABASE_SERVICE_ROLE_KEY=
 # Next.js
 NEXT_PUBLIC_APP_URL=
 
-# Daily.co
-DAILY_API_KEY=
-DAILY_DOMAIN=
+# Agora
+NEXT_PUBLIC_AGORA_APP_ID=
+AGORA_APP_CERTIFICATE=          # 서버 전용 (토큰 서명)
 
 # Cloudflare R2
 R2_ACCOUNT_ID=
@@ -445,7 +446,7 @@ OTP_SECRET=              # OTP HMAC
 
 | 리스크 | 대응 |
 |---|---|
-| Daily.co 300 동시 SFU 요금 급증 | Prime 플랜 견적 사전 확인, 감독관 그리드 페이지네이션으로 실제 수신 스트림 수 억제 |
+| Agora 100 동시 SFU 요금 | SD simulcast + Free 10,000분/월 활용. 회당 약 1.7만원 예상 (CAPACITY.md §1.2) |
 | R2 저장 무제한 → 비용 지속 증가 | 녹화 보관 정책 (기본 30일 후 자동 삭제 · 필요 시 archive 티어로 이동) |
 | 브라우저 부하 (Daily·MediaRecorder·face-api·WebAudio 동시) | 대기실 CPU 벤치마크 · 최소 사양 표시 · 저사양 응시자는 관리자 예외 승인 |
 | face-api 모델 첫 로드 지연(~10MB) | self-host + Service Worker precache + 대기실에서 warmup |

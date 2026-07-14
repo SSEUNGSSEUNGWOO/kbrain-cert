@@ -3,7 +3,10 @@
 **최종 갱신**: 2026-07-14
 **목적**: `INVENTORY.md` 검토 후 승우님이 확정한 이식 방향. `FEATURES.md`·`MASTER_PLAN.md`·`ARCHITECTURE.md`는 모두 이 결정을 기반으로 작성됨.
 
-> **2026-07-14 추가 결정**: 문제 유형은 **작업형(work_based, 슬롯형) 한 종류만** 사용 (아래 **I** 항목). 프로토타입 톤은 첫 프로토타입(shadcn navy) 상태로 되돌림 — 이후 톤 시도 (다크 프리미엄·kbrain-ems mimic) 모두 폐기.
+> **2026-07-14 추가 결정**:
+> - 문제 유형은 **작업형(work_based, 슬롯형) 한 종류만** 사용 (아래 **I** 항목)
+> - **규모: 100명 · 120분 · 회당 계산** (초기 300명 가정에서 축소)
+> - **화상회의: Daily.co → Agora로 재확정** (100명 규모에서 비용 1/6, `docs/CAPACITY.md` §1.2)
 
 ---
 
@@ -17,7 +20,7 @@
 
 | # | 항목 | 결정 | 파급 |
 |---|---|---|---|
-| **A** | 감독관 실시간 화상 관찰 | **✅ 이식 (Daily.co)** | 감독관이 응시자 웹캠·화면공유를 실시간 관찰. 감독 대시보드에 그리드 뷰 + 개별 상세. Daily Prime 구독 예상 |
+| **A** | 감독관 실시간 화상 관찰 | **✅ 이식 (Agora — 2026-07-14 재확정)** | 감독관이 응시자 웹캠·화면공유를 실시간 관찰. 그리드 뷰 + 개별 상세. Agora Web SDK · Seoul 리전 · SD simulcast로 비용 절감. 초기 Daily.co 안에서 변경 (Daily 대비 비용 1/6) |
 | **B** | 응시 녹화 | **✅ 이식 (Cloudflare R2 전면 녹화)** | 웹캠·화면 청크 500ms 단위 R2 업로드. 사후 재생·검토 가능. WebAssembly MediaRecorder + AWS SigV4 서명 |
 | **C** | 본인 인증(신분증) | **🔧 업로드만** | AWS Rekognition은 **제외**. 응시자가 신분증 사진 업로드 → **관리자 사후 검토** (개인정보 처리방침 부담 감소) |
 | **D** | 응시자 등록 방식 | **✅ 초대전용 메인** | 관리자가 명단 업로드 → 초대코드·상시링크 이메일 발송 → 이메일 OTP로 응시자 진입. **오픈 등록은 M6 이후로** |
@@ -36,7 +39,7 @@
 - 페이지 21개 중 18개 (인증서·Face++ 테스트·`send-otp/verify-otp` 제외)
 - **문제 유형은 작업형(슬롯형) 한 종류만** — 나머지 4종(객관식·단답·서술형·실기)은 스코프에서 제거 (결정 I) + 시나리오형 세트
 - 감독 로컬 컴포넌트 (`FaceMonitor` · `VoiceMonitor` · `FullscreenGuard` · `SecurityPledge`) — `AntiOcrWatermark`는 제외 (프로토타입 리뷰 시 승우님 결정)
-- Daily.co 통합 (`DailyProctor`, `ExamChatPanel`, `DailyMonitorGrid`, `daily-room` Edge Function)
+- 감독관 화상 관찰 (원본은 Daily.co 이었으나 **Agora로 재확정** · `AgoraProctor`, `AgoraMonitorGrid`, `agora-token` Edge Function). 채팅은 Agora RTM 대신 **Supabase Realtime 자체 구현**으로 비용 절감
 - R2 녹화 (`RecordingStatusBadge`, `RecordingReviewPage`, `r2-*` Edge Functions)
 - 초대전용 OTP (`send-guest-otp` · `verify-guest-otp` · `send-exam-invitation` · `exam_invitations` 테이블)
 - 크로스테이블 CSV export (`CrossTableDialog`)
@@ -72,7 +75,7 @@
 
 | 리스크 | 대응 방안 |
 |---|---|
-| **Daily.co 300명 동시 구독료** | Daily Prime 플랜 필요. 정확한 비용은 M1 진입 시 Daily 견적으로 확인 |
+| **Agora 화상회의 비용** | 100명·120분·회당 약 1.7만원 (SD 그리드 · Free 10,000분/월 활용 시 첫 회 3천~5천원). Daily.co 대비 1/6. `docs/CAPACITY.md` §1.2 |
 | **R2 저장 비용 (시험당 100~300GB)** | 보관 정책 정해야 함 — 기본 30일 후 자동 삭제 or 저사양 저장 archive |
 | **브라우저 부하** (WebRTC + MediaRecorder + face-api + WebAudio 동시) | 대기실 사전 체크에 CPU 벤치마크 추가, 최소 사양 명시. 저사양 응시자는 관리자 승인 예외 |
 | **실기기 부하 테스트 불가** (Playwright는 WebRTC 미지원) | M6에 실제 다중 노트북 리허설 필수 |
@@ -81,7 +84,7 @@
 
 ## 미해결 (M1 진입 전 최종 확정 필요)
 
-1. **Daily.co 구독 플랜 결정** — 견적 요청 필요
+1. ~~Daily.co 견적~~ → **Agora 계정 생성 (2026-07-14 확정)** — agora.io Console에서 Seoul 프로젝트 · App ID/Certificate 발급
 2. **R2 계정** — Cloudflare 계정 및 R2 버킷 생성 (승우님 or daeasy 명의)
 3. **Resend vs Supabase Auth 이메일** — 초대 이메일 발송 채널 (Resend가 원본 방식, 브랜드 통일성 유리)
 4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe (성능/정확도 개선 여지)

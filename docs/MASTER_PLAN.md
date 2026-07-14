@@ -2,7 +2,7 @@
 
 **최종 갱신**: 2026-07-14
 **소유자**: 승우님 (ohjieun25@daeasy.co.kr)
-**한 줄 요약**: 300명 동시 응시 가능한 공식 자격증급 CBT 플랫폼. 원본 "AI Champion Certification System"(Lovable · 남의 코드)에서 기능 방향을 가져와 Next.js로 새로 구축. 원본 대비 개선점 4개(감독 유연성·정답 격리·점수 통일·타이머).
+**한 줄 요약**: 100명 동시 응시(120분·회당) 공식 자격증급 CBT 플랫폼. 원본 "AI Champion Certification System"(Lovable · 남의 코드)에서 기능 방향을 가져와 Next.js로 새로 구축. 원본 대비 개선점 4개(감독 유연성·정답 격리·점수 통일·타이머).
 
 ---
 
@@ -17,17 +17,17 @@
 | DB · Auth · Storage · Realtime | **Supabase Pro** (신규 프로젝트 2개: dev / prod) |
 | E2E 테스트 | **Playwright** + **Vitest** (unit) |
 | 배포 | **Vercel** (Frontend) |
-| **화상회의 (감독관 실시간 관찰)** | **Daily.co** (Prime 플랜) |
+| **화상회의 (감독관 실시간 관찰)** | **Agora Web SDK** (Seoul 리전 · SD simulcast) — 2026-07-14 Daily.co에서 재확정 |
 | **응시 녹화** | **Cloudflare R2** (웹캠·화면 청크 저장) |
 | **이메일 발송 (초대·OTP)** | **Resend** (원본 방식, 승우님 재확인 필요) |
 | **본인 인증** | **신분증 이미지 업로드 → 관리자 사후 검토** (AWS Rekognition 미사용) |
 | **응시자 등록** | **초대전용 메인** (관리자 명단 업로드 → 이메일 OTP) |
-| **감독 방식** | 브라우저 로컬 추론(얼굴·음성·화면) + 서버 이벤트 로그 + Daily.co 실시간 스트림 + R2 녹화 |
+| **감독 방식** | 브라우저 로컬 추론(얼굴·음성·화면) + 서버 이벤트 로그 + Agora 실시간 스트림 + R2 녹화 |
 | **문제 유형** | **작업형(work_based, 슬롯형) 한 종류만** (결정 I) — 슬롯 조합: text · long_text · url · file · number |
 | **자동채점 범위** | **없음** (결정 I 파급) — 모든 문항이 작업형이라 자동채점 대상 없음. 슬롯별 수동채점 + 답안 CSV/JSON export로 외부 위임 |
 | **인증서 발급** | 제외 (시험 응시·채점까지만) |
 | **카테고리·등급** | 관리자 설정 테이블 (하드코딩 해제) |
-| 최대 부하 스펙 | 동시 응시 300명 |
+| 최대 부하 스펙 | **동시 응시 100명 · 120분 · 회당** (2026-07-14 축소 · 초기 300명 가정에서 조정) |
 | Git | 로컬 `git init`만. 원격 나중에 |
 | 원본 코드 관계 | 참고만. 이식·복사 안 함 |
 
@@ -60,7 +60,7 @@
 - `create-next-app` + TS + Tailwind + shadcn/ui init
 - 라우트 그룹 6개: `(auth)`, `(admin)`, `(applicant)`, `(examiner)`, `(grader)`, `api`
 - Supabase 프로젝트 신규 2개 생성 → RLS 기본 정책 + 4역할(admin/examiner/grader/applicant)
-- **Daily.co 계정 · Prime 플랜 견적 · API 키 발급**
+- **Agora 계정 · Seoul 프로젝트 생성 · App ID/Certificate 발급**
 - **Cloudflare R2 버킷 생성 · SigV4 credential**
 - **Resend 계정 · 발신 도메인 인증** (또는 Supabase Auth 내장으로 결정)
 - 환경 변수 통합 세팅
@@ -101,7 +101,7 @@
   - FullscreenGuard + Page Visibility
   - EventBatcher (5s 배치) → `/api/proctoring/events`
   - ⚠️ 세트 `proctoring_disabled` 시 감독 unmount + 배너
-- **Daily.co 통합**: 응시자 웹캠·화면공유 → 감독관 그리드 뷰용 SFU 스트림
+- **Agora 통합**: 응시자 웹캠·화면공유 → 감독관 그리드 뷰용 SFU 스트림. 감독관↔응시자 채팅은 Supabase Realtime 자체 구현
 - **R2 녹화**: MediaRecorder 500ms 청크 → `r2-presign` → R2 직접 업로드 (실패 재시도)
 - **검증**: Playwright 시나리오 5개 — 정상 응시 / 감독 트리거 / 감독 비활성 세트 / 시간 재동기화 / 녹화 실패 재시도
 
@@ -130,7 +130,7 @@
 - 감독 이벤트 파티셔닝, `attempts`·`answers` 인덱스 튜닝
 - Vercel Edge Config, 캐시 태그 revalidation
 - 접근성 · 반응형 · 크로스브라우저 (Chrome · Edge 필수)
-- **검증**: 300명 동시 응시 리허설 시 답안 유실 0건, 감독 이벤트 유실률 < 0.1%
+- **검증**: 100명 동시 응시 리허설 시 답안 유실 0건, 감독 이벤트 유실률 < 0.1% (실기기 리허설은 30~50명 규모)
 
 ---
 
@@ -142,7 +142,7 @@ M0(완료) + M1(3~5일) + M2(5~7일) + M3(4~6일) + M4(7~10일) + M5(5~7일) + M
 
 ## 미결정 (M1 진입 전 최종 확정)
 
-1. **Daily.co 구독 플랜** — 견적 확인 필요
+1. ~~Daily.co 구독 플랜~~ → **Agora 확정 (2026-07-14)**. agora.io 계정·프로젝트 생성 필요
 2. **Cloudflare R2 계정 명의** — 개인/daeasy
 3. **이메일 발송 채널** — Resend vs Supabase Auth 내장
 4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe
