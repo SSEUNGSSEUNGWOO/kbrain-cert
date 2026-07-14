@@ -32,7 +32,7 @@
 
 - 페이지 21개 중 18개 (인증서·Face++ 테스트·`send-otp/verify-otp` 제외)
 - 문제 유형 5종 (객관식·단답·서술형·실기·작업형/슬롯형) + 시나리오형 세트
-- 감독 로컬 컴포넌트 (`FaceMonitor` · `VoiceMonitor` · `FullscreenGuard` · `SecurityPledge` · `AntiOcrWatermark`)
+- 감독 로컬 컴포넌트 (`FaceMonitor` · `VoiceMonitor` · `FullscreenGuard` · `SecurityPledge`) — `AntiOcrWatermark`는 제외 (프로토타입 리뷰 시 승우님 결정)
 - Daily.co 통합 (`DailyProctor`, `ExamChatPanel`, `DailyMonitorGrid`, `daily-room` Edge Function)
 - R2 녹화 (`RecordingStatusBadge`, `RecordingReviewPage`, `r2-*` Edge Functions)
 - 초대전용 OTP (`send-guest-otp` · `verify-guest-otp` · `send-exam-invitation` · `exam_invitations` 테이블)

@@ -79,7 +79,7 @@
 | ✅ | 전체화면 이탈 | Fullscreen API | 이벤트 리스너 |
 | ✅ | 탭 전환 감지 | Page Visibility API | 이벤트 리스너 |
 | ✅ | 서약(부정행위 금지) | `SecurityPledge.tsx` | 텍스트 |
-| ✅ | 화면 캡처 방지 워터마크 | `AntiOcrWatermark.tsx` | CSS/DOM |
+| ❌ | 화면 캡처 방지 워터마크 | `AntiOcrWatermark.tsx` | 승우님 결정: 시각 노이즈만 큼 · 제외 |
 | ❓ | **웹캠/화면 녹화** | Daily.co + Cloudflare R2 | **인프라 큰 결정 (아래 §5)** |
 | ❓ | **신분증 검증** | AWS Rekognition (ap-northeast-2) | **비용/규정 결정 (아래 §5)** |
 | ❓ | 화상회의 (감독관 실시간 관찰) | Daily.co | **감독관이 응시자 실시간 화면 보고 싶은지 여부** |

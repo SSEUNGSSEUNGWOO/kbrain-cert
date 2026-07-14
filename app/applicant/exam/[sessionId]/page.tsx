@@ -84,10 +84,6 @@ export default function ExamPage() {
           </div>
         </main>
       </div>
-
-      {!proctoringDisabled && (
-        <Watermark name={mockSession.applicantName} sessionId={mockSession.id} />
-      )}
     </div>
   );
 }
@@ -513,31 +509,6 @@ function ExamFooter({
             최종 제출
           </button>
         )}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────── OCR 방지 워터마크 ─────────── */
-
-function Watermark({ name, sessionId }: { name: string; sessionId: string }) {
-  const rows = 6;
-  const cols = 5;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
-      style={{ mixBlendMode: "multiply" }}
-    >
-      <div
-        className="w-full h-full flex flex-wrap opacity-[0.035] font-tabular text-sm tracking-widest"
-        style={{ transform: "rotate(-18deg) scale(1.4)" }}
-      >
-        {Array.from({ length: rows * cols }).map((_, i) => (
-          <div key={i} className="flex-1 min-w-[20%] text-center">
-            {name} · {sessionId} · {new Date().toISOString().slice(0, 16)}
-          </div>
-        ))}
       </div>
     </div>
   );
