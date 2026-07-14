@@ -20,6 +20,7 @@
 - [CAPACITY.md](docs/CAPACITY.md) — **300명 동시 응시 실행 계획** (비용 견적·라이브러리·병목·부하검증·위험)
 - [INVENTORY.md](docs/INVENTORY.md) — 원본(AI Champion) 기능 카탈로그
 - [DECISIONS.md](docs/DECISIONS.md) — 이식 방향 8개 확정 결정
+- [M1_SETUP.md](docs/M1_SETUP.md) — **승우님 실제 액션**: Supabase 계정·프로젝트 생성 → 스키마 적용 → 환경변수
 
 ## 다음 단계
 
