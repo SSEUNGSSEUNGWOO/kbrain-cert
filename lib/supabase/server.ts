@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 /**
  * 서버 컴포넌트 · Route Handler · Server Action에서 사용
@@ -9,7 +10,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 export async function createServerSupabase() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -23,7 +24,7 @@ export async function createServerSupabase() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server Component에서 호출 시 무시 (middleware에서만 실제 set)
+            // Server Component에서 호출 시 무시 (proxy에서만 실제 set)
           }
         },
       },
@@ -37,7 +38,7 @@ export async function createServerSupabase() {
  * - 절대 클라이언트로 노출 금지
  */
 export function createAdminSupabase() {
-  return createSupabaseClient(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {

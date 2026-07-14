@@ -7,6 +7,8 @@ import {
   type ExamCard,
 } from "@/lib/mock";
 import { createAdminSupabase } from "@/lib/supabase/server";
+import { requireRole } from "@/lib/auth";
+import { signOut } from "@/app/login/actions";
 
 async function checkSupabase() {
   try {
@@ -98,10 +100,11 @@ const prototypes = [
 ];
 
 export default async function Home() {
+  const { user } = await requireRole("admin");
   const supa = await checkSupabase();
   return (
     <div className="min-h-screen">
-      <TopNav />
+      <TopNav userEmail={user.email ?? "admin"} />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <SupabaseHealth supa={supa} />
         <Hero />
@@ -206,32 +209,51 @@ export default async function Home() {
 
 /* ─────────── 최상단 네비 ─────────── */
 
-function TopNav() {
+function TopNav({ userEmail }: { userEmail: string }) {
+  const initial = userEmail.slice(0, 2).toUpperCase();
   return (
     <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-border">
       <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
           <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
-          <div className="ml-3 text-[10px] font-bold tracking-[0.15em] text-primary bg-primary-soft px-2 py-0.5 rounded-md">
+          <div className="ml-3 text-[10px] font-bold tracking-[0.15em] text-primary bg-primary-soft px-2 py-0.5 rounded-sm">
             ADMIN
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground">
-            <NavItem label="대시보드" active />
-            <NavItem label="문제은행" />
-            <NavItem label="시험" />
-            <NavItem label="응시자" />
-            <NavItem label="채점" />
-            <NavItem label="설정" />
+            <NavItem href="/" label="대시보드" active />
+            <NavItem href="/admin/questions" label="문제은행" />
+            <NavItem href="/admin/exams" label="시험" />
+            <NavItem href="/admin/invitations" label="응시자" />
+            <NavItem href="/admin/grading" label="채점" />
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary text-white flex items-center justify-center text-xs font-bold">
-              이명희
+            <div className="text-right leading-tight">
+              <div className="text-[10px] font-bold tracking-widest text-muted uppercase">
+                Admin
+              </div>
+              <div className="text-xs font-bold truncate max-w-40">
+                {userEmail}
+              </div>
             </div>
+            <div
+              className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center text-xs font-bold"
+              title={userEmail}
+            >
+              {initial}
+            </div>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="text-[10px] font-bold tracking-widest text-muted-foreground hover:text-danger uppercase px-2 py-1 rounded-sm"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -239,17 +261,26 @@ function TopNav() {
   );
 }
 
-function NavItem({ label, active = false }: { label: string; active?: boolean }) {
+function NavItem({
+  href,
+  label,
+  active = false,
+}: {
+  href: string;
+  label: string;
+  active?: boolean;
+}) {
   return (
-    <div
-      className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition ${
+    <Link
+      href={href}
+      className={`px-3 py-1.5 rounded-md font-semibold transition ${
         active
           ? "text-primary bg-primary-soft"
           : "text-muted-foreground hover:text-foreground hover:bg-surface-soft"
       }`}
     >
       {label}
-    </div>
+    </Link>
   );
 }
 

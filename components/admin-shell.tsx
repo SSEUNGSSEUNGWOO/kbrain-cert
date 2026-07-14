@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { signOut } from "@/app/login/actions";
 
 const NAV_ITEMS = [
   { href: "/", label: "대시보드", key: "dashboard" },
@@ -19,10 +20,16 @@ export type AdminNavKey =
 export function AdminShell({
   active,
   children,
+  userEmail,
 }: {
   active: AdminNavKey;
   children: ReactNode;
+  userEmail?: string;
 }) {
+  // Auth guard는 app/admin/layout.tsx가 담당 (async server component)
+  const email = userEmail ?? "admin";
+  const initial = email.slice(0, 2).toUpperCase();
+
   return (
     <div className="min-h-screen">
       <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-border">
@@ -56,8 +63,29 @@ export function AdminShell({
                 </Link>
               ))}
             </div>
-            <div className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center text-xs font-bold">
-              LMH
+            <div className="flex items-center gap-2">
+              <div className="text-right leading-tight">
+                <div className="text-[10px] font-bold tracking-widest text-muted uppercase">
+                  Admin
+                </div>
+                <div className="text-xs font-bold truncate max-w-40">
+                  {email}
+                </div>
+              </div>
+              <div
+                className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center text-xs font-bold"
+                title={email}
+              >
+                {initial}
+              </div>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="text-[10px] font-bold tracking-widest text-muted-foreground hover:text-danger uppercase px-2 py-1 rounded-sm"
+                >
+                  Sign out
+                </button>
+              </form>
             </div>
           </div>
         </div>
