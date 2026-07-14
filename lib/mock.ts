@@ -341,8 +341,6 @@ export const mockRecentEvents: ProctoringEvent[] = [
   },
 ];
 
-/* ─────────── 대기실 환경체크 데이터 ─────────── */
-
 /* ─────────── 홈·대시보드용 확장 데이터 ─────────── */
 
 export type ExamCard = {
@@ -453,6 +451,192 @@ export const mockRecentActivity: ActivityItem[] = [
     target: "AI 챔피언 자격 · Q2",
     tone: "orange",
   },
+];
+
+/* ─────────── 문제은행 ─────────── */
+
+export type QuestionBankItem = {
+  id: string;
+  code: string;
+  content: string;
+  category: string;
+  grade: "Green" | "Blue" | "Black" | "전문인재";
+  difficulty: "쉬움" | "보통" | "어려움";
+  tags: string[];
+  slots: number;
+  maxScore: number;
+  usedInExams: number;
+  createdBy: string;
+  updatedAt: string;
+};
+
+export const mockQuestionBank: QuestionBankItem[] = [
+  {
+    id: "q-001",
+    code: "T-E-036",
+    content: "로컬 Ollama를 활용한 문의 자동 분류 도구를 설계하고 시연 결과를 제출하시오.",
+    category: "생성형AI 활용",
+    grade: "Black",
+    difficulty: "어려움",
+    tags: ["Ollama", "분류", "프롬프트"],
+    slots: 3,
+    maxScore: 100,
+    usedInExams: 2,
+    createdBy: "이명희",
+    updatedAt: "2026.07.12",
+  },
+  {
+    id: "q-002",
+    code: "T-E-035",
+    content: "RAG 시스템의 검색 품질을 개선하는 3가지 전략을 서술하시오. (200~300자)",
+    category: "생성형AI 활용",
+    grade: "Black",
+    difficulty: "어려움",
+    tags: ["RAG", "임베딩", "검색"],
+    slots: 1,
+    maxScore: 50,
+    usedInExams: 1,
+    createdBy: "이명희",
+    updatedAt: "2026.07.10",
+  },
+  {
+    id: "q-003",
+    code: "PRACT-TB-001",
+    content: "제공된 데이터로 HTML/CSS/JS 대시보드를 구현하시오. 파일 · 캡처 · 메모 제출.",
+    category: "서비스 구현",
+    grade: "Blue",
+    difficulty: "보통",
+    tags: ["HTML", "CSS", "대시보드"],
+    slots: 4,
+    maxScore: 100,
+    usedInExams: 3,
+    createdBy: "박지훈",
+    updatedAt: "2026.07.08",
+  },
+  {
+    id: "q-004",
+    code: "PRACT-DA-018",
+    content: "고객 문의 데이터 200건을 분석하여 상위 카테고리 5개로 자동 분류하시오.",
+    category: "데이터 분석",
+    grade: "Blue",
+    difficulty: "보통",
+    tags: ["분류", "EDA", "카테고리"],
+    slots: 3,
+    maxScore: 80,
+    usedInExams: 2,
+    createdBy: "이명희",
+    updatedAt: "2026.07.05",
+  },
+  {
+    id: "q-005",
+    code: "T-B-012",
+    content: "이커머스 검색 정확도 개선을 위한 A/B 테스트 설계 방법을 서술하시오.",
+    category: "데이터 분석",
+    grade: "Blue",
+    difficulty: "보통",
+    tags: ["A/B 테스트", "가설검정"],
+    slots: 1,
+    maxScore: 50,
+    usedInExams: 1,
+    createdBy: "이명희",
+    updatedAt: "2026.07.02",
+  },
+  {
+    id: "q-006",
+    code: "T-G-003",
+    content: "Transformer의 self-attention 시간 복잡도를 시퀀스 길이 n에 대해 표기하시오.",
+    category: "생성형AI 활용",
+    grade: "Green",
+    difficulty: "쉬움",
+    tags: ["Transformer", "복잡도"],
+    slots: 1,
+    maxScore: 10,
+    usedInExams: 4,
+    createdBy: "박지훈",
+    updatedAt: "2026.06.28",
+  },
+  {
+    id: "q-007",
+    code: "T-B-018",
+    content: "LLM 파라미터 효율적 미세조정 기법을 비교 · 각 장단점 서술.",
+    category: "생성형AI 활용",
+    grade: "Blue",
+    difficulty: "보통",
+    tags: ["PEFT", "LoRA", "미세조정"],
+    slots: 2,
+    maxScore: 60,
+    usedInExams: 2,
+    createdBy: "이명희",
+    updatedAt: "2026.06.25",
+  },
+  {
+    id: "q-008",
+    code: "PRACT-SI-007",
+    content: "간단한 챗봇 백엔드(FastAPI) 구현. 라우팅 · 스트리밍 응답 · 테스트 포함.",
+    category: "서비스 구현",
+    grade: "Black",
+    difficulty: "어려움",
+    tags: ["FastAPI", "챗봇", "테스트"],
+    slots: 3,
+    maxScore: 100,
+    usedInExams: 1,
+    createdBy: "박지훈",
+    updatedAt: "2026.06.20",
+  },
+];
+
+/* ─────────── 응시자 초대 ─────────── */
+
+export type InvitationItem = {
+  id: string;
+  name: string;
+  email: string;
+  organization: string;
+  examTitle: string;
+  inviteCode: string;
+  status: "미발송" | "발송됨" | "사용됨" | "만료";
+  sentAt: string | null;
+  usedAt: string | null;
+};
+
+export const mockInvitations: InvitationItem[] = [
+  { id: "i1", name: "김민준", email: "kmj@daeasy.co.kr", organization: "daeasy", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-A7F3-XM19", status: "사용됨", sentAt: "2026.07.10", usedAt: "2026.07.14" },
+  { id: "i2", name: "이서연", email: "lsy@snu.ac.kr", organization: "서울대", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-B8D2-YN20", status: "사용됨", sentAt: "2026.07.10", usedAt: "2026.07.14" },
+  { id: "i3", name: "박지훈", email: "pjh@kaist.ac.kr", organization: "KAIST", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-C9E5-ZO21", status: "발송됨", sentAt: "2026.07.10", usedAt: null },
+  { id: "i4", name: "최수아", email: "csa@postech.ac.kr", organization: "포스텍", examTitle: "데이터 분석 실무 4기", inviteCode: "KBC-D1F6-AP22", status: "발송됨", sentAt: "2026.07.11", usedAt: null },
+  { id: "i5", name: "정예린", email: "jyr@korea.ac.kr", organization: "고려대", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-E2G7-BQ23", status: "사용됨", sentAt: "2026.07.10", usedAt: "2026.07.14" },
+  { id: "i6", name: "강도윤", email: "kdy@naver.com", organization: "네이버", examTitle: "서비스 구현 실기", inviteCode: "KBC-F3H8-CR24", status: "미발송", sentAt: null, usedAt: null },
+  { id: "i7", name: "조하은", email: "jhe@kakao.com", organization: "카카오", examTitle: "서비스 구현 실기", inviteCode: "KBC-G4I9-DS25", status: "미발송", sentAt: null, usedAt: null },
+  { id: "i8", name: "윤시우", email: "ysw@daangn.com", organization: "당근마켓", examTitle: "데이터 분석 실무 4기", inviteCode: "KBC-H5J0-ET26", status: "발송됨", sentAt: "2026.07.11", usedAt: null },
+  { id: "i9", name: "장유나", email: "jyn@daeasy.co.kr", organization: "daeasy", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-I6K1-FU27", status: "만료", sentAt: "2026.06.20", usedAt: null },
+  { id: "i10", name: "임재원", email: "ljw@snu.ac.kr", organization: "서울대", examTitle: "2026 하반기 AI 챔피언 자격", inviteCode: "KBC-J7L2-GV28", status: "사용됨", sentAt: "2026.07.10", usedAt: "2026.07.14" },
+];
+
+/* ─────────── 채점 큐 ─────────── */
+
+export type GradingItem = {
+  id: string;
+  applicantName: string;
+  applicantOrg: string;
+  examTitle: string;
+  submittedAt: string;
+  rawScore: number | null;
+  maxScore: number;
+  percentageScore: number | null;
+  passingScore: number;
+  status: "대기" | "채점중" | "완료";
+  gradedBy: string | null;
+  gradedAt: string | null;
+};
+
+export const mockGradingQueue: GradingItem[] = [
+  { id: "g1", applicantName: "김민준", applicantOrg: "daeasy", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:32", rawScore: 268, maxScore: 300, percentageScore: 89, passingScore: 75, status: "완료", gradedBy: "이명희", gradedAt: "2026.07.14 15:50" },
+  { id: "g2", applicantName: "이서연", applicantOrg: "서울대", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:29", rawScore: 174, maxScore: 300, percentageScore: 58, passingScore: 75, status: "완료", gradedBy: "이명희", gradedAt: "2026.07.14 15:48" },
+  { id: "g3", applicantName: "정예린", applicantOrg: "고려대", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:35", rawScore: null, maxScore: 300, percentageScore: null, passingScore: 75, status: "채점중", gradedBy: "박지훈", gradedAt: null },
+  { id: "g4", applicantName: "임재원", applicantOrg: "서울대", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:20", rawScore: 234, maxScore: 300, percentageScore: 78, passingScore: 75, status: "완료", gradedBy: "이명희", gradedAt: "2026.07.14 15:45" },
+  { id: "g5", applicantName: "한서준", applicantOrg: "네이버", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:31", rawScore: null, maxScore: 300, percentageScore: null, passingScore: 75, status: "대기", gradedBy: null, gradedAt: null },
+  { id: "g6", applicantName: "오지호", applicantOrg: "카카오", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:33", rawScore: null, maxScore: 300, percentageScore: null, passingScore: 75, status: "대기", gradedBy: null, gradedAt: null },
+  { id: "g7", applicantName: "신아린", applicantOrg: "당근마켓", examTitle: "2026 하반기 AI 챔피언 자격", submittedAt: "2026.07.14 15:38", rawScore: null, maxScore: 300, percentageScore: null, passingScore: 75, status: "대기", gradedBy: null, gradedAt: null },
 ];
 
 export const mockAdminStats = {
