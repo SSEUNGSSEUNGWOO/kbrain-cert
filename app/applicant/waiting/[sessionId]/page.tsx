@@ -7,11 +7,11 @@ import { cn, formatTime } from "@/lib/utils";
 
 type StepKey = "check" | "identity" | "pledge" | "waiting";
 
-const steps: { key: StepKey; label: string; description: string }[] = [
-  { key: "check", label: "환경 체크", description: "웹캠·마이크·화면공유·CPU·네트워크" },
-  { key: "identity", label: "신분증 촬영", description: "본인 확인 (관리자 사후 검토)" },
-  { key: "pledge", label: "보안 서약", description: "부정행위 금지 및 감독 동의" },
-  { key: "waiting", label: "입실 대기", description: "시험 시작 시각 카운트다운" },
+const steps: { key: StepKey; num: string; label: string; en: string }[] = [
+  { key: "check", num: "01", label: "환경 체크", en: "ENV CHECK" },
+  { key: "identity", num: "02", label: "신분증 촬영", en: "IDENTITY" },
+  { key: "pledge", num: "03", label: "보안 서약", en: "PLEDGE" },
+  { key: "waiting", num: "04", label: "입실 대기", en: "STANDBY" },
 ];
 
 export default function WaitingRoomPage() {
@@ -19,7 +19,7 @@ export default function WaitingRoomPage() {
   const [checksPassed, setChecksPassed] = useState(false);
   const [identityUploaded, setIdentityUploaded] = useState(false);
   const [pledgeAgreed, setPledgeAgreed] = useState(false);
-  const [entryCountdown, setEntryCountdown] = useState(8 * 60 + 42); // 8:42
+  const [entryCountdown, setEntryCountdown] = useState(8 * 60 + 42);
 
   useEffect(() => {
     if (currentStep !== "waiting") return;
@@ -34,67 +34,75 @@ export default function WaitingRoomPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="border-b border-strong bg-white flex items-center px-6 h-14">
-        <Link
-          href="/"
-          className="text-xs font-semibold tracking-widest text-muted-fg hover:text-primary"
-        >
-          kbrain-cert
+      <header className="rule-b flex items-center px-8 h-16">
+        <Link href="/" className="flex items-center gap-3">
+          <span className="text-gold text-base">◆</span>
+          <span className="text-[10px] tracking-[0.3em] font-semibold text-primary">
+            KBRAIN CERT
+          </span>
         </Link>
-        <span className="text-muted mx-3">|</span>
-        <span className="text-sm font-medium text-primary flex-1 truncate">
-          응시자 대기실 · {mockExam.title}
-        </span>
-        <span className="inline-flex items-center h-6 px-2 rounded-sm bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
-          {mockExam.grade}
+        <div className="flex-1 flex items-baseline gap-4 pl-8 min-w-0">
+          <span className="text-[10px] tracking-[0.35em] text-gold font-semibold">
+            APPLICANT · WAITING
+          </span>
+          <span className="w-1 h-1 rounded-full bg-[--color-line-strong]" />
+          <span className="text-sm text-muted-fg truncate">
+            {mockExam.title}
+          </span>
+        </div>
+        <span className="text-[10px] tracking-[0.3em] text-gold-strong font-semibold">
+          {mockExam.grade.replace("(", "· ").replace(")", "")}
         </span>
       </header>
 
-      <div className="flex-1 flex justify-center py-12 px-6 surface-muted">
+      <div className="flex-1 flex justify-center py-16 px-8">
         <div className="w-full max-w-3xl">
-          {/* 스텝퍼 */}
-          <div className="mb-10 grid grid-cols-4 gap-2">
+          <div className="mb-16 grid grid-cols-4 gap-6">
             {steps.map((s, i) => {
               const done = i < stepIdx;
               const active = i === stepIdx;
               return (
-                <div key={s.key} className="relative">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div
+                <div key={s.key}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span
                       className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-tabular font-bold border transition",
-                        done && "bg-[--color-success] border-[--color-success] text-white",
-                        active && "bg-primary border-primary text-primary-foreground",
-                        !done && !active && "bg-white border-[--color-border] text-muted-fg"
+                        "gutter-numeral text-2xl",
+                        done && "text-gold-strong",
+                        active && "text-gold",
+                        !done && !active && "text-[--color-subtle]"
                       )}
                     >
-                      {done ? "✓" : i + 1}
-                    </div>
+                      {s.num}
+                    </span>
                     <div
                       className={cn(
-                        "h-px flex-1 transition",
-                        done ? "bg-[--color-success]" : "bg-[--color-border]"
+                        "flex-1 h-px",
+                        done ? "bg-[--color-line-gold]" : "bg-[--color-line]"
                       )}
                     />
                   </div>
                   <div
                     className={cn(
-                      "text-xs font-semibold transition",
-                      active ? "text-primary" : done ? "text-[--color-success]" : "text-muted"
+                      "text-[10px] tracking-[0.35em] mb-1 font-semibold",
+                      done ? "text-gold-strong" : active ? "text-gold" : "text-muted"
+                    )}
+                  >
+                    {s.en}
+                  </div>
+                  <div
+                    className={cn(
+                      "text-sm font-serif font-bold",
+                      active ? "text-primary" : done ? "text-muted-fg" : "text-muted"
                     )}
                   >
                     {s.label}
-                  </div>
-                  <div className="text-[10px] text-muted-fg mt-0.5">
-                    {s.description}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* 현재 스텝 카드 */}
-          <div className="bg-white border border-[--color-border] rounded-md p-8 shadow-sm">
+          <div>
             {currentStep === "check" && (
               <CheckStep
                 onContinue={() => {
@@ -122,38 +130,10 @@ export default function WaitingRoomPage() {
             )}
           </div>
 
-          {/* 하단 진행 상태 */}
-          <div className="mt-6 flex items-center gap-2 text-xs text-muted-fg justify-center">
-            <span
-              className={cn(
-                "px-2 py-0.5 rounded-sm border",
-                checksPassed
-                  ? "border-[--color-success] text-[--color-success]"
-                  : "border-[--color-border]"
-              )}
-            >
-              환경 {checksPassed ? "확인됨" : "미확인"}
-            </span>
-            <span
-              className={cn(
-                "px-2 py-0.5 rounded-sm border",
-                identityUploaded
-                  ? "border-[--color-success] text-[--color-success]"
-                  : "border-[--color-border]"
-              )}
-            >
-              신분증 {identityUploaded ? "제출됨" : "미제출"}
-            </span>
-            <span
-              className={cn(
-                "px-2 py-0.5 rounded-sm border",
-                pledgeAgreed
-                  ? "border-[--color-success] text-[--color-success]"
-                  : "border-[--color-border]"
-              )}
-            >
-              서약 {pledgeAgreed ? "동의됨" : "미동의"}
-            </span>
+          <div className="mt-12 pt-6 rule-t-gold flex items-center gap-3 justify-center text-[10px] tracking-[0.3em]">
+            <StatusChip label="ENV" done={checksPassed} />
+            <StatusChip label="ID" done={identityUploaded} />
+            <StatusChip label="PLEDGE" done={pledgeAgreed} />
           </div>
         </div>
       </div>
@@ -161,25 +141,39 @@ export default function WaitingRoomPage() {
   );
 }
 
+function StatusChip({ label, done }: { label: string; done: boolean }) {
+  return (
+    <span
+      className={cn(
+        "px-3 py-1 font-semibold",
+        done ? "text-gold-strong" : "text-muted"
+      )}
+    >
+      {done ? "◆" : "◇"} {label}
+    </span>
+  );
+}
+
 /* ─────────── Step 1: 환경 체크 ─────────── */
 
 function CheckStep({ onContinue }: { onContinue: () => void }) {
-  const allOk = mockWaitingChecks.every((c) => c.status === "ok" || c.status === "warn");
+  const allOk = mockWaitingChecks.every(
+    (c) => c.status === "ok" || c.status === "warn"
+  );
   return (
     <div>
-      <div className="mb-6">
-        <div className="text-[10px] font-semibold tracking-widest text-muted-fg uppercase mb-1.5">
-          Step 1
+      <div className="mb-10">
+        <div className="text-[10px] tracking-[0.4em] text-gold mb-3 font-semibold">
+          STEP 01 · ENVIRONMENT CHECK
         </div>
-        <h2 className="mb-1">환경 체크</h2>
-        <p className="text-sm text-muted-fg">
+        <h2 className="font-serif mb-3">환경 체크</h2>
+        <p className="text-sm text-muted-fg leading-relaxed max-w-xl">
           시험 중 안정적인 감독을 위해 다음 항목이 모두 정상 작동해야 합니다.
         </p>
       </div>
 
-      {/* 웹캠 프리뷰 목업 */}
-      <div className="mb-6 grid grid-cols-2 gap-4">
-        <div className="aspect-video bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950 rounded-md flex items-center justify-center text-white/40">
+      <div className="mb-10 grid grid-cols-2 gap-6">
+        <div className="aspect-video bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center text-white/25">
           <div className="text-center">
             <svg
               viewBox="0 0 24 24"
@@ -191,46 +185,49 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
               <rect x="3" y="7" width="12" height="10" rx="2" />
               <path d="M15 10l6-3v10l-6-3z" />
             </svg>
-            <div className="text-[10px] tracking-widest">웹캠 프리뷰</div>
+            <div className="text-[10px] tracking-[0.3em]">WEBCAM PREVIEW</div>
           </div>
         </div>
-        <div className="space-y-2">
-          <div className="border border-[--color-border] rounded-sm p-3">
-            <div className="text-[10px] text-muted-fg tracking-widest mb-1">
-              마이크 볼륨
+        <div className="space-y-3">
+          <div className="surface-elevated border-l-2 border-[--color-line-gold] px-4 py-3">
+            <div className="text-[9px] tracking-[0.3em] text-gold mb-1.5">
+              MIC LEVEL
             </div>
-            <div className="flex gap-1 h-4">
-              {Array.from({ length: 20 }).map((_, i) => (
+            <div className="flex gap-0.5 h-4">
+              {Array.from({ length: 24 }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "flex-1 rounded-sm",
+                    "flex-1",
                     i < 12
                       ? i < 8
                         ? "bg-[--color-success]"
                         : i < 15
                         ? "bg-[--color-warning]"
                         : "bg-[--color-danger]"
-                      : "bg-[--color-subtle]"
+                      : "bg-[--color-line]"
                   )}
                 />
               ))}
             </div>
           </div>
-          <div className="border border-[--color-border] rounded-sm p-3">
-            <div className="text-[10px] text-muted-fg tracking-widest mb-1">
-              CPU 벤치마크
+          <div className="surface-elevated border-l-2 border-[--color-line-gold] px-4 py-3">
+            <div className="text-[9px] tracking-[0.3em] text-gold mb-1.5">
+              CPU BENCHMARK
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-tabular text-2xl font-bold text-primary">92</span>
-              <span className="text-xs text-muted-fg">/ 100 · 권장 이상</span>
+              <span className="font-tabular text-3xl font-bold text-gold-strong">
+                92
+              </span>
+              <span className="text-xs text-muted-fg tracking-wider">
+                / 100 · ABOVE THRESHOLD
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 체크리스트 */}
-      <div className="space-y-2 mb-6">
+      <div className="divide-y divide-[--color-line] mb-10">
         {mockWaitingChecks.map((c) => (
           <CheckItem key={c.id} check={c} />
         ))}
@@ -240,43 +237,51 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
         onClick={onContinue}
         disabled={!allOk}
         className={cn(
-          "w-full h-11 rounded-sm text-sm font-semibold transition",
+          "w-full h-12 text-xs tracking-[0.35em] font-bold transition",
           allOk
-            ? "bg-primary text-primary-foreground hover:bg-[--color-primary-hover]"
-            : "bg-[--color-subtle] text-muted-fg cursor-not-allowed"
+            ? "bg-gold text-[--color-primary-foreground] hover:bg-gold-strong"
+            : "bg-[--color-line] text-muted cursor-not-allowed"
         )}
+        style={
+          allOk
+            ? {
+                backgroundColor: "var(--color-gold)",
+                color: "var(--color-primary-foreground)",
+              }
+            : undefined
+        }
       >
-        다음: 신분증 촬영 →
+        NEXT · 신분증 촬영 →
       </button>
     </div>
   );
 }
 
 function CheckItem({ check }: { check: (typeof mockWaitingChecks)[number] }) {
-  const iconBg =
+  const iconChar =
+    check.status === "ok" ? "◆" : check.status === "pending" ? "◇" : "!";
+  const iconColor =
     check.status === "ok"
-      ? "bg-[--color-success]"
+      ? "text-gold-strong"
       : check.status === "warn"
-      ? "bg-[--color-warning]"
+      ? "text-[--color-warning]"
       : check.status === "error"
-      ? "bg-[--color-danger]"
-      : "bg-[--color-subtle]";
-  const iconChar = check.status === "ok" ? "✓" : check.status === "pending" ? "…" : "!";
+      ? "text-[--color-danger]"
+      : "text-muted";
   return (
-    <div className="flex items-center gap-3 border border-[--color-border] rounded-sm px-3 py-2.5">
-      <div
-        className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold",
-          iconBg
-        )}
-      >
+    <div className="flex items-center gap-5 py-4">
+      <div className={cn("text-lg w-6 flex-shrink-0", iconColor)}>
         {iconChar}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-primary">{check.label}</div>
-        <div className="text-[11px] text-muted-fg">{check.description}</div>
+        <div className="text-sm font-semibold text-primary">{check.label}</div>
+        <div className="text-[11px] text-muted-fg mt-0.5">
+          {check.description}
+        </div>
       </div>
-      <div className="text-xs text-muted-fg font-tabular">{check.detail}</div>
+      <div className="text-xs text-muted-fg font-tabular tracking-wider text-right">
+        {check.detail}
+      </div>
     </div>
   );
 }
@@ -294,62 +299,55 @@ function IdentityStep({
 }) {
   return (
     <div>
-      <div className="mb-6">
-        <div className="text-[10px] font-semibold tracking-widest text-muted-fg uppercase mb-1.5">
-          Step 2
+      <div className="mb-10">
+        <div className="text-[10px] tracking-[0.4em] text-gold mb-3 font-semibold">
+          STEP 02 · IDENTITY VERIFICATION
         </div>
-        <h2 className="mb-1">신분증 촬영·업로드</h2>
-        <p className="text-sm text-muted-fg">
+        <h2 className="font-serif mb-3">신분증 촬영·업로드</h2>
+        <p className="text-sm text-muted-fg leading-relaxed max-w-xl">
           본인 확인용 신분증 이미지가 필요합니다. 관리자가 시험 후 사후 검토합니다.
         </p>
       </div>
 
-      <div className="mb-6 border border-[--color-warning] bg-[--color-warning-muted] rounded-sm px-4 py-3 text-xs leading-relaxed">
-        <div className="font-semibold text-[--color-warning] mb-1">
-          개인정보 처리 안내
+      <div className="mb-8 border-l-2 border-[--color-line-gold] py-3 px-5">
+        <div className="text-[10px] tracking-[0.35em] text-gold font-semibold mb-1.5">
+          PRIVACY NOTICE
         </div>
-        <div className="text-muted-fg">
+        <div className="text-xs text-muted-fg leading-relaxed">
           업로드된 신분증 이미지는 응시자 본인 확인 목적으로만 사용되며, 시험 종료 후
-          30일 이내 자동 파기됩니다. 자동 얼굴 인식(AWS Rekognition 등)은 사용하지
-          않습니다.
+          30일 이내 자동 파기됩니다. 자동 얼굴 인식(AWS Rekognition 등)은 사용하지 않습니다.
         </div>
       </div>
 
       <div
         onClick={onUpload}
         className={cn(
-          "border-2 border-dashed rounded-md p-10 text-center cursor-pointer transition",
+          "border-l-2 border-dashed py-16 text-center cursor-pointer transition group",
           uploaded
-            ? "border-[--color-success] bg-[--color-success-muted]"
-            : "border-[--color-border-strong] hover:border-primary hover:surface-hover"
+            ? "border-gold surface-elevated"
+            : "border-[--color-line-strong] hover:border-gold hover:surface-hover"
         )}
       >
         {uploaded ? (
           <>
-            <div className="text-2xl mb-2">✓</div>
-            <div className="text-sm font-semibold text-[--color-success]">
-              업로드 완료 · id_ohjieun_240715.jpg
+            <div className="text-4xl mb-3 text-gold-strong">◆</div>
+            <div className="text-sm font-semibold text-primary tracking-wider">
+              id_ohjieun_240715.jpg
             </div>
-            <div className="text-xs text-muted-fg mt-1">2.1 MB · 재업로드 클릭</div>
+            <div className="text-[10px] text-muted-fg mt-2 tracking-widest">
+              UPLOADED · 2.1 MB · CLICK TO REUPLOAD
+            </div>
           </>
         ) : (
           <>
-            <svg
-              viewBox="0 0 24 24"
-              className="w-10 h-10 mx-auto mb-3 text-muted-fg"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-            >
-              <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
-              <circle cx="8.5" cy="10.5" r="2" />
-              <path d="M4 17l4-4 4 4 4-4 4 4" />
-            </svg>
-            <div className="text-sm font-medium text-primary mb-1">
+            <div className="text-4xl mb-3 text-muted-fg group-hover:text-gold transition">
+              ◇
+            </div>
+            <div className="text-sm font-semibold text-primary mb-1.5">
               신분증 이미지를 드래그하거나 클릭하여 업로드
             </div>
-            <div className="text-xs text-muted-fg">
-              주민등록증 · 운전면허증 · 여권 · 학생증 · JPG/PNG · 최대 10MB
+            <div className="text-[10px] text-muted-fg tracking-widest">
+              주민등록증 · 운전면허증 · 여권 · 학생증 · JPG/PNG · MAX 10MB
             </div>
           </>
         )}
@@ -359,13 +357,21 @@ function IdentityStep({
         onClick={onContinue}
         disabled={!uploaded}
         className={cn(
-          "mt-6 w-full h-11 rounded-sm text-sm font-semibold transition",
+          "mt-8 w-full h-12 text-xs tracking-[0.35em] font-bold transition",
           uploaded
-            ? "bg-primary text-primary-foreground hover:bg-[--color-primary-hover]"
-            : "bg-[--color-subtle] text-muted-fg cursor-not-allowed"
+            ? "bg-gold text-[--color-primary-foreground] hover:bg-gold-strong"
+            : "bg-[--color-line] text-muted cursor-not-allowed"
         )}
+        style={
+          uploaded
+            ? {
+                backgroundColor: "var(--color-gold)",
+                color: "var(--color-primary-foreground)",
+              }
+            : undefined
+        }
       >
-        다음: 보안 서약 →
+        NEXT · 보안 서약 →
       </button>
     </div>
   );
@@ -384,58 +390,57 @@ function PledgeStep({
 }) {
   return (
     <div>
-      <div className="mb-6">
-        <div className="text-[10px] font-semibold tracking-widest text-muted-fg uppercase mb-1.5">
-          Step 3
+      <div className="mb-10">
+        <div className="text-[10px] tracking-[0.4em] text-gold mb-3 font-semibold">
+          STEP 03 · SECURITY PLEDGE
         </div>
-        <h2 className="mb-1">보안 서약</h2>
-        <p className="text-sm text-muted-fg">
+        <h2 className="font-serif mb-3">보안 서약</h2>
+        <p className="text-sm text-muted-fg leading-relaxed max-w-xl">
           시험 진행 및 감독 방침에 동의하셔야 응시가 가능합니다.
         </p>
       </div>
 
-      <div className="border border-[--color-border] rounded-sm p-6 max-h-64 overflow-y-auto text-sm leading-relaxed text-primary space-y-4">
-        <div>
-          <div className="font-semibold mb-2">1. 감독 방식 안내</div>
-          <p className="text-muted-fg">
-            응시 중 웹캠·마이크·화면공유 스트림이 감독관에게 실시간 송출되며, 세션
-            종료 시까지 Cloudflare R2에 녹화 저장됩니다. 얼굴·음성·전체화면 이탈 등은
-            브라우저에서 자동 감지됩니다.
-          </p>
-        </div>
-        <div>
-          <div className="font-semibold mb-2">2. 부정행위 금지 사항</div>
-          <ul className="list-disc pl-5 text-muted-fg space-y-1">
-            <li>타인 대리 응시 · 대화 · 통신 · 메모 참고</li>
-            <li>웹캠·마이크·화면공유 임의 종료</li>
-            <li>전체화면 5회 이상 이탈 시 자동 제출됨</li>
-          </ul>
-        </div>
-        <div>
-          <div className="font-semibold mb-2">3. 세트별 감독 유연화 안내</div>
-          <p className="text-muted-fg">
-            일부 문제 세트(작업형·외부 도구 허용)는 관리자 정책에 따라 감독이 일시
-            비활성화됩니다. 해당 구간에는 별도 배너가 표시되며, 다른 세트로 이동 시
-            감독이 자동 재활성화됩니다.
-          </p>
-        </div>
-        <div>
-          <div className="font-semibold mb-2">4. 개인정보 처리</div>
-          <p className="text-muted-fg">
-            신분증 이미지 · 응시 녹화 · 감독 이벤트 로그는 시험 종료 후 30일 이내
-            자동 파기됩니다. 이의 신청 절차는 사이트 정책을 따릅니다.
-          </p>
-        </div>
+      <div className="border-l-2 border-[--color-line-gold] pl-6 py-2 max-h-72 overflow-y-auto text-sm leading-[1.75] text-primary space-y-5 font-serif mb-8">
+        <PledgeItem
+          n="1"
+          title="감독 방식 안내"
+          body="응시 중 웹캠·마이크·화면공유 스트림이 감독관에게 실시간 송출되며, 세션 종료 시까지 Cloudflare R2에 녹화 저장됩니다. 얼굴·음성·전체화면 이탈 등은 브라우저에서 자동 감지됩니다."
+        />
+        <PledgeItem
+          n="2"
+          title="부정행위 금지 사항"
+          body="타인 대리 응시 · 대화 · 통신 · 메모 참고 금지. 웹캠·마이크·화면공유 임의 종료 금지. 전체화면 5회 이상 이탈 시 자동 제출됩니다."
+        />
+        <PledgeItem
+          n="3"
+          title="세트별 감독 유연화"
+          body="일부 문제 세트(작업형·외부 도구 허용)는 관리자 정책에 따라 감독이 일시 비활성화됩니다. 해당 구간에는 별도 배너가 표시되며, 다른 세트로 이동 시 감독이 자동 재활성화됩니다."
+        />
+        <PledgeItem
+          n="4"
+          title="개인정보 처리"
+          body="신분증 이미지 · 응시 녹화 · 감독 이벤트 로그는 시험 종료 후 30일 이내 자동 파기됩니다."
+        />
       </div>
 
-      <label className="flex items-start gap-3 mt-6 p-4 border border-[--color-border-strong] rounded-sm cursor-pointer hover:surface-hover">
+      <label className="flex items-start gap-4 py-5 rule-t-gold rule-b-gold cursor-pointer group">
+        <div
+          className={cn(
+            "text-xl flex-shrink-0 pt-0.5 transition",
+            agreed
+              ? "text-gold-strong"
+              : "text-[--color-line-strong] group-hover:text-gold"
+          )}
+        >
+          {agreed ? "◆" : "◇"}
+        </div>
         <input
           type="checkbox"
           checked={agreed}
           onChange={(e) => onAgree(e.target.checked)}
-          className="mt-0.5 accent-[--color-primary] w-4 h-4"
+          className="sr-only"
         />
-        <div className="text-sm text-primary">
+        <div className="text-sm text-primary leading-relaxed">
           위 내용을 모두 읽고 이해했으며, 부정행위 금지 및 감독 방침에 동의합니다.
           위반 시 응시 자격 박탈 및 향후 응시 제한에 이의를 제기하지 않겠습니다.
         </div>
@@ -445,56 +450,92 @@ function PledgeStep({
         onClick={onContinue}
         disabled={!agreed}
         className={cn(
-          "mt-6 w-full h-11 rounded-sm text-sm font-semibold transition",
+          "mt-8 w-full h-12 text-xs tracking-[0.35em] font-bold transition",
           agreed
-            ? "bg-primary text-primary-foreground hover:bg-[--color-primary-hover]"
-            : "bg-[--color-subtle] text-muted-fg cursor-not-allowed"
+            ? "bg-gold text-[--color-primary-foreground] hover:bg-gold-strong"
+            : "bg-[--color-line] text-muted cursor-not-allowed"
         )}
+        style={
+          agreed
+            ? {
+                backgroundColor: "var(--color-gold)",
+                color: "var(--color-primary-foreground)",
+              }
+            : undefined
+        }
       >
-        서약 완료 · 입실 대기 →
+        SIGN & CONTINUE · 입실 대기 →
       </button>
     </div>
   );
 }
 
-/* ─────────── Step 4: 입실 대기 ─────────── */
+function PledgeItem({
+  n,
+  title,
+  body,
+}: {
+  n: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline gap-3 mb-1">
+        <span className="gutter-numeral text-base w-4">{n}</span>
+        <span className="text-sm font-bold tracking-tight text-gold-strong">
+          {title}
+        </span>
+      </div>
+      <div className="pl-7 text-muted-fg text-sm leading-relaxed">{body}</div>
+    </div>
+  );
+}
+
+/* ─────────── Step 4: 대기 ─────────── */
 
 function WaitingStep({ countdown }: { countdown: number }) {
   const canEnter = countdown < 3 * 60;
   return (
-    <div className="text-center py-6">
-      <div className="text-[10px] font-semibold tracking-widest text-muted-fg uppercase mb-1.5">
-        Step 4
+    <div className="text-center py-8">
+      <div className="text-[10px] tracking-[0.4em] text-gold mb-3 font-semibold">
+        STEP 04 · STANDBY
       </div>
-      <h2 className="mb-1">입실 대기</h2>
-      <p className="text-sm text-muted-fg mb-8">
-        시험 시작 시각까지 대기해주세요.
-      </p>
+      <h2 className="font-serif mb-3">입실 대기</h2>
+      <p className="text-sm text-muted-fg mb-14">시험 시작 시각까지 대기해주세요.</p>
 
-      <div className="inline-block border border-strong rounded-md px-16 py-8 mb-8">
-        <div className="text-[10px] text-muted-fg tracking-widest mb-2">
-          시작까지 남은 시간
+      <div className="mb-14">
+        <div className="text-[10px] tracking-[0.4em] text-gold mb-4 font-semibold">
+          COUNTDOWN
         </div>
-        <div className="font-tabular text-5xl font-bold text-primary">
+        <div className="font-tabular text-8xl font-bold text-gold-strong leading-none">
           {formatTime(countdown)}
         </div>
       </div>
 
-      <div className="max-w-md mx-auto text-sm text-muted-fg leading-relaxed mb-8">
-        입실 허용 시간은 시험 시작 <b>3분 전</b>부터입니다. 그 이전에는 대기 상태로
-        유지되며, 시간이 되면 자동으로 응시 페이지로 전환됩니다.
+      <div className="max-w-md mx-auto text-sm text-muted-fg leading-relaxed mb-12 font-serif">
+        입실 허용 시간은 시험 시작 <span className="text-gold-strong font-semibold">3분 전</span>부터입니다.
+        그 이전에는 대기 상태로 유지되며, 시간이 되면 자동으로 응시 페이지로 전환됩니다.
       </div>
 
       <Link
         href="/applicant/exam/session-me"
         className={cn(
-          "inline-flex items-center justify-center h-11 px-8 rounded-sm text-sm font-semibold transition",
+          "inline-flex items-center justify-center h-12 px-12 text-xs tracking-[0.35em] font-bold transition",
           canEnter
-            ? "bg-primary text-primary-foreground hover:bg-[--color-primary-hover]"
-            : "bg-[--color-subtle] text-muted-fg pointer-events-none cursor-not-allowed"
+            ? "bg-gold text-[--color-primary-foreground] hover:bg-gold-strong"
+            : "bg-[--color-line] text-muted pointer-events-none cursor-not-allowed"
         )}
+        style={
+          canEnter
+            ? {
+                backgroundColor: "var(--color-gold)",
+                color: "var(--color-primary-foreground)",
+              }
+            : undefined
+        }
       >
-        {canEnter ? "시험 입실 →" : "입실 대기중"}
+        {canEnter ? "ENTER EXAM →" : "STANDBY"}
       </Link>
     </div>
   );

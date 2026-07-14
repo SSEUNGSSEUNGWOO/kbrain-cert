@@ -3,87 +3,120 @@ import Link from "next/link";
 const prototypes = [
   {
     href: "/applicant/waiting/session-me",
-    step: "1",
+    num: "01",
     title: "응시자 대기실",
+    subtitle: "APPLICANT · WAITING ROOM",
     description:
-      "환경 체크 (웹캠·마이크·화면공유·CPU·네트워크) → 신분증 업로드 → 보안 서약 → 입실 카운트다운",
-    tag: "APPLICANT",
+      "환경 체크 · 신분증 업로드 · 보안 서약 · 입실 카운트다운",
   },
   {
     href: "/applicant/exam/session-me",
-    step: "2",
+    num: "02",
     title: "응시 페이지",
+    subtitle: "APPLICANT · EXAM",
     description:
-      "타이머 · 문제 5문항 (객관식·단답·서술형·사례·작업형) · 감독 배지 · 세트별 감독 ON/OFF 배너 · 워터마크",
-    tag: "APPLICANT",
+      "타이머 · 5문항 (객관식·단답·서술형·사례·작업형) · 감독 배지 · 세트별 감독 ON/OFF",
   },
   {
     href: "/examiner/monitor",
-    step: "3",
+    num: "03",
     title: "감독관 대시보드",
+    subtitle: "EXAMINER · MONITORING",
     description:
-      "30명 응시자 그리드 · 실시간 감독 이벤트 타임라인 · 심각도 색상 시스템 · 스트리밍 상태",
-    tag: "EXAMINER",
+      "3단 알림 우선 정렬 · 실시간 이벤트 타임라인 · 개별 채팅 · Daily.co 그리드",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="flex flex-1 items-start justify-center py-24 px-8">
-      <div className="w-full max-w-4xl">
-        <div className="mb-16">
-          <div className="inline-flex items-center gap-2 mb-6 text-xs font-medium tracking-widest text-muted uppercase">
-            <span className="w-1 h-1 rounded-full bg-accent" />
-            kbrain-cert · Prototype
+    <div className="min-h-screen flex flex-col">
+      {/* 상단 브랜드 마크 */}
+      <header className="rule-b py-6 px-12 flex items-center gap-4">
+        <div className="text-gold text-lg">◆</div>
+        <div className="text-xs tracking-[0.3em] font-semibold text-primary">
+          KBRAIN CERT
+        </div>
+        <div className="flex-1" />
+        <div className="text-[10px] tracking-widest text-muted-fg">
+          PROTOTYPE · v0.1 · M0
+        </div>
+      </header>
+
+      {/* 히어로 */}
+      <section className="py-24 px-12">
+        <div className="max-w-5xl">
+          <div className="text-[10px] tracking-[0.4em] text-gold mb-6">
+            OFFICIAL CERTIFICATION SYSTEM
           </div>
-          <h1 className="text-4xl mb-4">
-            공식 자격 검정 플랫폼
-            <span className="block text-lg font-normal text-muted mt-3 leading-relaxed">
-              M0 계획을 반영한 초기 시안입니다. 브랜드 톤 (짙은 네이비 · Pretendard · 좁은 radius · 절제된 border)과
-              핵심 흐름 3개를 실제 컴포넌트로 확인하세요.
-            </span>
+          <h1 className="font-serif text-5xl leading-tight mb-8">
+            공식 자격 검정을 위한
+            <br />
+            엄격한 응시·감독·채점 플랫폼.
           </h1>
+          <div className="max-w-2xl text-base leading-relaxed text-muted-fg">
+            브라우저 로컬 감독 · Daily.co 실시간 관찰 · R2 전면 녹화 · 3단 알림 정렬을
+            통합하여, 300명 동시 응시 규모에서도 공식 자격증급 검정 신뢰도를 유지합니다.
+          </div>
+        </div>
+      </section>
+
+      {/* 3개 프로토타입 */}
+      <section className="px-12 pb-24">
+        <div className="rule-t-gold pt-2 mb-10">
+          <div className="text-[10px] tracking-[0.4em] text-gold">
+            PROTOTYPES
+          </div>
         </div>
 
-        <div className="grid gap-3">
+        <div className="divide-y divide-[--color-line]">
           {prototypes.map((p) => (
             <Link
               key={p.href}
               href={p.href}
-              className="group border border-[--color-border] hover:border-strong bg-white transition rounded-md p-6 flex gap-6 surface-hover"
+              className="group flex items-baseline gap-10 py-8 hover:surface-hover transition px-4 -mx-4"
             >
-              <div className="flex-shrink-0 w-12 h-12 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-tabular text-lg">
-                {p.step}
+              <div className="gutter-numeral text-6xl flex-shrink-0 w-20 group-hover:text-gold transition">
+                {p.num}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-3 mb-2">
-                  <h2 className="text-xl">{p.title}</h2>
-                  <span className="text-[10px] font-semibold tracking-widest text-muted-fg">
-                    {p.tag}
-                  </span>
+                <div className="text-[10px] tracking-[0.35em] text-gold mb-2 font-semibold">
+                  {p.subtitle}
                 </div>
-                <p className="text-sm text-muted-fg leading-relaxed">
+                <div className="font-serif text-2xl font-bold text-primary mb-2 group-hover:text-gold-strong transition">
+                  {p.title}
+                </div>
+                <div className="text-sm text-muted-fg leading-relaxed">
                   {p.description}
-                </p>
+                </div>
               </div>
-              <div className="flex-shrink-0 self-center text-muted group-hover:text-primary transition">
+              <div className="flex-shrink-0 self-center text-2xl text-muted group-hover:text-gold group-hover:translate-x-1 transition">
                 →
               </div>
             </Link>
           ))}
         </div>
+      </section>
 
-        <div className="mt-16 pt-8 border-t border-[--color-border] text-xs text-muted-fg leading-relaxed">
-          <div className="mb-2 font-semibold text-primary">디자인 시스템 원칙</div>
-          <ul className="space-y-1 list-disc pl-4">
-            <li>Primary: 짙은 네이비 (hsl 222 47% 11%) · 신뢰·공식감</li>
-            <li>배경: 순백 + surface-muted (미묘한 warm gray) · 그림자보다 border</li>
-            <li>Radius: 2~8px 좁은 범위 · 각진 편이 공식 문서에 어울림</li>
-            <li>Font: Pretendard Variable (한글) · JetBrains Mono (숫자·타이머)</li>
-            <li>감독 색상: 위반은 danger(진홍) · 경고는 warning(앰버) · 정보는 info(짙은 파랑)</li>
-          </ul>
+      {/* 하단 원칙 */}
+      <footer className="mt-auto rule-b px-12 py-8">
+        <div className="max-w-5xl grid grid-cols-4 gap-8 text-[11px] leading-relaxed">
+          <Principle label="TONE" value="Dark Premium · Gold Accent" />
+          <Principle label="TYPE" value="Pretendard 900 · Noto Serif KR" />
+          <Principle label="LAYOUT" value="Rule-line · Big Gutter Numerals" />
+          <Principle label="RADIUS" value="0~2px · Angular" />
         </div>
+      </footer>
+    </div>
+  );
+}
+
+function Principle({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[9px] tracking-[0.4em] text-gold mb-1.5">
+        {label}
       </div>
+      <div className="text-muted-fg">{value}</div>
     </div>
   );
 }

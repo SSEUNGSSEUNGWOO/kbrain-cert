@@ -27,6 +27,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
         />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;800&display=swap"
+        />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

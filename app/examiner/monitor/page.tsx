@@ -39,7 +39,6 @@ export default function ExaminerMonitorPage() {
       else if (tier === "warn") warns.push(a);
       else normals.push(a);
     }
-    // 각 티어 내에서 warningCount 내림차순
     const byWarn = (a: MonitorApplicant, b: MonitorApplicant) =>
       b.warningCount - a.warningCount;
     alerts.sort(byWarn);
@@ -53,66 +52,65 @@ export default function ExaminerMonitorPage() {
     submitted: 3,
     alerts: alerts.length,
     warns: warns.length,
-    disconnected: mockMonitorApplicants.filter(
-      (a) => a.streaming === "disconnected"
-    ).length,
   };
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="border-b border-strong bg-white flex items-center px-6 h-14 gap-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="text-xs font-semibold tracking-widest text-muted-fg hover:text-primary"
-          >
-            kbrain-cert
-          </Link>
-          <span className="text-muted">|</span>
-          <span className="text-sm font-medium text-primary">감독관 대시보드</span>
+      <header className="rule-b flex items-center px-8 h-16 gap-6">
+        <Link href="/" className="flex items-center gap-3">
+          <span className="text-gold text-base">◆</span>
+          <span className="text-[10px] tracking-[0.3em] font-semibold text-primary">
+            KBRAIN CERT
+          </span>
+        </Link>
+
+        <div className="flex-1 flex items-baseline gap-4 pl-8 min-w-0">
+          <span className="text-[10px] tracking-[0.35em] text-gold font-semibold">
+            EXAMINER · MONITOR
+          </span>
+          <span className="w-1 h-1 rounded-full bg-[--color-line-strong]" />
+          <span className="text-sm text-muted-fg truncate">
+            {mockExam.title}
+          </span>
         </div>
 
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <div className="text-xs font-semibold tracking-widest text-muted-fg">
-            현재 시험
-          </div>
-          <select className="text-sm font-medium bg-white border border-[--color-border] rounded-sm px-2 h-8 text-primary">
-            <option>{mockExam.title}</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-4 text-xs">
-          <Stat label="응시" value={stats.total} />
+        <div className="flex items-center gap-6 text-xs">
+          <Stat label="ENROLLED" value={stats.total} />
           <Divider />
-          <Stat label="진행중" value={stats.inProgress} tone="info" />
-          <Stat label="제출" value={stats.submitted} tone="success" />
-          <Stat label="주목필요" value={stats.alerts} tone="danger" />
-          <Stat label="경고" value={stats.warns} tone="warning" />
+          <Stat label="ACTIVE" value={stats.inProgress} tone="info" />
+          <Stat label="SUBMIT" value={stats.submitted} tone="success" />
+          <Stat label="ALERTS" value={stats.alerts} tone="danger" />
+          <Stat label="WARN" value={stats.warns} tone="warning" />
         </div>
 
-        <div className="text-sm text-primary font-medium">감독관 · 이명희</div>
+        <div className="pl-6 border-l border-[--color-line]">
+          <div className="text-[9px] tracking-[0.3em] text-muted mb-1">
+            EXAMINER
+          </div>
+          <div className="text-sm text-primary font-medium">이명희</div>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto surface-muted p-6 space-y-8">
-          <div className="text-xs text-muted-fg mb-2 flex items-center gap-2">
+        <main className="flex-1 overflow-y-auto px-8 py-8 space-y-12">
+          <div className="text-xs text-muted-fg flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-[--color-danger] animate-pulse" />
-              LIVE
+              <span className="w-1.5 h-1.5 rounded-full bg-[--color-danger] animate-pulse" />
+              <span className="tracking-widest font-semibold text-gold">LIVE</span>
             </span>
             <span>·</span>
             <span>
-              이벤트 발생 응시자는 자동으로 상단에 확대 표시됩니다. 시선이 자연스럽게 문제
-              쪽으로 유도됩니다.
+              이벤트 발생 응시자는 자동으로 상단에 확대 배치됩니다. 시선이 문제 응시자로 자연 유도됩니다.
             </span>
           </div>
 
-          {/* Tier 1: 주목 필요 */}
           <Section
-            title="주목 필요"
-            subtitle="HIGH 이벤트 · 스트림 오류 · 즉각 개입 검토"
+            step="01"
+            title="ALERT"
+            titleKor="주목 필요"
+            subtitle="HIGH severity · stream lost · immediate attention"
             count={alerts.length}
-            color="danger"
+            tone="danger"
           >
             {alerts.length === 0 ? (
               <EmptyRow message="현재 주목이 필요한 응시자가 없습니다." />
@@ -131,12 +129,13 @@ export default function ExaminerMonitorPage() {
             )}
           </Section>
 
-          {/* Tier 2: 경고 */}
           <Section
-            title="경고"
-            subtitle="WARN 이벤트 · 관찰 유지"
+            step="02"
+            title="WARN"
+            titleKor="경고"
+            subtitle="WARN severity · continued observation"
             count={warns.length}
-            color="warning"
+            tone="warning"
           >
             {warns.length === 0 ? (
               <EmptyRow message="현재 경고 응시자가 없습니다." />
@@ -155,12 +154,13 @@ export default function ExaminerMonitorPage() {
             )}
           </Section>
 
-          {/* Tier 3: 정상 */}
           <Section
-            title="정상"
-            subtitle="INFO 이하 · 존재 확인"
+            step="03"
+            title="NORMAL"
+            titleKor="정상"
+            subtitle="INFO or below · presence confirmed"
             count={normals.length}
-            color="muted"
+            tone="muted"
           >
             <div className="grid grid-cols-10 gap-2">
               {normals.map((app) => (
@@ -176,30 +176,45 @@ export default function ExaminerMonitorPage() {
           </Section>
         </main>
 
-        <aside className="w-96 border-l border-[--color-border] bg-white flex flex-col">
-          <div className="p-5 border-b border-[--color-border]">
-            <div className="flex items-baseline justify-between mb-3">
-              <h3 className="text-sm font-semibold text-primary">
-                실시간 감독 이벤트
-              </h3>
-              <div className="flex items-center gap-1">
+        <aside className="w-96 border-l border-[--color-line] flex flex-col">
+          <div className="p-6 rule-b">
+            <div className="flex items-baseline justify-between mb-4">
+              <div>
+                <div className="text-[10px] tracking-[0.35em] text-gold font-semibold mb-1">
+                  EVENT STREAM
+                </div>
+                <div className="text-sm font-semibold text-primary">
+                  실시간 감독 이벤트
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[--color-danger] animate-pulse" />
-                <span className="text-[10px] text-muted-fg">LIVE</span>
+                <span className="text-[10px] tracking-widest text-muted-fg">
+                  LIVE
+                </span>
               </div>
             </div>
-            <div className="flex gap-1 text-[10px] font-semibold tracking-widest">
+            <div className="flex gap-1 text-[9px] font-bold tracking-[0.2em]">
               {(["all", "high", "warn", "info"] as SeverityFilter[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSeverityFilter(s)}
                   className={cn(
-                    "px-2.5 h-6 rounded-sm border transition uppercase",
+                    "px-3 h-6 uppercase transition",
                     severityFilter === s
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-[--color-border] text-muted-fg hover:border-[--color-border-strong]"
+                      ? "bg-gold text-[--color-primary-foreground]"
+                      : "text-muted-fg hover:text-primary hover:bg-[--color-surface-hover]"
                   )}
+                  style={
+                    severityFilter === s
+                      ? {
+                          backgroundColor: "var(--color-gold)",
+                          color: "var(--color-primary-foreground)",
+                        }
+                      : undefined
+                  }
                 >
-                  {s === "all" ? "전체" : s}
+                  {s === "all" ? "ALL" : s}
                 </button>
               ))}
             </div>
@@ -221,9 +236,14 @@ export default function ExaminerMonitorPage() {
             )}
           </div>
 
-          <div className="p-4 border-t border-[--color-border] surface-muted">
-            <button className="w-full h-9 rounded-sm bg-primary text-primary-foreground text-xs font-semibold tracking-wider hover:bg-[--color-primary-hover]">
-              전체 응시자에 공지 발송
+          <div className="p-5 rule-t-gold">
+            <button className="w-full h-10 bg-gold text-[--color-primary-foreground] text-[10px] tracking-[0.3em] font-bold hover:bg-gold-strong transition"
+              style={{
+                backgroundColor: "var(--color-gold)",
+                color: "var(--color-primary-foreground)",
+              }}
+            >
+              BROADCAST NOTICE
             </button>
           </div>
         </aside>
@@ -232,40 +252,65 @@ export default function ExaminerMonitorPage() {
   );
 }
 
-/* ─────────── 섹션 헤더 ─────────── */
+/* ─────────── 섹션 (Step + Title) ─────────── */
 
 function Section({
+  step,
   title,
+  titleKor,
   subtitle,
   count,
-  color,
+  tone,
   children,
 }: {
+  step: string;
   title: string;
+  titleKor: string;
   subtitle: string;
   count: number;
-  color: "danger" | "warning" | "muted";
+  tone: "danger" | "warning" | "muted";
   children: React.ReactNode;
 }) {
   const dotColor = {
     danger: "bg-[--color-danger]",
     warning: "bg-[--color-warning]",
-    muted: "bg-[--color-subtle]",
-  }[color];
+    muted: "bg-[--color-line-strong]",
+  }[tone];
   const textColor = {
-    danger: "text-[--color-danger]",
+    danger: "text-[--color-danger-strong]",
     warning: "text-[--color-warning]",
     muted: "text-primary",
-  }[color];
+  }[tone];
   return (
     <section>
-      <div className="flex items-baseline gap-3 mb-3">
-        <span className={cn("w-2 h-2 rounded-full self-center", dotColor)} />
-        <h2 className={cn("text-base font-semibold", textColor)}>{title}</h2>
-        <span className="font-tabular text-xs text-muted-fg">
-          {count}명
-        </span>
-        <span className="text-xs text-muted-fg">· {subtitle}</span>
+      <div className="flex items-baseline gap-6 mb-6 rule-b pb-3">
+        <span className="gutter-numeral text-3xl">{step}</span>
+        <div className="flex-1">
+          <div className="flex items-baseline gap-3 mb-1">
+            <h2
+              className={cn(
+                "text-lg font-serif font-bold tracking-tight",
+                textColor
+              )}
+            >
+              {titleKor}
+            </h2>
+            <span
+              className={cn(
+                "text-[10px] tracking-[0.35em] font-semibold",
+                textColor
+              )}
+            >
+              {title}
+            </span>
+            <span className="flex-1 h-px" />
+            <span className="font-tabular text-xs text-muted-fg">
+              {count.toString().padStart(2, "0")}
+            </span>
+          </div>
+          <div className="text-xs text-muted-fg">{subtitle}</div>
+        </div>
+        <span className={cn("w-2 h-2 rounded-full", dotColor)} />
       </div>
       {children}
     </section>
@@ -274,7 +319,7 @@ function Section({
 
 function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="border border-dashed border-[--color-border] rounded-sm px-4 py-6 text-center text-xs text-muted-fg">
+    <div className="border-l-2 border-dashed border-[--color-line] py-4 px-6 text-center text-xs text-muted-fg">
       {message}
     </div>
   );
@@ -294,35 +339,35 @@ function ApplicantCard({
   onSelect: () => void;
 }) {
   const hasHighAlert = app.lastEvent?.severity === "high" || app.streaming === "disconnected";
+  const hasWarn = app.lastEvent?.severity === "warn";
 
-  const borderColor = selected
-    ? "border-primary shadow-md ring-1 ring-[--color-ring]"
+  const borderClass = selected
+    ? "ring-1 ring-[--color-gold]"
     : hasHighAlert
-    ? "border-[--color-danger]"
-    : app.lastEvent?.severity === "warn"
-    ? "border-[--color-warning]"
-    : "border-[--color-border] hover:border-[--color-border-strong]";
+    ? "border-l-2 border-[--color-danger]"
+    : hasWarn
+    ? "border-l-2 border-[--color-warning]"
+    : "border-l border-[--color-line]";
 
   return (
     <button
       onClick={onSelect}
       className={cn(
-        "text-left rounded-md border bg-white overflow-hidden transition group",
-        borderColor
+        "text-left surface-elevated overflow-hidden transition group hover:brightness-125",
+        borderClass
       )}
     >
-      {/* 웹캠 썸네일 */}
       <div
         className={cn(
           "relative overflow-hidden",
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square",
           app.streaming === "disconnected"
             ? "bg-[--color-danger-muted]"
-            : "bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950"
+            : "bg-gradient-to-br from-slate-800 via-slate-900 to-black"
         )}
       >
         {app.streaming !== "disconnected" && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/25">
+          <div className="absolute inset-0 flex items-center justify-center text-white/15">
             <svg
               viewBox="0 0 24 24"
               className={cn(
@@ -338,10 +383,10 @@ function ApplicantCard({
           </div>
         )}
         {app.streaming === "disconnected" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[--color-danger]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[--color-danger-strong]">
             <div
               className={cn(
-                "font-semibold tracking-widest",
+                "font-semibold tracking-[0.3em]",
                 size === "sm" ? "text-[8px]" : "text-[10px]"
               )}
             >
@@ -349,10 +394,9 @@ function ApplicantCard({
             </div>
           </div>
         )}
-        {/* REC 배지 */}
         <div
           className={cn(
-            "absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/50 backdrop-blur rounded-sm",
+            "absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur",
             size === "sm" ? "px-1 py-0.5" : "px-1.5 py-0.5"
           )}
         >
@@ -360,7 +404,9 @@ function ApplicantCard({
             <>
               <span className="w-1 h-1 rounded-full bg-[--color-danger] animate-pulse" />
               {size !== "sm" && (
-                <span className="text-[9px] text-white font-tabular">REC</span>
+                <span className="text-[9px] text-white/80 font-tabular tracking-wider">
+                  REC
+                </span>
               )}
             </>
           )}
@@ -368,11 +414,10 @@ function ApplicantCard({
             <span className="text-[9px] text-[--color-warning] font-tabular">ERR</span>
           )}
         </div>
-        {/* 경고 카운트 */}
         {app.warningCount > 0 && (
           <div
             className={cn(
-              "absolute top-1.5 right-1.5 bg-[--color-danger] text-white font-bold rounded-sm flex items-center justify-center font-tabular",
+              "absolute top-1.5 right-1.5 bg-[--color-danger] text-white font-bold flex items-center justify-center font-tabular",
               size === "lg"
                 ? "text-sm w-7 h-7"
                 : size === "md"
@@ -383,11 +428,10 @@ function ApplicantCard({
             {app.warningCount}
           </div>
         )}
-        {/* 큰 카드에서 이벤트 라벨 오버레이 */}
         {size === "lg" && app.lastEvent && (
           <div
             className={cn(
-              "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm",
+              "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm tracking-wider",
               app.lastEvent.severity === "high"
                 ? "bg-[--color-danger]/85"
                 : app.lastEvent.severity === "warn"
@@ -400,9 +444,8 @@ function ApplicantCard({
         )}
       </div>
 
-      {/* 하단 정보 */}
       {size === "sm" ? (
-        <div className="px-1.5 py-1 text-center">
+        <div className="px-1.5 py-1.5 text-center">
           <div className="text-[10px] font-medium text-primary truncate">
             {app.applicant.name}
           </div>
@@ -411,7 +454,7 @@ function ApplicantCard({
           </div>
         </div>
       ) : (
-        <div className="px-3 py-2">
+        <div className="px-4 py-3">
           <div className="flex items-baseline justify-between mb-1">
             <div
               className={cn(
@@ -421,32 +464,39 @@ function ApplicantCard({
             >
               {app.applicant.name}
             </div>
-            <div className="text-[10px] font-tabular text-muted-fg">
+            <div className="text-[10px] font-tabular text-gold">
               Q{app.currentQuestion}
             </div>
           </div>
           {size === "lg" && (
-            <div className="text-[11px] text-muted-fg truncate mb-2">
+            <div className="text-[11px] text-muted-fg truncate mb-3">
               {app.applicant.organization} · {app.applicant.email}
             </div>
           )}
           {size === "md" && (
-            <div className="text-[10px] text-muted-fg truncate mb-1.5">
+            <div className="text-[10px] text-muted-fg truncate mb-2">
               {app.applicant.organization}
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-0.5 bg-[--color-subtle] rounded-full overflow-hidden">
+            <div className="flex-1 h-px bg-[--color-line-strong] relative overflow-hidden">
               <div
                 className={cn(
-                  "h-full transition-all",
+                  "absolute inset-y-0 left-0 h-full",
                   hasHighAlert
                     ? "bg-[--color-danger]"
-                    : app.lastEvent?.severity === "warn"
+                    : hasWarn
                     ? "bg-[--color-warning]"
-                    : "bg-[--color-accent]"
+                    : "bg-gold"
                 )}
-                style={{ width: `${app.progress}%` }}
+                style={{
+                  width: `${app.progress}%`,
+                  backgroundColor: hasHighAlert
+                    ? "var(--color-danger)"
+                    : hasWarn
+                    ? "var(--color-warning)"
+                    : "var(--color-gold)",
+                }}
               />
             </div>
             <div className="text-[10px] font-tabular text-muted-fg">
@@ -455,11 +505,17 @@ function ApplicantCard({
           </div>
           {size === "lg" && (
             <div className="mt-3 flex gap-2">
-              <button className="flex-1 h-8 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:bg-[--color-primary-hover]">
-                개별 채팅
+              <button
+                className="flex-1 h-8 bg-gold text-[--color-primary-foreground] text-[10px] tracking-[0.25em] font-bold hover:bg-gold-strong transition"
+                style={{
+                  backgroundColor: "var(--color-gold)",
+                  color: "var(--color-primary-foreground)",
+                }}
+              >
+                CHAT
               </button>
-              <button className="flex-1 h-8 rounded-sm border border-[--color-border-strong] text-xs font-semibold text-primary hover:bg-[--color-surface-hover]">
-                상세 열기
+              <button className="flex-1 h-8 border border-[--color-line-strong] text-[10px] tracking-[0.25em] font-bold text-primary hover:border-gold hover:text-gold transition">
+                DETAIL
               </button>
             </div>
           )}
@@ -469,7 +525,7 @@ function ApplicantCard({
   );
 }
 
-/* ─────────── 이벤트 로그 아이템 ─────────── */
+/* ─────────── 이벤트 아이템 ─────────── */
 
 function EventItem({
   event,
@@ -486,7 +542,7 @@ function EventItem({
     info: "bg-[--color-info]",
   }[event.severity];
   const severityText = {
-    high: "text-[--color-danger]",
+    high: "text-[--color-danger-strong]",
     warn: "text-[--color-warning]",
     info: "text-[--color-info]",
   }[event.severity];
@@ -504,8 +560,8 @@ function EventItem({
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-5 py-3 border-b border-[--color-border] hover:surface-hover transition flex gap-3",
-        active && "bg-[--color-accent-muted]"
+        "w-full text-left px-5 py-4 rule-b hover:surface-hover transition flex gap-3",
+        active && "bg-gold-muted"
       )}
     >
       <div className={cn("w-0.5 rounded-full self-stretch", severityColor)} />
@@ -519,8 +575,14 @@ function EventItem({
           </div>
         </div>
         <div className="text-[11px] text-muted-fg truncate">
-          {event.applicantName} · Q{event.questionIndex}{" "}
-          <span className={cn("uppercase font-semibold ml-1", severityText)}>
+          <span className="text-primary/70">{event.applicantName}</span> · Q
+          {event.questionIndex}{" "}
+          <span
+            className={cn(
+              "uppercase font-bold ml-1 tracking-widest",
+              severityText
+            )}
+          >
             {event.severity}
           </span>
         </div>
@@ -534,7 +596,7 @@ function EventItem({
   );
 }
 
-/* ─────────── 상단 통계 소자 ─────────── */
+/* ─────────── 통계 ─────────── */
 
 function Stat({
   label,
@@ -549,19 +611,19 @@ function Stat({
     muted: "text-primary",
     info: "text-[--color-info]",
     success: "text-[--color-success]",
-    danger: "text-[--color-danger]",
+    danger: "text-[--color-danger-strong]",
     warning: "text-[--color-warning]",
   }[tone];
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className="text-[10px] text-muted-fg tracking-widest uppercase">
-        {label}
+    <div className="flex flex-col items-end">
+      <span className="text-[9px] text-muted-fg tracking-[0.3em]">{label}</span>
+      <span className={cn("font-tabular font-bold text-sm", color)}>
+        {value.toString().padStart(2, "0")}
       </span>
-      <span className={cn("font-tabular font-bold text-sm", color)}>{value}</span>
     </div>
   );
 }
 
 function Divider() {
-  return <span className="w-px h-4 bg-[--color-border]" />;
+  return <span className="w-px h-6 bg-[--color-line]" />;
 }
