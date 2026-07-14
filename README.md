@@ -16,7 +16,8 @@
 
 - [MASTER_PLAN.md](docs/MASTER_PLAN.md) — 마일스톤 M0~M6, 확정사항, 미결정
 - [FEATURES.md](docs/FEATURES.md) — 역할별 기능 (Admin · Examiner · Grader · Applicant)
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — 스택·데이터 모델·300명 부하·외부 통합
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — 스택·데이터 모델·외부 통합
+- [CAPACITY.md](docs/CAPACITY.md) — **300명 동시 응시 실행 계획** (비용 견적·라이브러리·병목·부하검증·위험)
 - [INVENTORY.md](docs/INVENTORY.md) — 원본(AI Champion) 기능 카탈로그
 - [DECISIONS.md](docs/DECISIONS.md) — 이식 방향 8개 확정 결정
 
