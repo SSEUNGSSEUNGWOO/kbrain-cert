@@ -47,7 +47,7 @@ export default function WaitingRoomPage() {
 
         <Stepper steps={steps} activeIdx={stepIdx} />
 
-        <div className="mt-6 rounded-3xl bg-white p-8 shadow-card">
+        <div className="mt-6 rounded-2xl bg-white p-8 shadow-card">
           {currentStep === "check" && (
             <CheckStep
               onContinue={() => {
@@ -112,14 +112,14 @@ function Chip({
 }) {
   const map = {
     blue: "bg-primary-soft text-primary",
-    purple: "bg-feature-soft text-feature",
+    purple: "bg-primary-soft text-primary",
     emerald: "bg-success-soft text-success",
     orange: "bg-warning-soft text-warning",
     red: "bg-danger-soft text-danger",
   }[tone];
   const dotColor = {
     blue: "bg-primary",
-    purple: "bg-feature",
+    purple: "bg-primary",
     emerald: "bg-success",
     orange: "bg-warning",
     red: "bg-danger",
@@ -338,7 +338,7 @@ function IdentityStep({
 
       <div
         onClick={onUpload}
-        className={`rounded-3xl border-2 border-dashed p-12 text-center cursor-pointer transition ${
+        className={`rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition ${
           uploaded
             ? "border-success bg-success-soft"
             : "border-border-strong bg-surface-soft hover:border-primary hover:bg-primary-soft"
@@ -481,7 +481,7 @@ function PledgeCard({
     blue: "bg-primary-soft text-primary",
     red: "bg-danger-soft text-danger",
     orange: "bg-warning-soft text-warning",
-    purple: "bg-feature-soft text-feature",
+    purple: "bg-primary-soft text-primary",
   }[tone];
   return (
     <div className="rounded-2xl bg-surface-soft p-4 flex gap-4">
@@ -516,7 +516,7 @@ function WaitingStep({ countdown }: { countdown: number }) {
         description="시험 시작 시각까지 대기해주세요. 시간이 되면 자동으로 응시 페이지로 전환됩니다."
       />
 
-      <div className="my-8 inline-block rounded-3xl bg-primary-soft px-16 py-8">
+      <div className="my-8 inline-block rounded-2xl bg-primary-soft px-16 py-8">
         <div className="text-[10px] font-bold tracking-[0.25em] text-primary mb-3">
           COUNTDOWN
         </div>

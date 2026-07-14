@@ -9,10 +9,10 @@ import {
 
 const categoryStyle = {
   blue: "bg-primary-soft text-primary",
-  purple: "bg-feature-soft text-feature",
+  purple: "bg-primary-soft text-primary",
   emerald: "bg-success-soft text-success",
   orange: "bg-warning-soft text-warning",
-  pink: "bg-highlight-soft text-highlight",
+  pink: "bg-primary-soft text-primary",
   teal: "bg-info-soft text-info",
 } as const;
 
@@ -23,9 +23,9 @@ const gradeStyle = {
     text: "text-success",
   },
   indigo: {
-    dot: "bg-brand2",
-    bg: "bg-brand2-soft",
-    text: "text-brand2",
+    dot: "bg-primary",
+    bg: "bg-primary-soft",
+    text: "text-primary",
   },
   red: {
     dot: "bg-danger",
@@ -33,9 +33,9 @@ const gradeStyle = {
     text: "text-danger",
   },
   yellow: {
-    dot: "bg-caution",
-    bg: "bg-caution-soft",
-    text: "text-caution",
+    dot: "bg-warning",
+    bg: "bg-warning-soft",
+    text: "text-warning",
   },
 } as const;
 
@@ -44,33 +44,30 @@ const activityStyle = {
   emerald: { bg: "bg-success-soft", text: "text-success", icon: "✓" },
   orange: { bg: "bg-warning-soft", text: "text-warning", icon: "!" },
   red: { bg: "bg-danger-soft", text: "text-danger", icon: "⚠" },
-  purple: { bg: "bg-feature-soft", text: "text-feature", icon: "+" },
+  purple: { bg: "bg-primary-soft", text: "text-primary", icon: "+" },
 } as const;
 
 const prototypes = [
   {
     href: "/applicant/waiting/session-me",
     label: "응시자 대기실",
-    role: "APPLICANT",
-    description: "환경 체크 · 신분증 · 서약",
-    icon: "👤",
-    tone: "blue" as const,
+    role: "APPLICANT · WAITING",
+    step: "01",
+    description: "환경 체크 · 신분증 업로드 · 보안 서약 · 입실 카운트다운",
   },
   {
     href: "/applicant/exam/session-me",
     label: "응시 페이지",
-    role: "APPLICANT",
-    description: "타이머 · 슬롯형 답안 · 감독",
-    icon: "✍️",
-    tone: "emerald" as const,
+    role: "APPLICANT · EXAM",
+    step: "02",
+    description: "타이머 · 슬롯형 답안 · 감독 배지 · 세트별 감독 ON/OFF",
   },
   {
     href: "/examiner/monitor",
     label: "감독관 대시보드",
-    role: "EXAMINER",
-    description: "3단 알림 정렬 · 실시간",
-    icon: "🔎",
-    tone: "purple" as const,
+    role: "EXAMINER · MONITOR",
+    step: "03",
+    description: "3단 알림 정렬 · 실시간 이벤트 · 개별 채팅",
   },
 ];
 
@@ -204,7 +201,7 @@ function TopNav() {
             <NavItem label="설정" />
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-feature to-highlight text-white flex items-center justify-center text-xs font-bold">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary text-white flex items-center justify-center text-xs font-bold">
               이명희
             </div>
           </div>
@@ -232,14 +229,14 @@ function NavItem({ label, active = false }: { label: string; active?: boolean })
 
 function Hero() {
   return (
-    <div className="mb-8">
-      <div className="text-sm font-bold text-primary mb-2 tracking-wider">
-        👋 안녕하세요, 이명희 관리자님
+    <div className="mb-8 pb-8 border-b border-border">
+      <div className="text-[11px] font-bold text-primary mb-2 tracking-[0.2em] uppercase">
+        Dashboard · 2026.07.14
       </div>
-      <h1>오늘 3개 시험이 진행 · 예정입니다</h1>
-      <p className="mt-2 text-muted-foreground">
+      <h1>오늘 3개 시험이 진행 · 예정입니다.</h1>
+      <p className="mt-2 text-muted-foreground text-sm">
         가장 가까운 시험까지{" "}
-        <span className="font-bold text-foreground">02:14</span> 남았어요.
+        <span className="font-bold text-foreground font-tabular">02:14</span> 남았습니다. 응시 상황을 확인해주세요.
       </p>
     </div>
   );
@@ -446,38 +443,29 @@ function PrototypeCard({
   label,
   role,
   description,
-  icon,
-  tone,
+  step,
 }: {
   href: string;
   label: string;
   role: string;
   description: string;
-  icon: string;
-  tone: "blue" | "emerald" | "purple";
+  step: string;
 }) {
-  const style = {
-    blue: "bg-primary-soft text-primary",
-    emerald: "bg-success-soft text-success",
-    purple: "bg-feature-soft text-feature",
-  }[tone];
   return (
     <Link
       href={href}
-      className="rounded-2xl bg-white p-5 shadow-card hover:shadow-card-hover transition cursor-pointer block group"
+      className="rounded-lg bg-white p-5 border border-border hover:border-primary transition cursor-pointer block group"
     >
-      <div className="flex items-start gap-3 mb-3">
-        <div className={`w-11 h-11 rounded-xl ${style} flex items-center justify-center text-2xl shrink-0`}>
-          {icon}
+      <div className="flex items-baseline gap-3 mb-3">
+        <div className="font-tabular text-xl font-bold text-primary tabular-nums">
+          {step}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-[0.15em] text-muted mb-1">
-            {role}
-          </div>
-          <div className="font-bold text-heading mb-1">{label}</div>
+        <div className="text-[10px] font-bold tracking-[0.15em] text-muted">
+          {role}
         </div>
       </div>
-      <div className="text-sm text-muted-foreground mb-3">
+      <div className="font-bold text-heading mb-2 text-lg">{label}</div>
+      <div className="text-sm text-muted-foreground mb-4 leading-relaxed">
         {description}
       </div>
       <div className="text-sm font-semibold text-primary group-hover:underline">

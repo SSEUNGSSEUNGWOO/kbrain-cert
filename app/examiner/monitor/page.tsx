@@ -160,7 +160,7 @@ export default function ExaminerMonitorPage() {
         </main>
 
         <aside className="w-96 shrink-0">
-          <div className="sticky top-24 rounded-3xl bg-white shadow-card overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
+          <div className="sticky top-24 rounded-2xl bg-white shadow-card overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
             <div className="p-5 border-b border-border">
               <div className="flex items-baseline justify-between mb-3">
                 <div>
@@ -267,7 +267,7 @@ function StatBig({
     emerald: "text-success",
     red: "text-danger",
     orange: "text-warning",
-    purple: "text-feature",
+    purple: "text-primary",
   }[tone];
   return (
     <div className="rounded-2xl bg-white p-4 shadow-card">

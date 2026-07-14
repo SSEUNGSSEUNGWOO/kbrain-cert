@@ -183,7 +183,7 @@ function ExamHeader({
             </div>
             <div className="font-bold text-sm">{applicantName}</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-feature to-highlight text-white flex items-center justify-center text-xs font-bold">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary text-white flex items-center justify-center text-xs font-bold">
             {applicantName.slice(0, 1)}
           </div>
         </div>
@@ -272,7 +272,7 @@ function QuestionRail({
 }) {
   return (
     <aside className="w-64 shrink-0">
-      <div className="sticky top-32 rounded-3xl bg-white p-5 shadow-card">
+      <div className="sticky top-32 rounded-2xl bg-white p-5 shadow-card">
         <div className="flex items-baseline justify-between mb-4">
           <div className="text-xs font-bold tracking-widest text-muted">
             진행 현황
@@ -361,7 +361,7 @@ const TYPE_STYLE: Record<
   },
   essay: {
     label: "서술형",
-    tone: "bg-feature-soft text-feature",
+    tone: "bg-primary-soft text-primary",
     icon: "✎",
   },
   work_based: {
@@ -382,7 +382,7 @@ function QuestionCard({
 }) {
   const t = TYPE_STYLE[question.type];
   return (
-    <div className="rounded-3xl bg-white shadow-card overflow-hidden">
+    <div className="rounded-2xl bg-white shadow-card overflow-hidden">
       <div className="px-8 pt-6 pb-4 border-b border-border flex items-center gap-3 flex-wrap">
         <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold tabular-nums">
           Q{question.index}
@@ -399,7 +399,7 @@ function QuestionCard({
           배점 {question.maxScore}점
         </span>
         <div className="ml-auto">
-          <button className="inline-flex items-center gap-1 rounded-lg bg-surface-soft text-xs font-bold text-muted-foreground px-3 py-1.5 hover:bg-caution-soft hover:text-caution transition">
+          <button className="inline-flex items-center gap-1 rounded-lg bg-surface-soft text-xs font-bold text-muted-foreground px-3 py-1.5 hover:bg-warning-soft hover:text-warning transition">
             🔖 검토 표시
           </button>
         </div>
@@ -407,7 +407,7 @@ function QuestionCard({
 
       <div className="px-8 py-6">
         {question.type === "work_based" && (
-          <div className="mb-5 rounded-2xl bg-gradient-to-br from-warning-soft to-caution-soft p-5">
+          <div className="mb-5 rounded-2xl bg-gradient-to-br from-warning-soft to-warning-soft p-5">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center text-xl shrink-0">
                 🔓
@@ -511,7 +511,7 @@ function AnswerBody({
           value={text}
           onChange={(e) => onChange({ text: e.target.value })}
           rows={8}
-          className="w-full rounded-2xl border-2 border-border bg-white px-5 py-4 text-base focus:border-feature focus:outline-none focus:ring-4 focus:ring-feature-soft resize-y"
+          className="w-full rounded-2xl border-2 border-border bg-white px-5 py-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft resize-y"
           placeholder="여기에 서술하세요 (200~300자 권장)"
         />
         <div className="mt-2 flex justify-end text-xs font-bold text-muted-foreground font-tabular">
