@@ -1,81 +1,21 @@
 @import "tailwindcss";
 
 /**
- * kbrain-cert 디자인 시스템 (v2 · Dark Premium)
- * 톤: 프리미엄 자격 · 명예 · 무게감 · 관제실
- * 근거: 검정 배경 + 크림 화이트 + 골드 액센트, 카드 해체(rule line 위주),
- *       radius 0-2px, 큰 여백, Pretendard 800/900 헤딩
+ * kbrain-cert (v3) — kbrain-ems 톤 기반
+ * 라이트 배경 · slate-50→blue-50 그라디언트 · rounded-2xl 카드 + shadow-sm
+ * 섹션별 컬러: 객관식 blue · 단답형 emerald · 작업형 amber · 이탈 rose
  */
 
 @theme inline {
-  /* 배경 · 표면 (모두 어두운 톤) */
-  --color-background: hsl(0 0% 4%);
-  --color-surface: hsl(0 0% 4%);
-  --color-surface-elevated: hsl(0 0% 7%);
-  --color-surface-hover: hsl(0 0% 10%);
-  --color-surface-muted: hsl(0 0% 6%);
-
-  /* 텍스트 (워ㅁ 크림 계열) */
-  --color-foreground: hsl(45 20% 94%);
-  --color-foreground-strong: hsl(45 25% 98%);
-  --color-muted: hsl(45 8% 55%);
-  --color-muted-foreground: hsl(45 6% 68%);
-  --color-subtle: hsl(0 0% 30%);
-
-  /* Rule line (border 대체) */
-  --color-line: hsl(0 0% 12%);
-  --color-line-strong: hsl(0 0% 22%);
-  --color-line-gold: hsl(38 45% 45%);
-
-  /* Primary = 크림 화이트 (다크 배경에 뜨는 텍스트) */
-  --color-primary: hsl(45 25% 96%);
-  --color-primary-foreground: hsl(0 0% 4%);
-
-  /* Gold 액센트 (프리미엄 상징) */
-  --color-gold: hsl(38 58% 62%);
-  --color-gold-strong: hsl(38 68% 72%);
-  --color-gold-soft: hsl(38 35% 45%);
-  --color-gold-muted: hsl(38 30% 15%);
-
-  /* 시맨틱 */
-  --color-danger: hsl(0 62% 58%);
-  --color-danger-strong: hsl(0 72% 68%);
-  --color-danger-muted: hsl(0 40% 15%);
-
-  --color-warning: hsl(28 78% 58%);
-  --color-warning-muted: hsl(28 40% 15%);
-
-  --color-success: hsl(142 45% 55%);
-  --color-success-muted: hsl(142 30% 15%);
-
-  --color-info: hsl(210 50% 62%);
-  --color-info-muted: hsl(210 30% 15%);
-
-  --color-ring: hsl(38 58% 62%);
-
-  /* 타이포그래피 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-serif: "Noto Serif KR", "Nanum Myeongjo", "Times New Roman", serif;
-
-  /* Radius (매우 좁게, 각짐 강조) */
-  --radius-xs: 0;
-  --radius-sm: 1px;
-  --radius-md: 2px;
-  --radius-lg: 3px;
-
-  /* 큰 여백 · 호흡감 */
-  --spacing-header: 64px;
 }
 
 @layer base {
   html,
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "ss02", "cv11";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     letter-spacing: -0.01em;
@@ -83,105 +23,7 @@
 
   h1,
   h2,
-  h3,
-  h4 {
-    color: var(--color-foreground-strong);
-    letter-spacing: -0.03em;
-    font-weight: 800;
-  }
-
-  h1 {
-    font-size: 2.5rem;
-    line-height: 1.15;
-    letter-spacing: -0.04em;
-  }
-  h2 {
-    font-size: 1.75rem;
-    line-height: 1.25;
-  }
   h3 {
-    font-size: 1.125rem;
-    line-height: 1.4;
-    font-weight: 700;
-  }
-
-  .font-tabular {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
-  }
-
-  .font-serif {
-    font-family: var(--font-serif);
     letter-spacing: -0.02em;
-  }
-
-  ::selection {
-    background-color: var(--color-gold);
-    color: var(--color-primary-foreground);
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--color-background);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: hsl(0 0% 15%);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 0% 25%);
-  }
-}
-
-@layer utilities {
-  /* Rule (얇은 선) - border 대체 */
-  .rule-b {
-    border-bottom: 1px solid var(--color-line);
-  }
-  .rule-b-strong {
-    border-bottom: 1px solid var(--color-line-strong);
-  }
-  .rule-b-gold {
-    border-bottom: 1px solid var(--color-line-gold);
-  }
-  .rule-r {
-    border-right: 1px solid var(--color-line);
-  }
-  .rule-t-gold {
-    border-top: 1px solid var(--color-line-gold);
-  }
-
-  .text-gold {
-    color: var(--color-gold);
-  }
-  .text-gold-strong {
-    color: var(--color-gold-strong);
-  }
-  .bg-gold-muted {
-    background-color: var(--color-gold-muted);
-  }
-  .text-muted {
-    color: var(--color-muted);
-  }
-  .text-muted-fg {
-    color: var(--color-muted-foreground);
-  }
-  .surface-elevated {
-    background-color: var(--color-surface-elevated);
-  }
-  .surface-hover:hover {
-    background-color: var(--color-surface-hover);
-  }
-
-  /* 대형 문항 번호 gutter (배경 워터) */
-  .gutter-numeral {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    color: hsl(38 30% 20%);
-    letter-spacing: -0.05em;
   }
 }

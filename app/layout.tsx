@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "kbrain-cert · 공식 자격 검정 플랫폼",
   description:
-    "kbrain-cert는 공식 자격증 검정을 위한 CBT 플랫폼입니다. 문제 세트, 실시간 감독, 응시 녹화, 채점을 통합 제공합니다.",
+    "kbrain-cert는 공식 자격증 검정을 위한 CBT 플랫폼입니다.",
 };
 
 export default function RootLayout({
@@ -27,12 +27,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
         />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;800&display=swap"
-        />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 text-slate-900">
+        {children}
+      </body>
     </html>
   );
 }

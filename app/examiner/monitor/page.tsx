@@ -55,62 +55,58 @@ export default function ExaminerMonitorPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="rule-b flex items-center px-8 h-16 gap-6">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="text-gold text-base">◆</span>
-          <span className="text-[10px] tracking-[0.3em] font-semibold text-primary">
-            KBRAIN CERT
-          </span>
-        </Link>
-
-        <div className="flex-1 flex items-baseline gap-4 pl-8 min-w-0">
-          <span className="text-[10px] tracking-[0.35em] text-gold font-semibold">
-            EXAMINER · MONITOR
-          </span>
-          <span className="w-1 h-1 rounded-full bg-[--color-line-strong]" />
-          <span className="text-sm text-muted-fg truncate">
-            {mockExam.title}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-6 text-xs">
-          <Stat label="ENROLLED" value={stats.total} />
-          <Divider />
-          <Stat label="ACTIVE" value={stats.inProgress} tone="info" />
-          <Stat label="SUBMIT" value={stats.submitted} tone="success" />
-          <Stat label="ALERTS" value={stats.alerts} tone="danger" />
-          <Stat label="WARN" value={stats.warns} tone="warning" />
-        </div>
-
-        <div className="pl-6 border-l border-[--color-line]">
-          <div className="text-[9px] tracking-[0.3em] text-muted mb-1">
-            EXAMINER
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto max-w-7xl px-6 py-3 flex items-center gap-4">
+          <Link
+            href="/"
+            className="h-8 w-8 rounded-md bg-slate-900 text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+          >
+            KB
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-widest text-slate-400">
+              감독관 대시보드
+            </div>
+            <div className="text-sm font-semibold text-slate-900 truncate">
+              {mockExam.title}
+            </div>
           </div>
-          <div className="text-sm text-primary font-medium">이명희</div>
+          <div className="flex items-center gap-2">
+            <StatChip label="응시" value={stats.total} />
+            <StatChip label="진행중" value={stats.inProgress} tone="blue" />
+            <StatChip label="제출" value={stats.submitted} tone="emerald" />
+            <StatChip label="주목" value={stats.alerts} tone="rose" />
+            <StatChip label="경고" value={stats.warns} tone="amber" />
+          </div>
+          <div className="text-xs text-right border-l border-slate-200 pl-4">
+            <div className="text-[10px] uppercase tracking-widest text-slate-400">
+              감독관
+            </div>
+            <div className="font-semibold text-slate-900">이명희</div>
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto px-8 py-8 space-y-12">
-          <div className="text-xs text-muted-fg flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[--color-danger] animate-pulse" />
-              <span className="tracking-widest font-semibold text-gold">LIVE</span>
+      <div className="flex-1 mx-auto max-w-7xl w-full px-6 py-6 flex gap-6">
+        <main className="flex-1 min-w-0 space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-5 py-3 text-sm text-slate-700 flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 border border-rose-300 px-2 py-0.5 text-[10px] font-bold text-rose-700 uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              LIVE
             </span>
-            <span>·</span>
-            <span>
-              이벤트 발생 응시자는 자동으로 상단에 확대 배치됩니다. 시선이 문제 응시자로 자연 유도됩니다.
+            <span className="text-slate-600">
+              이벤트 발생 응시자는 자동으로 상단에 확대 배치되어 시선이 문제 응시자로 자연 유도됩니다.
             </span>
           </div>
 
           <Section
-            step="01"
-            title="ALERT"
-            titleKor="주목 필요"
-            subtitle="HIGH severity · stream lost · immediate attention"
+            step="1"
+            title="주목 필요"
+            tag="ALERT"
+            subtitle="HIGH severity · 스트림 오류 · 즉각 개입 검토"
             count={alerts.length}
-            tone="danger"
+            tone="rose"
           >
             {alerts.length === 0 ? (
               <EmptyRow message="현재 주목이 필요한 응시자가 없습니다." />
@@ -130,12 +126,12 @@ export default function ExaminerMonitorPage() {
           </Section>
 
           <Section
-            step="02"
-            title="WARN"
-            titleKor="경고"
-            subtitle="WARN severity · continued observation"
+            step="2"
+            title="경고"
+            tag="WARN"
+            subtitle="WARN severity · 관찰 유지"
             count={warns.length}
-            tone="warning"
+            tone="amber"
           >
             {warns.length === 0 ? (
               <EmptyRow message="현재 경고 응시자가 없습니다." />
@@ -155,12 +151,12 @@ export default function ExaminerMonitorPage() {
           </Section>
 
           <Section
-            step="03"
-            title="NORMAL"
-            titleKor="정상"
-            subtitle="INFO or below · presence confirmed"
+            step="3"
+            title="정상"
+            tag="NORMAL"
+            subtitle="INFO 이하 · 존재 확인"
             count={normals.length}
-            tone="muted"
+            tone="slate"
           >
             <div className="grid grid-cols-10 gap-2">
               {normals.map((app) => (
@@ -176,75 +172,62 @@ export default function ExaminerMonitorPage() {
           </Section>
         </main>
 
-        <aside className="w-96 border-l border-[--color-line] flex flex-col">
-          <div className="p-6 rule-b">
-            <div className="flex items-baseline justify-between mb-4">
-              <div>
-                <div className="text-[10px] tracking-[0.35em] text-gold font-semibold mb-1">
-                  EVENT STREAM
+        <aside className="w-96 flex-shrink-0">
+          <div className="sticky top-24 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/40">
+              <div className="flex items-baseline justify-between mb-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">
+                    이벤트 스트림
+                  </div>
+                  <div className="text-sm font-bold text-slate-900">
+                    실시간 감독 이벤트
+                  </div>
                 </div>
-                <div className="text-sm font-semibold text-primary">
-                  실시간 감독 이벤트
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[--color-danger] animate-pulse" />
-                <span className="text-[10px] tracking-widest text-muted-fg">
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-300 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 uppercase tracking-widest">
+                  <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />
                   LIVE
                 </span>
               </div>
-            </div>
-            <div className="flex gap-1 text-[9px] font-bold tracking-[0.2em]">
-              {(["all", "high", "warn", "info"] as SeverityFilter[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSeverityFilter(s)}
-                  className={cn(
-                    "px-3 h-6 uppercase transition",
-                    severityFilter === s
-                      ? "bg-gold text-[--color-primary-foreground]"
-                      : "text-muted-fg hover:text-primary hover:bg-[--color-surface-hover]"
-                  )}
-                  style={
-                    severityFilter === s
-                      ? {
-                          backgroundColor: "var(--color-gold)",
-                          color: "var(--color-primary-foreground)",
-                        }
-                      : undefined
-                  }
-                >
-                  {s === "all" ? "ALL" : s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {filteredEvents.map((e) => (
-              <EventItem
-                key={e.id}
-                event={e}
-                onClick={() => setSelectedSession(e.sessionId)}
-                active={selectedSession === e.sessionId}
-              />
-            ))}
-            {filteredEvents.length === 0 && (
-              <div className="p-8 text-center text-xs text-muted-fg">
-                해당 심각도의 이벤트가 없습니다.
+              <div className="flex gap-1 text-[10px] font-semibold uppercase tracking-widest">
+                {(["all", "high", "warn", "info"] as SeverityFilter[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSeverityFilter(s)}
+                    className={cn(
+                      "px-2.5 h-7 rounded-md border transition",
+                      severityFilter === s
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100"
+                    )}
+                  >
+                    {s === "all" ? "전체" : s}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="p-5 rule-t-gold">
-            <button className="w-full h-10 bg-gold text-[--color-primary-foreground] text-[10px] tracking-[0.3em] font-bold hover:bg-gold-strong transition"
-              style={{
-                backgroundColor: "var(--color-gold)",
-                color: "var(--color-primary-foreground)",
-              }}
-            >
-              BROADCAST NOTICE
-            </button>
+            <div className="flex-1 overflow-y-auto">
+              {filteredEvents.map((e) => (
+                <EventItem
+                  key={e.id}
+                  event={e}
+                  onClick={() => setSelectedSession(e.sessionId)}
+                  active={selectedSession === e.sessionId}
+                />
+              ))}
+              {filteredEvents.length === 0 && (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  해당 심각도의 이벤트가 없습니다.
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 border-t border-slate-100 bg-slate-50/40">
+              <button className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-sm">
+                전체 응시자에 공지 발송
+              </button>
+            </div>
           </div>
         </aside>
       </div>
@@ -252,12 +235,12 @@ export default function ExaminerMonitorPage() {
   );
 }
 
-/* ─────────── 섹션 (Step + Title) ─────────── */
+/* ─────────── Section ─────────── */
 
 function Section({
   step,
   title,
-  titleKor,
+  tag,
   subtitle,
   count,
   tone,
@@ -265,52 +248,36 @@ function Section({
 }: {
   step: string;
   title: string;
-  titleKor: string;
+  tag: string;
   subtitle: string;
   count: number;
-  tone: "danger" | "warning" | "muted";
+  tone: "rose" | "amber" | "slate";
   children: React.ReactNode;
 }) {
-  const dotColor = {
-    danger: "bg-[--color-danger]",
-    warning: "bg-[--color-warning]",
-    muted: "bg-[--color-line-strong]",
-  }[tone];
-  const textColor = {
-    danger: "text-[--color-danger-strong]",
-    warning: "text-[--color-warning]",
-    muted: "text-primary",
+  const toneMap = {
+    rose: "bg-rose-100 text-rose-800 border-rose-300",
+    amber: "bg-amber-100 text-amber-800 border-amber-300",
+    slate: "bg-slate-100 text-slate-700 border-slate-300",
   }[tone];
   return (
     <section>
-      <div className="flex items-baseline gap-6 mb-6 rule-b pb-3">
-        <span className="gutter-numeral text-3xl">{step}</span>
-        <div className="flex-1">
-          <div className="flex items-baseline gap-3 mb-1">
-            <h2
-              className={cn(
-                "text-lg font-serif font-bold tracking-tight",
-                textColor
-              )}
-            >
-              {titleKor}
-            </h2>
-            <span
-              className={cn(
-                "text-[10px] tracking-[0.35em] font-semibold",
-                textColor
-              )}
-            >
-              {title}
-            </span>
-            <span className="flex-1 h-px" />
-            <span className="font-tabular text-xs text-muted-fg">
-              {count.toString().padStart(2, "0")}
-            </span>
-          </div>
-          <div className="text-xs text-muted-fg">{subtitle}</div>
-        </div>
-        <span className={cn("w-2 h-2 rounded-full", dotColor)} />
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
+        <span className="inline-flex items-center justify-center h-7 min-w-[2rem] px-2 rounded-md bg-slate-900 text-white text-xs font-bold tabular-nums">
+          {step}
+        </span>
+        <span
+          className={cn(
+            "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+            toneMap
+          )}
+        >
+          {tag}
+        </span>
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <span className="text-[11px] text-slate-500 tabular-nums">
+          {count}명
+        </span>
+        <span className="text-xs text-slate-500">· {subtitle}</span>
       </div>
       {children}
     </section>
@@ -319,13 +286,13 @@ function Section({
 
 function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="border-l-2 border-dashed border-[--color-line] py-4 px-6 text-center text-xs text-muted-fg">
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-white/50 py-6 text-center text-sm text-slate-500">
       {message}
     </div>
   );
 }
 
-/* ─────────── 응시자 카드 (사이즈 3종) ─────────── */
+/* ─────────── Applicant Card ─────────── */
 
 function ApplicantCard({
   app,
@@ -338,23 +305,24 @@ function ApplicantCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const hasHighAlert = app.lastEvent?.severity === "high" || app.streaming === "disconnected";
+  const hasHighAlert =
+    app.lastEvent?.severity === "high" || app.streaming === "disconnected";
   const hasWarn = app.lastEvent?.severity === "warn";
 
-  const borderClass = selected
-    ? "ring-1 ring-[--color-gold]"
+  const wrapClass = selected
+    ? "border-blue-500 ring-2 ring-blue-100"
     : hasHighAlert
-    ? "border-l-2 border-[--color-danger]"
+    ? "border-rose-300"
     : hasWarn
-    ? "border-l-2 border-[--color-warning]"
-    : "border-l border-[--color-line]";
+    ? "border-amber-300"
+    : "border-slate-200";
 
   return (
     <button
       onClick={onSelect}
       className={cn(
-        "text-left surface-elevated overflow-hidden transition group hover:brightness-125",
-        borderClass
+        "text-left rounded-2xl border-2 bg-white shadow-sm overflow-hidden transition group hover:shadow-md",
+        wrapClass
       )}
     >
       <div
@@ -362,20 +330,20 @@ function ApplicantCard({
           "relative overflow-hidden",
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square",
           app.streaming === "disconnected"
-            ? "bg-[--color-danger-muted]"
-            : "bg-gradient-to-br from-slate-800 via-slate-900 to-black"
+            ? "bg-rose-100"
+            : "bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400"
         )}
       >
         {app.streaming !== "disconnected" && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/15">
+          <div className="absolute inset-0 flex items-center justify-center text-white/80">
             <svg
               viewBox="0 0 24 24"
               className={cn(
-                size === "lg" ? "w-16 h-16" : size === "md" ? "w-10 h-10" : "w-6 h-6"
+                size === "lg" ? "w-14 h-14" : size === "md" ? "w-9 h-9" : "w-5 h-5"
               )}
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.2"
+              strokeWidth="1.5"
             >
               <rect x="3" y="7" width="12" height="10" rx="2" />
               <path d="M15 10l6-3v10l-6-3z" />
@@ -383,43 +351,41 @@ function ApplicantCard({
           </div>
         )}
         {app.streaming === "disconnected" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[--color-danger-strong]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-rose-700">
             <div
               className={cn(
-                "font-semibold tracking-[0.3em]",
+                "font-bold uppercase tracking-widest",
                 size === "sm" ? "text-[8px]" : "text-[10px]"
               )}
             >
-              STREAM LOST
+              스트림 오류
             </div>
           </div>
         )}
         <div
           className={cn(
-            "absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur",
+            "absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/55 backdrop-blur rounded-md",
             size === "sm" ? "px-1 py-0.5" : "px-1.5 py-0.5"
           )}
         >
           {app.recording === "recording" && (
             <>
-              <span className="w-1 h-1 rounded-full bg-[--color-danger] animate-pulse" />
+              <span className="w-1 h-1 rounded-full bg-rose-400 animate-pulse" />
               {size !== "sm" && (
-                <span className="text-[9px] text-white/80 font-tabular tracking-wider">
-                  REC
-                </span>
+                <span className="text-[9px] text-white font-mono">REC</span>
               )}
             </>
           )}
           {app.recording === "error" && size !== "sm" && (
-            <span className="text-[9px] text-[--color-warning] font-tabular">ERR</span>
+            <span className="text-[9px] text-amber-300 font-mono">ERR</span>
           )}
         </div>
         {app.warningCount > 0 && (
           <div
             className={cn(
-              "absolute top-1.5 right-1.5 bg-[--color-danger] text-white font-bold flex items-center justify-center font-tabular",
+              "absolute top-1.5 right-1.5 bg-rose-500 text-white font-bold rounded-md flex items-center justify-center font-mono",
               size === "lg"
-                ? "text-sm w-7 h-7"
+                ? "text-sm w-6 h-6"
                 : size === "md"
                 ? "text-xs w-5 h-5"
                 : "text-[10px] w-4 h-4"
@@ -431,12 +397,12 @@ function ApplicantCard({
         {size === "lg" && app.lastEvent && (
           <div
             className={cn(
-              "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm tracking-wider",
+              "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm",
               app.lastEvent.severity === "high"
-                ? "bg-[--color-danger]/85"
+                ? "bg-rose-600/85"
                 : app.lastEvent.severity === "warn"
-                ? "bg-[--color-warning]/85"
-                : "bg-black/60"
+                ? "bg-amber-600/85"
+                : "bg-slate-800/70"
             )}
           >
             {app.lastEvent.label}
@@ -446,10 +412,10 @@ function ApplicantCard({
 
       {size === "sm" ? (
         <div className="px-1.5 py-1.5 text-center">
-          <div className="text-[10px] font-medium text-primary truncate">
+          <div className="text-[10px] font-semibold text-slate-800 truncate">
             {app.applicant.name}
           </div>
-          <div className="text-[9px] font-tabular text-muted-fg">
+          <div className="text-[9px] text-slate-500 tabular-nums">
             {app.progress}%
           </div>
         </div>
@@ -458,64 +424,51 @@ function ApplicantCard({
           <div className="flex items-baseline justify-between mb-1">
             <div
               className={cn(
-                "font-medium text-primary truncate",
+                "font-semibold text-slate-900 truncate",
                 size === "lg" ? "text-sm" : "text-xs"
               )}
             >
               {app.applicant.name}
             </div>
-            <div className="text-[10px] font-tabular text-gold">
+            <div className="text-[10px] text-blue-600 font-semibold tabular-nums">
               Q{app.currentQuestion}
             </div>
           </div>
           {size === "lg" && (
-            <div className="text-[11px] text-muted-fg truncate mb-3">
+            <div className="text-[11px] text-slate-500 truncate mb-3">
               {app.applicant.organization} · {app.applicant.email}
             </div>
           )}
           {size === "md" && (
-            <div className="text-[10px] text-muted-fg truncate mb-2">
+            <div className="text-[10px] text-slate-500 truncate mb-2">
               {app.applicant.organization}
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-[--color-line-strong] relative overflow-hidden">
+            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className={cn(
-                  "absolute inset-y-0 left-0 h-full",
+                  "h-full rounded-full transition-all",
                   hasHighAlert
-                    ? "bg-[--color-danger]"
+                    ? "bg-rose-500"
                     : hasWarn
-                    ? "bg-[--color-warning]"
-                    : "bg-gold"
+                    ? "bg-amber-500"
+                    : "bg-blue-500"
                 )}
-                style={{
-                  width: `${app.progress}%`,
-                  backgroundColor: hasHighAlert
-                    ? "var(--color-danger)"
-                    : hasWarn
-                    ? "var(--color-warning)"
-                    : "var(--color-gold)",
-                }}
+                style={{ width: `${app.progress}%` }}
               />
             </div>
-            <div className="text-[10px] font-tabular text-muted-fg">
+            <div className="text-[10px] text-slate-500 font-mono">
               {app.progress}%
             </div>
           </div>
           {size === "lg" && (
             <div className="mt-3 flex gap-2">
-              <button
-                className="flex-1 h-8 bg-gold text-[--color-primary-foreground] text-[10px] tracking-[0.25em] font-bold hover:bg-gold-strong transition"
-                style={{
-                  backgroundColor: "var(--color-gold)",
-                  color: "var(--color-primary-foreground)",
-                }}
-              >
-                CHAT
+              <button className="flex-1 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold">
+                개별 채팅
               </button>
-              <button className="flex-1 h-8 border border-[--color-line-strong] text-[10px] tracking-[0.25em] font-bold text-primary hover:border-gold hover:text-gold transition">
-                DETAIL
+              <button className="flex-1 h-8 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50">
+                상세 열기
               </button>
             </div>
           )}
@@ -525,7 +478,7 @@ function ApplicantCard({
   );
 }
 
-/* ─────────── 이벤트 아이템 ─────────── */
+/* ─────────── Event Item ─────────── */
 
 function EventItem({
   event,
@@ -536,18 +489,12 @@ function EventItem({
   onClick: () => void;
   active: boolean;
 }) {
-  const severityColor = {
-    high: "bg-[--color-danger]",
-    warn: "bg-[--color-warning]",
-    info: "bg-[--color-info]",
+  const bar = {
+    high: "bg-rose-500",
+    warn: "bg-amber-500",
+    info: "bg-blue-500",
   }[event.severity];
-  const severityText = {
-    high: "text-[--color-danger-strong]",
-    warn: "text-[--color-warning]",
-    info: "text-[--color-info]",
-  }[event.severity];
-
-  const eventLabel = {
+  const label = {
     face_missing: "얼굴 미검출",
     multiple_faces: "복수 인원 감지",
     voice_detected: "음성 감지",
@@ -555,39 +502,43 @@ function EventItem({
     tab_switch: "탭 전환",
     recording_error: "녹화 오류",
   }[event.type];
+  const severityChip = {
+    high: "bg-rose-100 text-rose-700 border-rose-300",
+    warn: "bg-amber-100 text-amber-800 border-amber-300",
+    info: "bg-blue-100 text-blue-700 border-blue-300",
+  }[event.severity];
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-5 py-4 rule-b hover:surface-hover transition flex gap-3",
-        active && "bg-gold-muted"
+        "w-full text-left px-5 py-3 border-b border-slate-100 hover:bg-slate-50/60 transition flex gap-3",
+        active && "bg-blue-50/50"
       )}
     >
-      <div className={cn("w-0.5 rounded-full self-stretch", severityColor)} />
+      <div className={cn("w-1 rounded-full self-stretch", bar)} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-2 mb-0.5">
-          <div className="text-xs font-semibold text-primary truncate">
-            {eventLabel}
-          </div>
-          <div className="text-[10px] font-tabular text-muted-fg">
-            {event.occurredAt}
-          </div>
-        </div>
-        <div className="text-[11px] text-muted-fg truncate">
-          <span className="text-primary/70">{event.applicantName}</span> · Q
-          {event.questionIndex}{" "}
+        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+          <span className="text-sm font-semibold text-slate-900 truncate">
+            {label}
+          </span>
           <span
             className={cn(
-              "uppercase font-bold ml-1 tracking-widest",
-              severityText
+              "inline-flex items-center rounded-md border px-1.5 py-0 text-[9px] font-bold uppercase",
+              severityChip
             )}
           >
             {event.severity}
           </span>
+          <span className="ml-auto text-[10px] text-slate-500 font-mono">
+            {event.occurredAt}
+          </span>
+        </div>
+        <div className="text-[11px] text-slate-600 truncate">
+          {event.applicantName} · Q{event.questionIndex}
         </div>
         {event.note && (
-          <div className="text-[10px] text-muted-fg mt-0.5 italic">
+          <div className="text-[10px] text-slate-500 italic mt-0.5">
             {event.note}
           </div>
         )}
@@ -596,34 +547,35 @@ function EventItem({
   );
 }
 
-/* ─────────── 통계 ─────────── */
+/* ─────────── Stat Chip ─────────── */
 
-function Stat({
+function StatChip({
   label,
   value,
-  tone = "muted",
+  tone = "slate",
 }: {
   label: string;
   value: number;
-  tone?: "muted" | "info" | "success" | "danger" | "warning";
+  tone?: "slate" | "blue" | "emerald" | "rose" | "amber";
 }) {
-  const color = {
-    muted: "text-primary",
-    info: "text-[--color-info]",
-    success: "text-[--color-success]",
-    danger: "text-[--color-danger-strong]",
-    warning: "text-[--color-warning]",
+  const toneMap = {
+    slate: "bg-slate-100 text-slate-700 border-slate-200",
+    blue: "bg-blue-100 text-blue-700 border-blue-200",
+    emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    rose: "bg-rose-100 text-rose-700 border-rose-200",
+    amber: "bg-amber-100 text-amber-700 border-amber-200",
   }[tone];
   return (
-    <div className="flex flex-col items-end">
-      <span className="text-[9px] text-muted-fg tracking-[0.3em]">{label}</span>
-      <span className={cn("font-tabular font-bold text-sm", color)}>
-        {value.toString().padStart(2, "0")}
+    <div
+      className={cn(
+        "inline-flex flex-col items-center px-2.5 py-1 rounded-lg border tabular-nums",
+        toneMap
+      )}
+    >
+      <span className="text-[9px] uppercase tracking-widest opacity-70">
+        {label}
       </span>
+      <span className="text-sm font-bold leading-none mt-0.5">{value}</span>
     </div>
   );
-}
-
-function Divider() {
-  return <span className="w-px h-6 bg-[--color-line]" />;
 }
