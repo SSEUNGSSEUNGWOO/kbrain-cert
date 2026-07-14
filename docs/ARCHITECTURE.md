@@ -125,22 +125,23 @@ profiles (id uuid pk fk auth.users, name, email, organization, department, posit
 question_categories (id uuid pk, name text, color text, order_num int)
 exam_grades (id uuid pk, name text, color text, order_num int)
 
--- 문제 & 세트
+-- 문제 & 세트 — 모든 문항이 작업형(슬롯형) (결정 I)
 questions (
   id uuid pk, code text unique,
   category_id uuid fk question_categories,
   grade_id uuid fk exam_grades,
-  type text check (type in ('multiple_choice','short_answer','essay','file_upload','work_based')),
+  -- type 컬럼 제거 (전부 작업형이라 의미 없음)
   difficulty text, tags text[],
-  content text, attachments jsonb[],
-  options jsonb,               -- 객관식 [{ id, text, is_correct }]
-  correct_answer jsonb,        -- ⚠️ 서버 전용 (뷰로 격리)
-  submission_slots jsonb,      -- 슬롯형: [{ id, type, label, max_score, auto_grade, tolerance, accept }]
-  max_score numeric,
+  content text, attachments jsonb[],       -- 문제 내용 (Markdown) · 배포 자료 zip 등
+  submission_slots jsonb not null,         -- [{ id, type, label, max_score, accept }]
+                                           -- type ∈ (text, long_text, url, file, number)
+  rubric jsonb,                            -- ⚠️ 서버 전용 (뷰로 격리, 채점자만 열람)
+  max_score numeric,                       -- 슬롯 max_score 합계와 일치해야 함 (제약 검증)
   set_id uuid fk question_sets nullable,
   set_order int,
   created_by uuid, created_at timestamptz
 )
+-- 자동채점 컬럼 (options, correct_answer, is_correct 등) 전부 없음.
 
 question_sets (
   id uuid pk,
@@ -245,16 +246,15 @@ site_settings (key text pk, value text)   -- title, subtitle, footerOrg, email_f
 ⚠️ **격리 뷰**:
 ```sql
 create view questions_for_applicant as
-  select id, code, category_id, grade_id, type, content, attachments,
-         options,           -- 객관식 표시용 (is_correct 제거된 형태로 sanitize)
-         submission_slots,  -- 서버에서 sanitize 후 노출
+  select id, code, category_id, grade_id, content, attachments,
+         submission_slots,  -- 응시자에게 슬롯 구성은 그대로 노출 (label · type · max_score · accept)
          max_score, set_id, set_order
   from questions;
--- correct_answer, rubric 컬럼 제외
+-- rubric 컬럼만 제외 (채점 기준은 응시자에게 노출 안 함)
 -- RLS: applicant role은 이 뷰만 access
 ```
 
-`options` 렌더 시 `is_correct` 제거는 뷰 정의부에서 `jsonb_build_array(...)` 로 수동 재구성.
+작업형 전용이라 격리해야 할 것이 rubric 하나뿐 — 원본의 정답 노출 이슈(#2)는 근본적으로 사라짐 (자동채점 자체가 없으니 노출할 정답이 존재하지 않음).
 
 **표시·판정 규칙**: `lib/grading/score.ts` 의 `toPercentage(raw, max)` 헬퍼 하나만. DB view·CSV·화면 전부 여기 통과.
 

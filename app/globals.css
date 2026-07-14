@@ -1,21 +1,78 @@
 @import "tailwindcss";
 
 /**
- * kbrain-cert (v3) — kbrain-ems 톤 기반
- * 라이트 배경 · slate-50→blue-50 그라디언트 · rounded-2xl 카드 + shadow-sm
- * 섹션별 컬러: 객관식 blue · 단답형 emerald · 작업형 amber · 이탈 rose
+ * kbrain-cert 디자인 시스템
+ * 톤: 공식 자격증급 · 신뢰 · 전문 · 무게감
+ * 근거: 짙은 네이비 primary + 절제된 화이트 배경, 그림자보다 border,
+ *      좁은 radius(4px), 여백 여유, Pretendard 한글 최적화
  */
 
 @theme inline {
+  /* 색상 - 라이트 (기본) */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222 47% 8%);
+
+  --color-surface: hsl(0 0% 100%);
+  --color-surface-muted: hsl(210 20% 98%);
+  --color-surface-hover: hsl(210 20% 96%);
+
+  --color-primary: hsl(222 47% 11%);
+  --color-primary-hover: hsl(222 47% 18%);
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  --color-accent: hsl(217 91% 32%);
+  --color-accent-hover: hsl(217 91% 26%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-accent-muted: hsl(217 91% 96%);
+
+  --color-muted: hsl(210 12% 55%);
+  --color-muted-foreground: hsl(210 12% 40%);
+  --color-subtle: hsl(210 16% 85%);
+
+  --color-border: hsl(214 20% 88%);
+  --color-border-strong: hsl(214 20% 78%);
+
+  --color-danger: hsl(0 72% 40%);
+  --color-danger-muted: hsl(0 72% 96%);
+  --color-warning: hsl(35 90% 42%);
+  --color-warning-muted: hsl(35 90% 96%);
+  --color-success: hsl(152 60% 30%);
+  --color-success-muted: hsl(152 60% 96%);
+  --color-info: hsl(217 91% 45%);
+  --color-info-muted: hsl(217 91% 96%);
+
+  --color-ring: hsl(222 47% 30%);
+
+  /* 타이포그래피 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-    system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius (좁게, 각진 편) */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Shadow (최소) */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-md: 0 2px 6px -1px rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 8px 24px -6px rgb(15 23 42 / 0.10);
 }
 
 @layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
   html,
   body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "ss01", "ss02", "cv11";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     letter-spacing: -0.01em;
@@ -23,7 +80,68 @@
 
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     letter-spacing: -0.02em;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  h1 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  /* 숫자·타이머용 tabular numeric */
+  .font-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-subtle);
+    border-radius: var(--radius-sm);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+  }
+}
+
+@layer utilities {
+  .surface-muted {
+    background-color: var(--color-surface-muted);
+  }
+  .surface-hover:hover {
+    background-color: var(--color-surface-hover);
+  }
+  .border-strong {
+    border-color: var(--color-border-strong);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .text-muted-fg {
+    color: var(--color-muted-foreground);
   }
 }

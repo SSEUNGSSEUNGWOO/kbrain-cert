@@ -3,6 +3,8 @@
 **최종 갱신**: 2026-07-14
 **목적**: `INVENTORY.md` 검토 후 승우님이 확정한 이식 방향. `FEATURES.md`·`MASTER_PLAN.md`·`ARCHITECTURE.md`는 모두 이 결정을 기반으로 작성됨.
 
+> **2026-07-14 추가 결정**: 문제 유형은 **작업형(work_based, 슬롯형) 한 종류만** 사용 (아래 **I** 항목). 프로토타입 톤은 첫 프로토타입(shadcn navy) 상태로 되돌림 — 이후 톤 시도 (다크 프리미엄·kbrain-ems mimic) 모두 폐기.
+
 ---
 
 ## 원본 스코프 대부분 이식 (공식 자격증급 수준)
@@ -23,6 +25,7 @@
 | **F** | 인증서 발급 | **❌ 제외** | `certifications` 테이블·`/admin/certifications` 페이지 모두 제거. "시험만 보면 됨" 수준 |
 | **G** | 카테고리 하드코딩(생성형AI/데이터분석/서비스구현) | **✅ 관리자 설정으로 해제** | `question_categories` 테이블 신설 |
 | **H** | 등급 하드코딩(green/blue/black/전문인재) | **✅ 관리자 설정으로 해제** | `exam_grades` 테이블 신설. `exam_grade` enum 제거 |
+| **I** | 문제 유형 | **🔧 작업형(work_based, 슬롯형)만 사용** | 객관식·단답·서술형·실기 제거. 자동채점 로직 자체 삭제. 모든 문항 = 슬롯 조합(파일·long_text·URL·숫자·텍스트). 채점은 슬롯별 부분점수 수동 or 외부 export 위임 (E 결정과 자연 결합) |
 
 ---
 
@@ -31,7 +34,7 @@
 ### ✅ 이식 (원본 그대로 or 마이너 수정)
 
 - 페이지 21개 중 18개 (인증서·Face++ 테스트·`send-otp/verify-otp` 제외)
-- 문제 유형 5종 (객관식·단답·서술형·실기·작업형/슬롯형) + 시나리오형 세트
+- **문제 유형은 작업형(슬롯형) 한 종류만** — 나머지 4종(객관식·단답·서술형·실기)은 스코프에서 제거 (결정 I) + 시나리오형 세트
 - 감독 로컬 컴포넌트 (`FaceMonitor` · `VoiceMonitor` · `FullscreenGuard` · `SecurityPledge`) — `AntiOcrWatermark`는 제외 (프로토타입 리뷰 시 승우님 결정)
 - Daily.co 통합 (`DailyProctor`, `ExamChatPanel`, `DailyMonitorGrid`, `daily-room` Edge Function)
 - R2 녹화 (`RecordingStatusBadge`, `RecordingReviewPage`, `r2-*` Edge Functions)
@@ -60,6 +63,8 @@
 - AWS Rekognition (`verify-identity` Edge Function)
 - 서술형 AI 채점 (`ai-grade` Edge Function · Lovable Gemini)
 - Face++ 테스트 페이지, Zoom SDK (원본에서도 미사용), 개발용 테스트 페이지들
+- **자동채점 로직 전부** (결정 I 파급) — 객관식 정답 비교, 단답 exact/numeric, `correct_answer` 컬럼 무의미. 모든 채점 = 슬롯별 수동 or 외부 export 위임
+- **문제 유형 4종의 응시자 UI 컴포넌트** — 라디오 선택지, 단답 input, 서술형 textarea 등 유형별 UI 필요 없음. 슬롯 컴포넌트 하나로 통일
 
 ---
 

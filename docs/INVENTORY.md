@@ -59,14 +59,16 @@
 
 ## 2. 문제 유형 지원 여부
 
+**결정 I (2026-07-14)**: 승우님 CBT는 **모든 문항이 작업형(슬롯형)** — 다른 유형은 사용 안 함.
+
 | 마크 | 유형 | 자동채점 | 원본 로직 |
 |---|---|---|---|
-| ✅ | 객관식 (multiple_choice) | ✅ (정답 인덱스 비교) | `options[]` + `is_correct` |
-| ✅ | 단답형 (short_answer) | ✅ (exact / numeric ± tolerance) | `correct_answer` |
-| ✅ | 서술형 (essay) | ❌ (수동/AI) | `rubric` 참조 |
-| ✅ | 실기형 (file_upload) | ❌ (수동) | 파일 업로드 |
-| ✅ | 작업형 (work_based, 슬롯형) | 부분(슬롯별) | `submission_slots[]` — 파일/텍스트/URL/숫자/long_text |
-| ✅ | 시나리오형 세트 (question_set) | 문제별 | 세트 안에 여러 문제, `set_order` |
+| ❌ | 객관식 (multiple_choice) | — | 스코프 제외 (결정 I) |
+| ❌ | 단답형 (short_answer) | — | 스코프 제외 (결정 I) |
+| ❌ | 서술형 (essay) | — | 스코프 제외 (결정 I) |
+| ❌ | 실기형 (file_upload) | — | 스코프 제외 (결정 I) — 작업형 슬롯의 `file` 타입으로 흡수 가능 |
+| ✅ | **작업형 (work_based, 슬롯형)** — **유일한 유형** | 없음 (전부 수동) | `submission_slots[]` — text/long_text/url/file/number 조합 |
+| ✅ | 시나리오형 세트 (question_set) | — | 세트 안에 작업형 문항 여러 개, `set_order` |
 
 ---
 

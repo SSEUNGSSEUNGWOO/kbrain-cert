@@ -5,144 +5,85 @@ const prototypes = [
     href: "/applicant/waiting/session-me",
     step: "1",
     title: "응시자 대기실",
-    tag: "APPLICANT",
     description:
       "환경 체크 (웹캠·마이크·화면공유·CPU·네트워크) → 신분증 업로드 → 보안 서약 → 입실 카운트다운",
-    tone: "blue",
+    tag: "APPLICANT",
   },
   {
     href: "/applicant/exam/session-me",
     step: "2",
     title: "응시 페이지",
-    tag: "APPLICANT",
     description:
-      "타이머 · 5문항 (객관식·단답·서술형·사례·작업형) · 감독 배지 · 세트별 감독 ON/OFF 배너",
-    tone: "emerald",
+      "타이머 · 문제 5문항 (객관식·단답·서술형·사례·작업형) · 감독 배지 · 세트별 감독 ON/OFF 배너 · 워터마크",
+    tag: "APPLICANT",
   },
   {
     href: "/examiner/monitor",
     step: "3",
     title: "감독관 대시보드",
-    tag: "EXAMINER",
     description:
-      "3단 알림 우선 정렬 (주목·경고·정상) · 실시간 이벤트 타임라인 · 개별 채팅",
-    tone: "amber",
+      "30명 응시자 그리드 · 실시간 감독 이벤트 타임라인 · 심각도 색상 시스템 · 스트리밍 상태",
+    tag: "EXAMINER",
   },
 ];
 
-const toneStyle = {
-  blue: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-300", cta: "bg-blue-600 hover:bg-blue-500" },
-  emerald: { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-300", cta: "bg-emerald-600 hover:bg-emerald-500" },
-  amber: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-300", cta: "bg-amber-600 hover:bg-amber-500" },
-} as const;
-
 export default function Home() {
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-6 py-3 flex items-center gap-3">
-          <div className="h-8 w-8 rounded-md bg-slate-900 text-white flex items-center justify-center text-[11px] font-bold">
-            KB
+    <div className="flex flex-1 items-start justify-center py-24 px-8">
+      <div className="w-full max-w-4xl">
+        <div className="mb-16">
+          <div className="inline-flex items-center gap-2 mb-6 text-xs font-medium tracking-widest text-muted uppercase">
+            <span className="w-1 h-1 rounded-full bg-accent" />
+            kbrain-cert · Prototype
           </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-400">
-              CBT · CERTIFICATION
-            </div>
-            <div className="text-sm font-semibold text-slate-900">
-              kbrain-cert
-            </div>
-          </div>
-          <div className="ml-auto text-[11px] text-slate-500">
-            프로토타입 v0.2
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl w-full px-6 py-12">
-        <div className="mb-10">
-          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">
-            KBRAIN CERT · OFFICIAL CBT
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-3 leading-tight">
-            공식 자격 검정을 위한 응시·감독·채점 플랫폼
+          <h1 className="text-4xl mb-4">
+            공식 자격 검정 플랫폼
+            <span className="block text-lg font-normal text-muted mt-3 leading-relaxed">
+              M0 계획을 반영한 초기 시안입니다. 브랜드 톤 (짙은 네이비 · Pretendard · 좁은 radius · 절제된 border)과
+              핵심 흐름 3개를 실제 컴포넌트로 확인하세요.
+            </span>
           </h1>
-          <p className="text-slate-600 max-w-2xl leading-relaxed">
-            원본 AI Champion을 참고해 승우님(daeasy) 소유로 새로 구축 중인 CBT. 300명 동시 응시,
-            세트별 감독 ON/OFF, 100점 환산 통일, 서버 시간 재동기화 타이머를 지원합니다.
-          </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {prototypes.map((p) => {
-            const t = toneStyle[p.tone];
-            return (
-              <Link
-                key={p.href}
-                href={p.href}
-                className="group rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md overflow-hidden transition"
-              >
-                <div className="px-6 pt-5 pb-4 border-b border-slate-100 bg-slate-50/40 flex items-center gap-3">
-                  <span className="inline-flex items-center justify-center h-8 min-w-[2rem] px-2 rounded-md bg-slate-900 text-white text-sm font-bold tabular-nums">
-                    {p.step}
-                  </span>
-                  <span
-                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${t.bg} ${t.text} ${t.border}`}
-                  >
+        <div className="grid gap-3">
+          {prototypes.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className="group border border-[--color-border] hover:border-strong bg-white transition rounded-md p-6 flex gap-6 surface-hover"
+            >
+              <div className="flex-shrink-0 w-12 h-12 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-tabular text-lg">
+                {p.step}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-3 mb-2">
+                  <h2 className="text-xl">{p.title}</h2>
+                  <span className="text-[10px] font-semibold tracking-widest text-muted-fg">
                     {p.tag}
                   </span>
                 </div>
-                <div className="p-6">
-                  <h2 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition">
-                    {p.title}
-                  </h2>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {p.description}
-                  </p>
-                  <div className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 group-hover:gap-2 transition-all">
-                    열어보기
-                    <span>→</span>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+                <p className="text-sm text-muted-fg leading-relaxed">
+                  {p.description}
+                </p>
+              </div>
+              <div className="flex-shrink-0 self-center text-muted group-hover:text-primary transition">
+                →
+              </div>
+            </Link>
+          ))}
         </div>
 
-        <div className="mt-12 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mb-3">
-            디자인 원칙
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-sm">
-            <Principle
-              label="배경"
-              value="slate-50 → blue-50 그라디언트 · 흰 카드"
-            />
-            <Principle
-              label="카드"
-              value="rounded-2xl · shadow-sm · border-slate-200"
-            />
-            <Principle
-              label="색상"
-              value="blue-600 CTA · slate-900 배지"
-            />
-            <Principle
-              label="섹션 컬러"
-              value="객관식=blue · 단답=emerald · 작업형=amber"
-            />
-          </div>
+        <div className="mt-16 pt-8 border-t border-[--color-border] text-xs text-muted-fg leading-relaxed">
+          <div className="mb-2 font-semibold text-primary">디자인 시스템 원칙</div>
+          <ul className="space-y-1 list-disc pl-4">
+            <li>Primary: 짙은 네이비 (hsl 222 47% 11%) · 신뢰·공식감</li>
+            <li>배경: 순백 + surface-muted (미묘한 warm gray) · 그림자보다 border</li>
+            <li>Radius: 2~8px 좁은 범위 · 각진 편이 공식 문서에 어울림</li>
+            <li>Font: Pretendard Variable (한글) · JetBrains Mono (숫자·타이머)</li>
+            <li>감독 색상: 위반은 danger(진홍) · 경고는 warning(앰버) · 정보는 info(짙은 파랑)</li>
+          </ul>
         </div>
-      </main>
-    </div>
-  );
-}
-
-function Principle({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-l-2 border-blue-200 pl-3">
-      <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">
-        {label}
       </div>
-      <div className="text-slate-700 leading-relaxed">{value}</div>
     </div>
   );
 }
