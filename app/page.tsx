@@ -8,43 +8,43 @@ import {
 } from "@/lib/mock";
 
 const categoryStyle = {
-  blue: "bg-[--color-primary-soft] text-[--color-primary]",
-  purple: "bg-[--color-purple-soft] text-[--color-purple]",
-  emerald: "bg-[--color-emerald-soft] text-[--color-emerald]",
-  orange: "bg-[--color-orange-soft] text-[--color-orange]",
-  pink: "bg-[--color-pink-soft] text-[--color-pink]",
-  teal: "bg-[--color-teal-soft] text-[--color-teal]",
+  blue: "bg-primary-soft text-primary",
+  purple: "bg-feature-soft text-feature",
+  emerald: "bg-success-soft text-success",
+  orange: "bg-warning-soft text-warning",
+  pink: "bg-highlight-soft text-highlight",
+  teal: "bg-info-soft text-info",
 } as const;
 
 const gradeStyle = {
   emerald: {
-    dot: "bg-[--color-emerald]",
-    bg: "bg-[--color-emerald-soft]",
-    text: "text-[--color-emerald]",
+    dot: "bg-success",
+    bg: "bg-success-soft",
+    text: "text-success",
   },
   indigo: {
-    dot: "bg-[--color-indigo]",
-    bg: "bg-[--color-indigo-soft]",
-    text: "text-[--color-indigo]",
+    dot: "bg-brand2",
+    bg: "bg-brand2-soft",
+    text: "text-brand2",
   },
   red: {
-    dot: "bg-[--color-red]",
-    bg: "bg-[--color-red-soft]",
-    text: "text-[--color-red]",
+    dot: "bg-danger",
+    bg: "bg-danger-soft",
+    text: "text-danger",
   },
   yellow: {
-    dot: "bg-[--color-yellow]",
-    bg: "bg-[--color-yellow-soft]",
-    text: "text-[--color-yellow]",
+    dot: "bg-caution",
+    bg: "bg-caution-soft",
+    text: "text-caution",
   },
 } as const;
 
 const activityStyle = {
-  blue: { bg: "bg-[--color-primary-soft]", text: "text-[--color-primary]", icon: "▶" },
-  emerald: { bg: "bg-[--color-emerald-soft]", text: "text-[--color-emerald]", icon: "✓" },
-  orange: { bg: "bg-[--color-orange-soft]", text: "text-[--color-orange]", icon: "!" },
-  red: { bg: "bg-[--color-red-soft]", text: "text-[--color-red]", icon: "⚠" },
-  purple: { bg: "bg-[--color-purple-soft]", text: "text-[--color-purple]", icon: "+" },
+  blue: { bg: "bg-primary-soft", text: "text-primary", icon: "▶" },
+  emerald: { bg: "bg-success-soft", text: "text-success", icon: "✓" },
+  orange: { bg: "bg-warning-soft", text: "text-warning", icon: "!" },
+  red: { bg: "bg-danger-soft", text: "text-danger", icon: "⚠" },
+  purple: { bg: "bg-feature-soft", text: "text-feature", icon: "+" },
 } as const;
 
 const prototypes = [
@@ -133,7 +133,7 @@ export default function Home() {
               tag="LIVE"
               action="이벤트 로그"
             />
-            <div className="rounded-2xl bg-white p-2 shadow-[var(--shadow-card)]">
+            <div className="rounded-2xl bg-white p-2 shadow-card">
               {mockRecentActivity.map((a) => (
                 <ActivityRow key={a.id} item={a} />
               ))}
@@ -156,10 +156,10 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="mx-auto max-w-6xl px-6 pb-12 pt-6 mt-8 text-sm text-[--color-muted-foreground]">
-        <div className="rounded-2xl bg-[--color-surface-soft] px-6 py-5 flex items-center justify-between">
+      <footer className="mx-auto max-w-6xl px-6 pb-12 pt-6 mt-8 text-sm text-muted-foreground">
+        <div className="rounded-2xl bg-surface-soft px-6 py-5 flex items-center justify-between">
           <div>
-            <div className="font-semibold text-[--color-foreground] mb-1">
+            <div className="font-semibold text-foreground mb-1">
               kbrain-cert
             </div>
             <div className="text-xs">
@@ -168,8 +168,8 @@ export default function Home() {
             </div>
           </div>
           <div className="text-xs text-right">
-            <div className="text-[--color-muted]">최종 갱신</div>
-            <div className="font-tabular text-[--color-foreground]">
+            <div className="text-muted">최종 갱신</div>
+            <div className="font-tabular text-foreground">
               2026.07.14
             </div>
           </div>
@@ -183,19 +183,19 @@ export default function Home() {
 
 function TopNav() {
   return (
-    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-[--color-border]">
+    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-border">
       <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[--color-primary] text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
           <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
-          <div className="ml-3 text-[10px] font-bold tracking-[0.15em] text-[--color-primary] bg-[--color-primary-soft] px-2 py-0.5 rounded-md">
+          <div className="ml-3 text-[10px] font-bold tracking-[0.15em] text-primary bg-primary-soft px-2 py-0.5 rounded-md">
             ADMIN
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-1 text-sm text-[--color-muted-foreground]">
+          <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground">
             <NavItem label="대시보드" active />
             <NavItem label="문제은행" />
             <NavItem label="시험" />
@@ -204,7 +204,7 @@ function TopNav() {
             <NavItem label="설정" />
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[--color-purple] to-[--color-pink] text-white flex items-center justify-center text-xs font-bold">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-feature to-highlight text-white flex items-center justify-center text-xs font-bold">
               이명희
             </div>
           </div>
@@ -219,8 +219,8 @@ function NavItem({ label, active = false }: { label: string; active?: boolean })
     <div
       className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition ${
         active
-          ? "text-[--color-primary] bg-[--color-primary-soft]"
-          : "text-[--color-muted-foreground] hover:text-[--color-foreground] hover:bg-[--color-surface-soft]"
+          ? "text-primary bg-primary-soft"
+          : "text-muted-foreground hover:text-foreground hover:bg-surface-soft"
       }`}
     >
       {label}
@@ -233,13 +233,13 @@ function NavItem({ label, active = false }: { label: string; active?: boolean })
 function Hero() {
   return (
     <div className="mb-8">
-      <div className="text-sm font-bold text-[--color-primary] mb-2 tracking-wider">
+      <div className="text-sm font-bold text-primary mb-2 tracking-wider">
         👋 안녕하세요, 이명희 관리자님
       </div>
       <h1>오늘 3개 시험이 진행 · 예정입니다</h1>
-      <p className="mt-2 text-[--color-muted-foreground]">
+      <p className="mt-2 text-muted-foreground">
         가장 가까운 시험까지{" "}
-        <span className="font-bold text-[--color-foreground]">02:14</span> 남았어요.
+        <span className="font-bold text-foreground">02:14</span> 남았어요.
       </p>
     </div>
   );
@@ -261,21 +261,21 @@ function StatCard({
   trend: string;
 }) {
   const style = {
-    blue: "text-[--color-primary]",
-    emerald: "text-[--color-emerald]",
-    red: "text-[--color-red]",
-    orange: "text-[--color-orange]",
+    blue: "text-primary",
+    emerald: "text-success",
+    red: "text-danger",
+    orange: "text-warning",
   }[tone];
   const bg = {
-    blue: "bg-[--color-primary-soft]",
-    emerald: "bg-[--color-emerald-soft]",
-    red: "bg-[--color-red-soft]",
-    orange: "bg-[--color-orange-soft]",
+    blue: "bg-primary-soft",
+    emerald: "bg-success-soft",
+    red: "bg-danger-soft",
+    orange: "bg-warning-soft",
   }[tone];
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)]">
+    <div className="rounded-2xl bg-white p-5 shadow-card">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[13px] font-semibold text-[--color-muted-foreground]">
+        <div className="text-[13px] font-semibold text-muted-foreground">
           {label}
         </div>
         <div className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${bg} ${style}`}>
@@ -286,7 +286,7 @@ function StatCard({
         <div className={`font-tabular text-3xl font-bold ${style}`}>
           {value.toLocaleString()}
         </div>
-        <div className="text-sm font-semibold text-[--color-muted]">{unit}</div>
+        <div className="text-sm font-semibold text-muted">{unit}</div>
       </div>
     </div>
   );
@@ -307,12 +307,12 @@ function SectionHeader({
     <div className="flex items-baseline justify-between mb-3">
       <div className="flex items-baseline gap-2">
         <h2 className="text-xl font-bold">{title}</h2>
-        <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted] bg-[--color-surface-soft] px-2 py-0.5 rounded-md">
+        <div className="text-[10px] font-bold tracking-[0.15em] text-muted bg-surface-soft px-2 py-0.5 rounded-md">
           {tag}
         </div>
       </div>
       {action && (
-        <button className="text-sm font-semibold text-[--color-primary] hover:underline">
+        <button className="text-sm font-semibold text-primary hover:underline">
           {action} →
         </button>
       )}
@@ -327,7 +327,7 @@ function ExamListCard({ exam }: { exam: ExamCard }) {
   const grade = gradeStyle[exam.gradeTone];
   const registrationPct = Math.round((exam.registered / exam.capacity) * 100);
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition cursor-pointer">
+    <div className="rounded-2xl bg-white p-5 shadow-card hover:shadow-card-hover transition cursor-pointer">
       <div className="flex items-start gap-4 mb-3">
         <div className={`w-11 h-11 rounded-xl ${cat} flex items-center justify-center font-bold text-sm shrink-0`}>
           {exam.category.slice(0, 2)}
@@ -346,16 +346,16 @@ function ExamListCard({ exam }: { exam: ExamCard }) {
               {exam.grade}
             </span>
             {exam.status === "live" && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-[--color-red-soft] text-[--color-red]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[--color-red] animate-pulse" />
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-danger-soft text-danger">
+                <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
                 LIVE
               </span>
             )}
           </div>
-          <div className="font-bold text-[--color-heading] text-base mb-1 truncate">
+          <div className="font-bold text-heading text-base mb-1 truncate">
             {exam.title}
           </div>
-          <div className="text-xs text-[--color-muted-foreground]">
+          <div className="text-xs text-muted-foreground">
             {exam.date} · {exam.time}
           </div>
         </div>
@@ -363,38 +363,38 @@ function ExamListCard({ exam }: { exam: ExamCard }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-[11px] font-semibold text-[--color-muted-foreground] mb-1.5">
+          <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
             응시 등록
           </div>
           <div className="flex items-baseline gap-1 mb-1.5">
-            <span className="font-tabular text-lg font-bold text-[--color-foreground]">
+            <span className="font-tabular text-lg font-bold text-foreground">
               {exam.registered}
             </span>
-            <span className="text-sm text-[--color-muted]">
+            <span className="text-sm text-muted">
               / {exam.capacity}명 · {registrationPct}%
             </span>
           </div>
-          <div className="h-1.5 rounded-full bg-[--color-subtle] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-subtle overflow-hidden">
             <div
-              className="h-full bg-[--color-primary] rounded-full"
+              className="h-full bg-primary rounded-full"
               style={{ width: `${registrationPct}%` }}
             />
           </div>
         </div>
         {exam.status === "live" && exam.progress !== undefined && (
           <div>
-            <div className="text-[11px] font-semibold text-[--color-muted-foreground] mb-1.5">
+            <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
               평균 진행률
             </div>
             <div className="flex items-baseline gap-1 mb-1.5">
-              <span className="font-tabular text-lg font-bold text-[--color-emerald]">
+              <span className="font-tabular text-lg font-bold text-success">
                 {exam.progress}
               </span>
-              <span className="text-sm text-[--color-muted]">%</span>
+              <span className="text-sm text-muted">%</span>
             </div>
-            <div className="h-1.5 rounded-full bg-[--color-subtle] overflow-hidden">
+            <div className="h-1.5 rounded-full bg-subtle overflow-hidden">
               <div
-                className="h-full bg-[--color-emerald] rounded-full"
+                className="h-full bg-success rounded-full"
                 style={{ width: `${exam.progress}%` }}
               />
             </div>
@@ -402,7 +402,7 @@ function ExamListCard({ exam }: { exam: ExamCard }) {
         )}
         {exam.status === "upcoming" && (
           <div className="flex items-end">
-            <button className="ml-auto rounded-xl bg-[--color-primary] hover:bg-[--color-primary-hover] text-white font-bold text-sm px-4 py-2">
+            <button className="ml-auto rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-sm px-4 py-2">
               응시자 초대
             </button>
           </div>
@@ -417,7 +417,7 @@ function ExamListCard({ exam }: { exam: ExamCard }) {
 function ActivityRow({ item }: { item: ActivityItem }) {
   const style = activityStyle[item.tone];
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-[--color-surface-hover] transition cursor-pointer">
+    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-surface-hover transition cursor-pointer">
       <div
         className={`w-9 h-9 rounded-full ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold shrink-0`}
       >
@@ -426,13 +426,13 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       <div className="flex-1 min-w-0">
         <div className="text-sm mb-0.5">
           <span className="font-bold">{item.actor}</span>
-          <span className="text-[--color-muted-foreground]"> · {item.action}</span>
+          <span className="text-muted-foreground"> · {item.action}</span>
         </div>
-        <div className="text-xs text-[--color-muted-foreground] truncate">
+        <div className="text-xs text-muted-foreground truncate">
           {item.target}
         </div>
       </div>
-      <div className="text-[11px] text-[--color-muted] font-medium shrink-0 mt-0.5">
+      <div className="text-[11px] text-muted font-medium shrink-0 mt-0.5">
         {item.time}
       </div>
     </div>
@@ -457,30 +457,30 @@ function PrototypeCard({
   tone: "blue" | "emerald" | "purple";
 }) {
   const style = {
-    blue: "bg-[--color-primary-soft] text-[--color-primary]",
-    emerald: "bg-[--color-emerald-soft] text-[--color-emerald]",
-    purple: "bg-[--color-purple-soft] text-[--color-purple]",
+    blue: "bg-primary-soft text-primary",
+    emerald: "bg-success-soft text-success",
+    purple: "bg-feature-soft text-feature",
   }[tone];
   return (
     <Link
       href={href}
-      className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition cursor-pointer block group"
+      className="rounded-2xl bg-white p-5 shadow-card hover:shadow-card-hover transition cursor-pointer block group"
     >
       <div className="flex items-start gap-3 mb-3">
         <div className={`w-11 h-11 rounded-xl ${style} flex items-center justify-center text-2xl shrink-0`}>
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted] mb-1">
+          <div className="text-[10px] font-bold tracking-[0.15em] text-muted mb-1">
             {role}
           </div>
-          <div className="font-bold text-[--color-heading] mb-1">{label}</div>
+          <div className="font-bold text-heading mb-1">{label}</div>
         </div>
       </div>
-      <div className="text-sm text-[--color-muted-foreground] mb-3">
+      <div className="text-sm text-muted-foreground mb-3">
         {description}
       </div>
-      <div className="text-sm font-semibold text-[--color-primary] group-hover:underline">
+      <div className="text-sm font-semibold text-primary group-hover:underline">
         열어보기 →
       </div>
     </Link>

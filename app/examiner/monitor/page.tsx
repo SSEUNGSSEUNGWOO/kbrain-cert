@@ -73,15 +73,15 @@ export default function ExaminerMonitorPage() {
             />
           </div>
 
-          <div className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)] flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[--color-red-soft] flex items-center justify-center">
-              <span className="w-2 h-2 rounded-full bg-[--color-red] animate-pulse" />
+          <div className="rounded-2xl bg-white p-5 shadow-card flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-danger-soft flex items-center justify-center">
+              <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
             </div>
             <div>
               <div className="text-sm font-bold">
                 실시간 감독 중 · 이벤트 발생 응시자는 자동 상단 배치
               </div>
-              <div className="text-xs text-[--color-muted-foreground]">
+              <div className="text-xs text-muted-foreground">
                 시선이 문제 응시자로 자연 유도됩니다
               </div>
             </div>
@@ -160,17 +160,17 @@ export default function ExaminerMonitorPage() {
         </main>
 
         <aside className="w-96 shrink-0">
-          <div className="sticky top-24 rounded-3xl bg-white shadow-[var(--shadow-card)] overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
-            <div className="p-5 border-b border-[--color-border]">
+          <div className="sticky top-24 rounded-3xl bg-white shadow-card overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
+            <div className="p-5 border-b border-border">
               <div className="flex items-baseline justify-between mb-3">
                 <div>
-                  <div className="text-[10px] font-bold tracking-widest text-[--color-muted]">
+                  <div className="text-[10px] font-bold tracking-widest text-muted">
                     이벤트 스트림
                   </div>
                   <div className="font-bold text-base">실시간 감독 이벤트</div>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[--color-red-soft] text-[--color-red] px-2 py-0.5 text-[10px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[--color-red] animate-pulse" />
+                <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft text-danger px-2 py-0.5 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
                   LIVE
                 </span>
               </div>
@@ -182,8 +182,8 @@ export default function ExaminerMonitorPage() {
                     className={cn(
                       "px-3 h-7 rounded-lg text-[11px] font-bold tracking-wide transition uppercase",
                       severityFilter === s
-                        ? "bg-[--color-primary] text-white"
-                        : "bg-[--color-surface-soft] text-[--color-muted-foreground] hover:bg-[--color-subtle]"
+                        ? "bg-primary text-white"
+                        : "bg-surface-soft text-muted-foreground hover:bg-subtle"
                     )}
                   >
                     {s === "all" ? "전체" : s}
@@ -201,13 +201,13 @@ export default function ExaminerMonitorPage() {
                 />
               ))}
               {filteredEvents.length === 0 && (
-                <div className="p-8 text-center text-xs text-[--color-muted-foreground]">
+                <div className="p-8 text-center text-xs text-muted-foreground">
                   해당 심각도의 이벤트가 없습니다.
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-[--color-border]">
-              <button className="w-full h-11 rounded-2xl bg-[--color-primary] hover:bg-[--color-primary-hover] text-white text-sm font-bold shadow-[var(--shadow-card)] transition">
+            <div className="p-4 border-t border-border">
+              <button className="w-full h-11 rounded-2xl bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-card transition">
                 전체 응시자에 공지 발송
               </button>
             </div>
@@ -220,14 +220,14 @@ export default function ExaminerMonitorPage() {
 
 function TopBar({ title }: { title: string }) {
   return (
-    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-[--color-border]">
+    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-border">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[--color-primary] text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
           <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted]">
+            <div className="text-[10px] font-bold tracking-[0.15em] text-muted">
               KBRAIN CERT · 감독관
             </div>
             <div className="font-bold text-sm truncate max-w-md">{title}</div>
@@ -235,12 +235,12 @@ function TopBar({ title }: { title: string }) {
         </Link>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-muted]">
+            <div className="text-[10px] font-bold tracking-[0.15em] text-muted">
               감독관
             </div>
             <div className="font-bold text-sm">이명희</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[--color-teal] to-[--color-primary] text-white flex items-center justify-center text-xs font-bold">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-info to-primary text-white flex items-center justify-center text-xs font-bold">
             LMH
           </div>
         </div>
@@ -263,22 +263,22 @@ function StatBig({
   pulse?: boolean;
 }) {
   const text = {
-    blue: "text-[--color-primary]",
-    emerald: "text-[--color-emerald]",
-    red: "text-[--color-red]",
-    orange: "text-[--color-orange]",
-    purple: "text-[--color-purple]",
+    blue: "text-primary",
+    emerald: "text-success",
+    red: "text-danger",
+    orange: "text-warning",
+    purple: "text-feature",
   }[tone];
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-[var(--shadow-card)]">
-      <div className="text-xs font-bold text-[--color-muted-foreground] mb-1">
+    <div className="rounded-2xl bg-white p-4 shadow-card">
+      <div className="text-xs font-bold text-muted-foreground mb-1">
         {label}
       </div>
       <div className="flex items-baseline gap-1">
         <div className={cn("font-tabular text-2xl font-bold", text)}>{value}</div>
-        <div className="text-sm font-bold text-[--color-muted]">{unit}</div>
+        <div className="text-sm font-bold text-muted">{unit}</div>
         {pulse && value > 0 && (
-          <span className="w-1.5 h-1.5 rounded-full bg-[--color-red] animate-pulse ml-1" />
+          <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse ml-1" />
         )}
       </div>
     </div>
@@ -303,24 +303,24 @@ function Section({
   children: React.ReactNode;
 }) {
   const badge = {
-    red: "bg-[--color-red-soft] text-[--color-red]",
-    orange: "bg-[--color-orange-soft] text-[--color-orange]",
-    emerald: "bg-[--color-emerald-soft] text-[--color-emerald]",
+    red: "bg-danger-soft text-danger",
+    orange: "bg-warning-soft text-warning",
+    emerald: "bg-success-soft text-success",
   }[tone];
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-3 flex-wrap">
-        <div className="w-8 h-8 rounded-lg bg-[--color-foreground] text-white flex items-center justify-center text-sm font-bold tabular-nums">
+        <div className="w-8 h-8 rounded-lg bg-foreground text-white flex items-center justify-center text-sm font-bold tabular-nums">
           {step}
         </div>
         <span className={cn("text-[11px] font-bold tracking-wider px-2 py-1 rounded-md", badge)}>
           {tag}
         </span>
         <h2 className="text-xl font-bold">{titleKor}</h2>
-        <span className="text-sm font-bold text-[--color-muted] tabular-nums">
+        <span className="text-sm font-bold text-muted tabular-nums">
           {count}명
         </span>
-        <span className="text-xs text-[--color-muted-foreground]">· {subtitle}</span>
+        <span className="text-xs text-muted-foreground">· {subtitle}</span>
       </div>
       {children}
     </section>
@@ -329,9 +329,9 @@ function Section({
 
 function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl bg-[--color-emerald-soft] py-6 text-center">
+    <div className="rounded-2xl bg-success-soft py-6 text-center">
       <div className="text-2xl mb-1">🎉</div>
-      <div className="text-sm font-semibold text-[--color-emerald]">{message}</div>
+      <div className="text-sm font-semibold text-success">{message}</div>
     </div>
   );
 }
@@ -352,18 +352,18 @@ function ApplicantCard({
   const hasWarn = app.lastEvent?.severity === "warn";
 
   const ringClass = selected
-    ? "ring-4 ring-[--color-primary-soft]"
+    ? "ring-4 ring-primary-soft"
     : hasHighAlert
-    ? "ring-2 ring-[--color-red]"
+    ? "ring-2 ring-danger"
     : hasWarn
-    ? "ring-2 ring-[--color-orange]"
+    ? "ring-2 ring-warning"
     : "";
 
   return (
     <button
       onClick={onSelect}
       className={cn(
-        "text-left rounded-2xl bg-white shadow-[var(--shadow-card)] overflow-hidden transition hover:shadow-[var(--shadow-card-hover)]",
+        "text-left rounded-2xl bg-white shadow-card overflow-hidden transition hover:shadow-card-hover",
         ringClass
       )}
     >
@@ -372,7 +372,7 @@ function ApplicantCard({
           "relative overflow-hidden",
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square",
           app.streaming === "disconnected"
-            ? "bg-[--color-red-soft]"
+            ? "bg-danger-soft"
             : "bg-gradient-to-br from-slate-700 via-slate-800 to-black"
         )}
       >
@@ -388,7 +388,7 @@ function ApplicantCard({
           </div>
         )}
         {app.streaming === "disconnected" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[--color-red]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-danger">
             <div className="text-xl">⚠</div>
             {size !== "sm" && (
               <div className="text-[10px] font-bold tracking-widest mt-0.5">
@@ -404,7 +404,7 @@ function ApplicantCard({
               size === "sm" ? "py-0.5" : "py-1"
             )}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[--color-red] animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
             {size !== "sm" && (
               <span className="text-[9px] text-white font-bold tracking-wider">
                 REC
@@ -415,7 +415,7 @@ function ApplicantCard({
         {app.warningCount > 0 && (
           <div
             className={cn(
-              "absolute top-2 right-2 rounded-md bg-[--color-red] text-white font-bold flex items-center justify-center font-tabular",
+              "absolute top-2 right-2 rounded-md bg-danger text-white font-bold flex items-center justify-center font-tabular",
               size === "lg"
                 ? "text-sm w-7 h-7"
                 : size === "md"
@@ -431,9 +431,9 @@ function ApplicantCard({
             className={cn(
               "absolute bottom-0 left-0 right-0 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm",
               app.lastEvent.severity === "high"
-                ? "bg-[--color-red]/85"
+                ? "bg-danger/85"
                 : app.lastEvent.severity === "warn"
-                ? "bg-[--color-orange]/85"
+                ? "bg-warning/85"
                 : "bg-black/60"
             )}
           >
@@ -447,7 +447,7 @@ function ApplicantCard({
           <div className="text-[10px] font-bold truncate">
             {app.applicant.name}
           </div>
-          <div className="text-[9px] font-tabular text-[--color-muted]">
+          <div className="text-[9px] font-tabular text-muted">
             {app.progress}%
           </div>
         </div>
@@ -462,44 +462,44 @@ function ApplicantCard({
             >
               {app.applicant.name}
             </div>
-            <div className="text-[10px] font-tabular text-[--color-primary] font-bold">
+            <div className="text-[10px] font-tabular text-primary font-bold">
               Q{app.currentQuestion}
             </div>
           </div>
           {size === "lg" && (
-            <div className="text-[11px] text-[--color-muted-foreground] truncate mb-3">
+            <div className="text-[11px] text-muted-foreground truncate mb-3">
               {app.applicant.organization} · {app.applicant.email}
             </div>
           )}
           {size === "md" && (
-            <div className="text-[10px] text-[--color-muted-foreground] truncate mb-2">
+            <div className="text-[10px] text-muted-foreground truncate mb-2">
               {app.applicant.organization}
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-[--color-subtle] rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-subtle rounded-full overflow-hidden">
               <div
                 className={cn(
                   "h-full rounded-full",
                   hasHighAlert
-                    ? "bg-[--color-red]"
+                    ? "bg-danger"
                     : hasWarn
-                    ? "bg-[--color-orange]"
-                    : "bg-[--color-primary]"
+                    ? "bg-warning"
+                    : "bg-primary"
                 )}
                 style={{ width: `${app.progress}%` }}
               />
             </div>
-            <div className="text-[10px] font-tabular text-[--color-muted]">
+            <div className="text-[10px] font-tabular text-muted">
               {app.progress}%
             </div>
           </div>
           {size === "lg" && (
             <div className="mt-3 flex gap-2">
-              <button className="flex-1 h-9 rounded-xl bg-[--color-primary] hover:bg-[--color-primary-hover] text-white text-xs font-bold">
+              <button className="flex-1 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold">
                 채팅
               </button>
-              <button className="flex-1 h-9 rounded-xl bg-[--color-surface-soft] hover:bg-[--color-subtle] text-[--color-foreground] text-xs font-bold">
+              <button className="flex-1 h-9 rounded-xl bg-surface-soft hover:bg-subtle text-foreground text-xs font-bold">
                 상세 열기
               </button>
             </div>
@@ -537,17 +537,17 @@ function EventItem({
   active: boolean;
 }) {
   const severityStyle = {
-    high: "bg-[--color-red-soft] text-[--color-red]",
-    warn: "bg-[--color-orange-soft] text-[--color-orange]",
-    info: "bg-[--color-primary-soft] text-[--color-primary]",
+    high: "bg-danger-soft text-danger",
+    warn: "bg-warning-soft text-warning",
+    info: "bg-primary-soft text-primary",
   }[event.severity];
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-5 py-3 border-b border-[--color-border] hover:bg-[--color-surface-hover] transition flex gap-3",
-        active && "bg-[--color-primary-soft]"
+        "w-full text-left px-5 py-3 border-b border-border hover:bg-surface-hover transition flex gap-3",
+        active && "bg-primary-soft"
       )}
     >
       <div
@@ -563,18 +563,18 @@ function EventItem({
           <div className="text-sm font-bold truncate">
             {EVENT_LABEL[event.type]}
           </div>
-          <div className="text-[10px] font-tabular text-[--color-muted]">
+          <div className="text-[10px] font-tabular text-muted">
             {event.occurredAt}
           </div>
         </div>
-        <div className="text-[11px] text-[--color-muted-foreground] truncate">
-          <span className="font-bold text-[--color-foreground]">
+        <div className="text-[11px] text-muted-foreground truncate">
+          <span className="font-bold text-foreground">
             {event.applicantName}
           </span>{" "}
           · Q{event.questionIndex}
         </div>
         {event.note && (
-          <div className="text-[10px] text-[--color-muted] italic mt-0.5">
+          <div className="text-[10px] text-muted italic mt-0.5">
             {event.note}
           </div>
         )}

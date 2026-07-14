@@ -33,7 +33,7 @@ export default function WaitingRoomPage() {
       <TopBar />
       <main className="mx-auto max-w-3xl px-6 py-8">
         <div className="mb-6">
-          <div className="text-sm font-bold text-[--color-primary] mb-2">
+          <div className="text-sm font-bold text-primary mb-2">
             👋 오지은님, 응시 준비를 시작할게요
           </div>
           <h1>{mockExam.title}</h1>
@@ -47,7 +47,7 @@ export default function WaitingRoomPage() {
 
         <Stepper steps={steps} activeIdx={stepIdx} />
 
-        <div className="mt-6 rounded-3xl bg-white p-8 shadow-[var(--shadow-card)]">
+        <div className="mt-6 rounded-3xl bg-white p-8 shadow-card">
           {currentStep === "check" && (
             <CheckStep
               onContinue={() => {
@@ -85,15 +85,15 @@ export default function WaitingRoomPage() {
 
 function TopBar() {
   return (
-    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-[--color-border]">
+    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-border">
       <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[--color-primary] text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
           <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
         </Link>
-        <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-primary] bg-[--color-primary-soft] px-2.5 py-1 rounded-md">
+        <div className="text-[10px] font-bold tracking-[0.15em] text-primary bg-primary-soft px-2.5 py-1 rounded-md">
           APPLICANT
         </div>
       </div>
@@ -111,18 +111,18 @@ function Chip({
   dot?: boolean;
 }) {
   const map = {
-    blue: "bg-[--color-primary-soft] text-[--color-primary]",
-    purple: "bg-[--color-purple-soft] text-[--color-purple]",
-    emerald: "bg-[--color-emerald-soft] text-[--color-emerald]",
-    orange: "bg-[--color-orange-soft] text-[--color-orange]",
-    red: "bg-[--color-red-soft] text-[--color-red]",
+    blue: "bg-primary-soft text-primary",
+    purple: "bg-feature-soft text-feature",
+    emerald: "bg-success-soft text-success",
+    orange: "bg-warning-soft text-warning",
+    red: "bg-danger-soft text-danger",
   }[tone];
   const dotColor = {
-    blue: "bg-[--color-primary]",
-    purple: "bg-[--color-purple]",
-    emerald: "bg-[--color-emerald]",
-    orange: "bg-[--color-orange]",
-    red: "bg-[--color-red]",
+    blue: "bg-primary",
+    purple: "bg-feature",
+    emerald: "bg-success",
+    orange: "bg-warning",
+    red: "bg-danger",
   }[tone];
   return (
     <span
@@ -152,32 +152,32 @@ function Stepper({
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold tabular-nums transition ${
                   done
-                    ? "bg-[--color-emerald] text-white"
+                    ? "bg-success text-white"
                     : active
-                    ? "bg-[--color-primary] text-white ring-4 ring-[--color-primary-soft]"
-                    : "bg-[--color-subtle] text-[--color-muted]"
+                    ? "bg-primary text-white ring-4 ring-primary-soft"
+                    : "bg-subtle text-muted"
                 }`}
               >
                 {done ? "✓" : s.num}
               </div>
               <div
                 className={`flex-1 h-1 rounded-full ${
-                  done ? "bg-[--color-emerald]" : "bg-[--color-subtle]"
+                  done ? "bg-success" : "bg-subtle"
                 }`}
               />
             </div>
             <div
               className={`text-sm font-bold ${
                 active
-                  ? "text-[--color-foreground]"
+                  ? "text-foreground"
                   : done
-                  ? "text-[--color-emerald]"
-                  : "text-[--color-muted]"
+                  ? "text-success"
+                  : "text-muted"
               }`}
             >
               {s.label}
             </div>
-            <div className="text-[11px] text-[--color-muted-foreground] mt-0.5">
+            <div className="text-[11px] text-muted-foreground mt-0.5">
               {s.description}
             </div>
           </div>
@@ -192,8 +192,8 @@ function StatusChip({ label, done }: { label: string; done: boolean }) {
     <span
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
         done
-          ? "bg-[--color-emerald-soft] text-[--color-emerald]"
-          : "bg-[--color-surface-soft] text-[--color-muted]"
+          ? "bg-success-soft text-success"
+          : "bg-surface-soft text-muted"
       }`}
     >
       {done ? "✓" : "○"} {label}
@@ -215,8 +215,8 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
           <div className="text-[10px] font-bold tracking-[0.2em]">WEBCAM PREVIEW</div>
         </div>
         <div className="space-y-3">
-          <div className="rounded-2xl bg-[--color-primary-soft] p-4">
-            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-primary] mb-2">
+          <div className="rounded-2xl bg-primary-soft p-4">
+            <div className="text-[10px] font-bold tracking-[0.15em] text-primary mb-2">
               MIC LEVEL
             </div>
             <div className="flex gap-0.5 h-5">
@@ -226,25 +226,25 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
                   className={`flex-1 rounded-sm ${
                     i < 12
                       ? i < 8
-                        ? "bg-[--color-emerald]"
+                        ? "bg-success"
                         : i < 15
-                        ? "bg-[--color-orange]"
-                        : "bg-[--color-red]"
-                      : "bg-[--color-subtle]"
+                        ? "bg-warning"
+                        : "bg-danger"
+                      : "bg-subtle"
                   }`}
                 />
               ))}
             </div>
           </div>
-          <div className="rounded-2xl bg-[--color-emerald-soft] p-4">
-            <div className="text-[10px] font-bold tracking-[0.15em] text-[--color-emerald] mb-1">
+          <div className="rounded-2xl bg-success-soft p-4">
+            <div className="text-[10px] font-bold tracking-[0.15em] text-success mb-1">
               CPU BENCHMARK
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-tabular text-3xl font-bold text-[--color-emerald]">
+              <span className="font-tabular text-3xl font-bold text-success">
                 92
               </span>
-              <span className="text-xs font-bold text-[--color-muted]">/ 100 · 권장 이상</span>
+              <span className="text-xs font-bold text-muted">/ 100 · 권장 이상</span>
             </div>
           </div>
         </div>
@@ -266,40 +266,40 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
 function CheckItem({ check }: { check: (typeof mockWaitingChecks)[number] }) {
   const map = {
     ok: {
-      bg: "bg-[--color-emerald-soft]",
-      text: "text-[--color-emerald]",
+      bg: "bg-success-soft",
+      text: "text-success",
       icon: "✓",
     },
     warn: {
-      bg: "bg-[--color-orange-soft]",
-      text: "text-[--color-orange]",
+      bg: "bg-warning-soft",
+      text: "text-warning",
       icon: "!",
     },
     error: {
-      bg: "bg-[--color-red-soft]",
-      text: "text-[--color-red]",
+      bg: "bg-danger-soft",
+      text: "text-danger",
       icon: "×",
     },
     pending: {
-      bg: "bg-[--color-surface-soft]",
-      text: "text-[--color-muted]",
+      bg: "bg-surface-soft",
+      text: "text-muted",
       icon: "…",
     },
   }[check.status];
   return (
-    <div className="flex items-center gap-4 rounded-2xl bg-[--color-surface-soft] px-4 py-3">
+    <div className="flex items-center gap-4 rounded-2xl bg-surface-soft px-4 py-3">
       <div
         className={`w-10 h-10 rounded-xl ${map.bg} ${map.text} flex items-center justify-center font-bold`}
       >
         {map.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-bold text-[--color-foreground]">{check.label}</div>
-        <div className="text-[11px] text-[--color-muted-foreground]">
+        <div className="font-bold text-foreground">{check.label}</div>
+        <div className="text-[11px] text-muted-foreground">
           {check.description}
         </div>
       </div>
-      <div className="text-xs font-semibold text-[--color-muted-foreground] tabular-nums text-right">
+      <div className="text-xs font-semibold text-muted-foreground tabular-nums text-right">
         {check.detail}
       </div>
     </div>
@@ -325,11 +325,11 @@ function IdentityStep({
         description="본인 확인용 이미지를 업로드해주세요. 시험 후 관리자가 사후 검토합니다."
       />
 
-      <div className="mb-6 rounded-2xl bg-[--color-orange-soft] p-4 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[--color-orange] text-white flex items-center justify-center text-xl">
+      <div className="mb-6 rounded-2xl bg-warning-soft p-4 flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-warning text-white flex items-center justify-center text-xl">
           📢
         </div>
-        <div className="text-sm text-[--color-orange]">
+        <div className="text-sm text-warning">
           <span className="font-bold">개인정보 처리 안내</span> · 업로드된 신분증
           이미지는 본인 확인 목적으로만 사용되며, 시험 종료 후 30일 이내 자동
           파기됩니다. 자동 얼굴 인식은 사용하지 않습니다.
@@ -340,27 +340,27 @@ function IdentityStep({
         onClick={onUpload}
         className={`rounded-3xl border-2 border-dashed p-12 text-center cursor-pointer transition ${
           uploaded
-            ? "border-[--color-emerald] bg-[--color-emerald-soft]"
-            : "border-[--color-border-strong] bg-[--color-surface-soft] hover:border-[--color-primary] hover:bg-[--color-primary-soft]"
+            ? "border-success bg-success-soft"
+            : "border-border-strong bg-surface-soft hover:border-primary hover:bg-primary-soft"
         }`}
       >
         {uploaded ? (
           <>
             <div className="text-6xl mb-3">✅</div>
-            <div className="font-bold text-[--color-emerald] mb-1">
+            <div className="font-bold text-success mb-1">
               업로드 완료 · id_ohjieun_240715.jpg
             </div>
-            <div className="text-xs text-[--color-muted-foreground]">
+            <div className="text-xs text-muted-foreground">
               2.1 MB · 클릭하여 재업로드
             </div>
           </>
         ) : (
           <>
             <div className="text-6xl mb-3">📇</div>
-            <div className="font-bold text-[--color-foreground] mb-1">
+            <div className="font-bold text-foreground mb-1">
               신분증 이미지를 드래그하거나 클릭하여 업로드
             </div>
-            <div className="text-xs text-[--color-muted-foreground]">
+            <div className="text-xs text-muted-foreground">
               주민등록증 · 운전면허증 · 여권 · 학생증 · JPG/PNG · 최대 10MB
             </div>
           </>
@@ -429,8 +429,8 @@ function PledgeStep({
       <label
         className={`flex items-start gap-4 rounded-2xl p-5 cursor-pointer transition border-2 ${
           agreed
-            ? "border-[--color-primary] bg-[--color-primary-soft]"
-            : "border-[--color-border] bg-white hover:border-[--color-primary]"
+            ? "border-primary bg-primary-soft"
+            : "border-border bg-white hover:border-primary"
         }`}
       >
         <input
@@ -442,8 +442,8 @@ function PledgeStep({
         <div
           className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 ${
             agreed
-              ? "bg-[--color-primary] text-white"
-              : "bg-[--color-subtle] text-[--color-muted]"
+              ? "bg-primary text-white"
+              : "bg-subtle text-muted"
           }`}
         >
           {agreed ? "✓" : ""}
@@ -478,24 +478,24 @@ function PledgeCard({
   body: string;
 }) {
   const map = {
-    blue: "bg-[--color-primary-soft] text-[--color-primary]",
-    red: "bg-[--color-red-soft] text-[--color-red]",
-    orange: "bg-[--color-orange-soft] text-[--color-orange]",
-    purple: "bg-[--color-purple-soft] text-[--color-purple]",
+    blue: "bg-primary-soft text-primary",
+    red: "bg-danger-soft text-danger",
+    orange: "bg-warning-soft text-warning",
+    purple: "bg-feature-soft text-feature",
   }[tone];
   return (
-    <div className="rounded-2xl bg-[--color-surface-soft] p-4 flex gap-4">
+    <div className="rounded-2xl bg-surface-soft p-4 flex gap-4">
       <div className={`w-11 h-11 rounded-xl ${map} flex items-center justify-center text-xl shrink-0`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-bold tracking-widest text-[--color-muted]">
+          <span className="text-[10px] font-bold tracking-widest text-muted">
             {num}
           </span>
-          <span className="font-bold text-[--color-foreground]">{title}</span>
+          <span className="font-bold text-foreground">{title}</span>
         </div>
-        <div className="text-[13px] text-[--color-muted-foreground] leading-relaxed">
+        <div className="text-[13px] text-muted-foreground leading-relaxed">
           {body}
         </div>
       </div>
@@ -516,25 +516,25 @@ function WaitingStep({ countdown }: { countdown: number }) {
         description="시험 시작 시각까지 대기해주세요. 시간이 되면 자동으로 응시 페이지로 전환됩니다."
       />
 
-      <div className="my-8 inline-block rounded-3xl bg-[--color-primary-soft] px-16 py-8">
-        <div className="text-[10px] font-bold tracking-[0.25em] text-[--color-primary] mb-3">
+      <div className="my-8 inline-block rounded-3xl bg-primary-soft px-16 py-8">
+        <div className="text-[10px] font-bold tracking-[0.25em] text-primary mb-3">
           COUNTDOWN
         </div>
-        <div className="font-tabular text-6xl font-bold text-[--color-primary] leading-none">
+        <div className="font-tabular text-6xl font-bold text-primary leading-none">
           {formatTime(countdown)}
         </div>
       </div>
 
-      <div className="max-w-md mx-auto text-sm text-[--color-muted-foreground] leading-relaxed mb-8">
-        입실 허용 시간은 시험 시작 <span className="font-bold text-[--color-primary]">3분 전</span>부터입니다. 그 이전에는 대기 상태로 유지됩니다.
+      <div className="max-w-md mx-auto text-sm text-muted-foreground leading-relaxed mb-8">
+        입실 허용 시간은 시험 시작 <span className="font-bold text-primary">3분 전</span>부터입니다. 그 이전에는 대기 상태로 유지됩니다.
       </div>
 
       <Link
         href="/applicant/exam/session-me"
         className={`inline-flex items-center justify-center h-14 px-10 rounded-2xl font-bold text-base transition ${
           canEnter
-            ? "bg-[--color-primary] hover:bg-[--color-primary-hover] text-white shadow-[var(--shadow-card)]"
-            : "bg-[--color-subtle] text-[--color-muted] pointer-events-none cursor-not-allowed"
+            ? "bg-primary hover:bg-primary-hover text-white shadow-card"
+            : "bg-subtle text-muted pointer-events-none cursor-not-allowed"
         }`}
       >
         {canEnter ? "시험 입실하기 →" : "입실 대기 중"}
@@ -556,11 +556,11 @@ function StepHeader({
 }) {
   return (
     <div className="mb-6">
-      <div className="text-xs font-bold tracking-widest text-[--color-primary] mb-2">
+      <div className="text-xs font-bold tracking-widest text-primary mb-2">
         STEP {step}
       </div>
       <h2 className="mb-2">{label}</h2>
-      <p className="text-sm text-[--color-muted-foreground]">{description}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -580,8 +580,8 @@ function CTAButton({
       disabled={disabled}
       className={`w-full h-14 rounded-2xl font-bold text-base transition ${
         disabled
-          ? "bg-[--color-subtle] text-[--color-muted] cursor-not-allowed"
-          : "bg-[--color-primary] hover:bg-[--color-primary-hover] text-white shadow-[var(--shadow-card)]"
+          ? "bg-subtle text-muted cursor-not-allowed"
+          : "bg-primary hover:bg-primary-hover text-white shadow-card"
       }`}
     >
       {children}
