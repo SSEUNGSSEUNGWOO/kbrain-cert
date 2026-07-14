@@ -61,39 +61,30 @@ export default function ExaminerMonitorPage() {
       <div className="mx-auto max-w-7xl px-6 py-6 flex gap-6">
         <main className="flex-1 min-w-0 space-y-6">
           <div className="grid grid-cols-5 gap-3">
-            <StatBig label="응시 진행" value={stats.total} unit="명" tone="blue" />
-            <StatBig label="제출 완료" value={stats.submitted} unit="명" tone="emerald" />
-            <StatBig label="주목 필요" value={stats.alerts} unit="명" tone="red" pulse />
-            <StatBig label="경고" value={stats.warns} unit="명" tone="orange" />
-            <StatBig
-              label="정상"
-              value={mockMonitorApplicants.length - stats.alerts - stats.warns}
-              unit="명"
-              tone="purple"
-            />
+            <StatBig label="Enrolled" value={stats.total} tone="primary" />
+            <StatBig label="Active" value={stats.inProgress} tone="primary" />
+            <StatBig label="Submitted" value={stats.submitted} tone="success" />
+            <StatBig label="Alerts" value={stats.alerts} tone="danger" pulse />
+            <StatBig label="Warn" value={stats.warns} tone="warning" />
           </div>
 
-          <div className="rounded-2xl bg-white p-5 shadow-card flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-danger-soft flex items-center justify-center">
-              <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-            </div>
-            <div>
-              <div className="text-sm font-bold">
-                실시간 감독 중 · 이벤트 발생 응시자는 자동 상단 배치
-              </div>
-              <div className="text-xs text-muted-foreground">
-                시선이 문제 응시자로 자연 유도됩니다
-              </div>
+          <div className="rounded-md bg-white border border-border p-4 flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-sm bg-danger-soft text-danger px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+              Live
+            </span>
+            <div className="text-sm text-muted-foreground">
+              이벤트 발생 응시자는 자동으로 상단에 확대 배치됩니다. 시선이 문제 응시자로 자연 유도됩니다.
             </div>
           </div>
 
           <Section
-            step="1"
+            step="01"
             titleKor="주목 필요"
             tag="ALERT"
             subtitle="HIGH severity · 스트림 오류 · 즉각 개입 검토"
             count={alerts.length}
-            tone="red"
+            tone="danger"
           >
             {alerts.length === 0 ? (
               <EmptyRow message="현재 주목이 필요한 응시자가 없습니다." />
@@ -113,12 +104,12 @@ export default function ExaminerMonitorPage() {
           </Section>
 
           <Section
-            step="2"
+            step="02"
             titleKor="경고"
             tag="WARN"
             subtitle="WARN severity · 관찰 유지"
             count={warns.length}
-            tone="orange"
+            tone="warning"
           >
             {warns.length === 0 ? (
               <EmptyRow message="현재 경고 응시자가 없습니다." />
@@ -138,12 +129,12 @@ export default function ExaminerMonitorPage() {
           </Section>
 
           <Section
-            step="3"
+            step="03"
             titleKor="정상"
             tag="NORMAL"
             subtitle="INFO 이하 · 존재 확인"
             count={normals.length}
-            tone="emerald"
+            tone="success"
           >
             <div className="grid grid-cols-10 gap-2">
               {normals.map((app) => (
@@ -160,18 +151,18 @@ export default function ExaminerMonitorPage() {
         </main>
 
         <aside className="w-96 shrink-0">
-          <div className="sticky top-24 rounded-2xl bg-white shadow-card overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
+          <div className="sticky top-24 rounded-md bg-white border border-border overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
             <div className="p-5 border-b border-border">
               <div className="flex items-baseline justify-between mb-3">
                 <div>
-                  <div className="text-[10px] font-bold tracking-widest text-muted">
-                    이벤트 스트림
+                  <div className="text-[10px] font-bold tracking-[0.25em] text-muted uppercase mb-1">
+                    Event Stream
                   </div>
                   <div className="font-bold text-base">실시간 감독 이벤트</div>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft text-danger px-2 py-0.5 text-[10px] font-bold">
+                <span className="inline-flex items-center gap-1 rounded-sm bg-danger-soft text-danger px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
                   <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-                  LIVE
+                  Live
                 </span>
               </div>
               <div className="flex gap-1">
@@ -180,13 +171,13 @@ export default function ExaminerMonitorPage() {
                     key={s}
                     onClick={() => setSeverityFilter(s)}
                     className={cn(
-                      "px-3 h-7 rounded-lg text-[11px] font-bold tracking-wide transition uppercase",
+                      "px-3 h-7 rounded-sm text-[10px] font-bold tracking-widest transition uppercase",
                       severityFilter === s
                         ? "bg-primary text-white"
                         : "bg-surface-soft text-muted-foreground hover:bg-subtle"
                     )}
                   >
-                    {s === "all" ? "전체" : s}
+                    {s === "all" ? "ALL" : s}
                   </button>
                 ))}
               </div>
@@ -207,7 +198,7 @@ export default function ExaminerMonitorPage() {
               )}
             </div>
             <div className="p-4 border-t border-border">
-              <button className="w-full h-11 rounded-2xl bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-card transition">
+              <button className="w-full h-10 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold transition">
                 전체 응시자에 공지 발송
               </button>
             </div>
@@ -220,27 +211,27 @@ export default function ExaminerMonitorPage() {
 
 function TopBar({ title }: { title: string }) {
   return (
-    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-border">
+    <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/90 border-b border-border">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
           <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-muted">
-              KBRAIN CERT · 감독관
+            <div className="text-[10px] font-bold tracking-[0.2em] text-muted uppercase">
+              Kbrain Cert · Examiner
             </div>
             <div className="font-bold text-sm truncate max-w-md">{title}</div>
           </div>
         </Link>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-[10px] font-bold tracking-[0.15em] text-muted">
-              감독관
+            <div className="text-[10px] font-bold tracking-[0.2em] text-muted uppercase">
+              Examiner
             </div>
             <div className="font-bold text-sm">이명희</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-info to-primary text-white flex items-center justify-center text-xs font-bold">
+          <div className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center text-xs font-bold">
             LMH
           </div>
         </div>
@@ -252,31 +243,27 @@ function TopBar({ title }: { title: string }) {
 function StatBig({
   label,
   value,
-  unit,
   tone,
   pulse = false,
 }: {
   label: string;
   value: number;
-  unit: string;
-  tone: "blue" | "emerald" | "red" | "orange" | "purple";
+  tone: "primary" | "success" | "danger" | "warning";
   pulse?: boolean;
 }) {
   const text = {
-    blue: "text-primary",
-    emerald: "text-success",
-    red: "text-danger",
-    orange: "text-warning",
-    purple: "text-primary",
+    primary: "text-primary",
+    success: "text-success",
+    danger: "text-danger",
+    warning: "text-warning",
   }[tone];
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-card">
-      <div className="text-xs font-bold text-muted-foreground mb-1">
+    <div className="rounded-md bg-white border border-border p-4">
+      <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1 uppercase">
         {label}
       </div>
       <div className="flex items-baseline gap-1">
         <div className={cn("font-tabular text-2xl font-bold", text)}>{value}</div>
-        <div className="text-sm font-bold text-muted">{unit}</div>
         {pulse && value > 0 && (
           <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse ml-1" />
         )}
@@ -299,28 +286,34 @@ function Section({
   tag: string;
   subtitle: string;
   count: number;
-  tone: "red" | "orange" | "emerald";
+  tone: "danger" | "warning" | "success";
   children: React.ReactNode;
 }) {
-  const badge = {
-    red: "bg-danger-soft text-danger",
-    orange: "bg-warning-soft text-warning",
-    emerald: "bg-success-soft text-success",
+  const dotColor = {
+    danger: "bg-danger",
+    warning: "bg-warning",
+    success: "bg-success",
+  }[tone];
+  const textColor = {
+    danger: "text-danger",
+    warning: "text-warning",
+    success: "text-success",
   }[tone];
   return (
     <section>
-      <div className="mb-3 flex items-baseline gap-3 flex-wrap">
-        <div className="w-8 h-8 rounded-lg bg-foreground text-white flex items-center justify-center text-sm font-bold tabular-nums">
+      <div className="mb-3 flex items-baseline gap-3 flex-wrap pb-2 border-b border-border">
+        <span className="font-tabular text-xs font-bold text-primary tabular-nums">
           {step}
-        </div>
-        <span className={cn("text-[11px] font-bold tracking-wider px-2 py-1 rounded-md", badge)}>
+        </span>
+        <span className={cn("text-[10px] font-bold tracking-widest uppercase", textColor)}>
           {tag}
         </span>
-        <h2 className="text-xl font-bold">{titleKor}</h2>
-        <span className="text-sm font-bold text-muted tabular-nums">
+        <h2 className="text-lg font-bold">{titleKor}</h2>
+        <span className="text-sm font-bold text-muted-foreground tabular-nums">
           {count}명
         </span>
         <span className="text-xs text-muted-foreground">· {subtitle}</span>
+        <span className={cn("ml-auto w-2 h-2 rounded-full self-center", dotColor)} />
       </div>
       {children}
     </section>
@@ -329,9 +322,8 @@ function Section({
 
 function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl bg-success-soft py-6 text-center">
-      <div className="text-2xl mb-1">🎉</div>
-      <div className="text-sm font-semibold text-success">{message}</div>
+    <div className="rounded-md border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
+      {message}
     </div>
   );
 }
@@ -351,20 +343,22 @@ function ApplicantCard({
     app.lastEvent?.severity === "high" || app.streaming === "disconnected";
   const hasWarn = app.lastEvent?.severity === "warn";
 
-  const ringClass = selected
-    ? "ring-4 ring-primary-soft"
+  const borderClass = selected
+    ? "border-primary ring-1 ring-primary-soft"
     : hasHighAlert
-    ? "ring-2 ring-danger"
+    ? "border-danger"
     : hasWarn
-    ? "ring-2 ring-warning"
-    : "";
+    ? "border-warning"
+    : "border-border";
+
+  const initial = app.applicant.name.slice(-2);
 
   return (
     <button
       onClick={onSelect}
       className={cn(
-        "text-left rounded-2xl bg-white shadow-card overflow-hidden transition hover:shadow-card-hover",
-        ringClass
+        "text-left rounded-md bg-white border overflow-hidden transition hover:shadow-card-hover",
+        borderClass
       )}
     >
       <div
@@ -377,34 +371,32 @@ function ApplicantCard({
         )}
       >
         {app.streaming !== "disconnected" && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/25">
+          <div className="absolute inset-0 flex items-center justify-center">
             <div
               className={cn(
-                size === "lg" ? "text-5xl" : size === "md" ? "text-3xl" : "text-lg"
+                "font-tabular font-bold text-white/25",
+                size === "lg" ? "text-4xl" : size === "md" ? "text-2xl" : "text-sm"
               )}
             >
-              👤
+              {initial}
             </div>
           </div>
         )}
         {app.streaming === "disconnected" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-danger">
-            <div className="text-xl">⚠</div>
-            {size !== "sm" && (
-              <div className="text-[10px] font-bold tracking-widest mt-0.5">
-                STREAM LOST
-              </div>
-            )}
+            <div className={cn("font-bold tracking-widest uppercase", size === "sm" ? "text-[8px]" : "text-[10px]")}>
+              Lost
+            </div>
           </div>
         )}
         {app.recording === "recording" && (
           <div
             className={cn(
-              "absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur px-1.5",
-              size === "sm" ? "py-0.5" : "py-1"
+              "absolute top-1.5 left-1.5 flex items-center gap-1 rounded-sm bg-black/60 backdrop-blur",
+              size === "sm" ? "px-1 py-0.5" : "px-1.5 py-0.5"
             )}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+            <span className="w-1 h-1 rounded-full bg-danger animate-pulse" />
             {size !== "sm" && (
               <span className="text-[9px] text-white font-bold tracking-wider">
                 REC
@@ -415,9 +407,9 @@ function ApplicantCard({
         {app.warningCount > 0 && (
           <div
             className={cn(
-              "absolute top-2 right-2 rounded-md bg-danger text-white font-bold flex items-center justify-center font-tabular",
+              "absolute top-1.5 right-1.5 rounded-sm bg-danger text-white font-bold flex items-center justify-center font-tabular",
               size === "lg"
-                ? "text-sm w-7 h-7"
+                ? "text-sm w-6 h-6"
                 : size === "md"
                 ? "text-xs w-5 h-5"
                 : "text-[10px] w-4 h-4"
@@ -429,7 +421,7 @@ function ApplicantCard({
         {size === "lg" && app.lastEvent && (
           <div
             className={cn(
-              "absolute bottom-0 left-0 right-0 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm",
+              "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm tracking-wider",
               app.lastEvent.severity === "high"
                 ? "bg-danger/85"
                 : app.lastEvent.severity === "warn"
@@ -477,10 +469,10 @@ function ApplicantCard({
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-subtle rounded-full overflow-hidden">
+            <div className="flex-1 h-1 bg-subtle rounded-full overflow-hidden">
               <div
                 className={cn(
-                  "h-full rounded-full",
+                  "h-full",
                   hasHighAlert
                     ? "bg-danger"
                     : hasWarn
@@ -496,11 +488,11 @@ function ApplicantCard({
           </div>
           {size === "lg" && (
             <div className="mt-3 flex gap-2">
-              <button className="flex-1 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold">
-                채팅
+              <button className="flex-1 h-8 rounded-sm bg-primary hover:bg-primary-hover text-white text-[10px] font-bold tracking-widest uppercase">
+                Chat
               </button>
-              <button className="flex-1 h-9 rounded-xl bg-surface-soft hover:bg-subtle text-foreground text-xs font-bold">
-                상세 열기
+              <button className="flex-1 h-8 rounded-sm bg-surface-soft hover:bg-subtle text-foreground text-[10px] font-bold tracking-widest uppercase">
+                Detail
               </button>
             </div>
           )}
@@ -518,13 +510,13 @@ const EVENT_LABEL: Record<ProctoringEvent["type"], string> = {
   tab_switch: "탭 전환",
   recording_error: "녹화 오류",
 };
-const EVENT_ICON: Record<ProctoringEvent["type"], string> = {
-  face_missing: "👁",
-  multiple_faces: "👥",
-  voice_detected: "🎤",
-  fullscreen_exit: "🖥",
-  tab_switch: "↗",
-  recording_error: "🔴",
+const EVENT_CODE: Record<ProctoringEvent["type"], string> = {
+  face_missing: "FM",
+  multiple_faces: "MF",
+  voice_detected: "VD",
+  fullscreen_exit: "FE",
+  tab_switch: "TS",
+  recording_error: "RE",
 };
 
 function EventItem({
@@ -552,11 +544,11 @@ function EventItem({
     >
       <div
         className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold shrink-0",
+          "w-9 h-9 rounded-sm flex items-center justify-center text-[10px] font-bold tracking-widest shrink-0",
           severityStyle
         )}
       >
-        {EVENT_ICON[event.type]}
+        {EVENT_CODE[event.type]}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2 mb-0.5">
