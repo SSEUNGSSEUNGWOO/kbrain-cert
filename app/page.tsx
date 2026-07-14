@@ -6,6 +6,32 @@ import {
   type ActivityItem,
   type ExamCard,
 } from "@/lib/mock";
+import { createAdminSupabase } from "@/lib/supabase/server";
+
+async function checkSupabase() {
+  try {
+    const supabase = createAdminSupabase();
+    const [{ data: settings, error: e1 }, { data: cats, error: e2 }, { data: grades, error: e3 }] =
+      await Promise.all([
+        supabase.from("site_settings").select("key, value"),
+        supabase.from("question_categories").select("id"),
+        supabase.from("exam_grades").select("id"),
+      ]);
+    if (e1 || e2 || e3) {
+      return { ok: false, error: (e1 ?? e2 ?? e3)?.message ?? "unknown" };
+    }
+    const map = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value]));
+    return {
+      ok: true,
+      siteTitle: map.site_title ?? "-",
+      siteSubtitle: map.site_subtitle ?? "-",
+      categoriesCount: cats?.length ?? 0,
+      gradesCount: grades?.length ?? 0,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
 
 const categoryStyle = {
   blue: "bg-primary-soft text-primary",
@@ -71,11 +97,13 @@ const prototypes = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const supa = await checkSupabase();
   return (
     <div className="min-h-screen">
       <TopNav />
       <main className="mx-auto max-w-6xl px-6 py-10">
+        <SupabaseHealth supa={supa} />
         <Hero />
 
         {/* 통계 4개 */}
@@ -238,6 +266,47 @@ function Hero() {
         가장 가까운 시험까지{" "}
         <span className="font-bold text-foreground font-tabular">02:14</span> 남았습니다. 응시 상황을 확인해주세요.
       </p>
+    </div>
+  );
+}
+
+/* ─────────── Supabase 접속 헬로월드 ─────────── */
+
+type SupaHealth = Awaited<ReturnType<typeof checkSupabase>>;
+
+function SupabaseHealth({ supa }: { supa: SupaHealth }) {
+  if (supa.ok) {
+    return (
+      <div className="mb-6 rounded-md border border-success bg-success-soft px-5 py-3 flex items-center gap-4">
+        <div className="w-8 h-8 rounded-sm bg-success text-white flex items-center justify-center font-bold text-sm">
+          ✓
+        </div>
+        <div className="text-sm">
+          <div className="font-bold text-success">
+            Supabase 연결 OK · dev 프로젝트
+          </div>
+          <div className="text-xs text-muted-foreground">
+            <b>site_title</b>: {supa.siteTitle} · <b>subtitle</b>: {supa.siteSubtitle} ·
+            categories {supa.categoriesCount}개 · grades {supa.gradesCount}개 (seed 확인)
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-6 rounded-md border border-danger bg-danger-soft px-5 py-3 flex items-start gap-4">
+      <div className="w-8 h-8 rounded-sm bg-danger text-white flex items-center justify-center font-bold text-sm shrink-0">
+        !
+      </div>
+      <div className="text-sm">
+        <div className="font-bold text-danger">Supabase 연결 실패</div>
+        <div className="text-xs text-muted-foreground font-tabular mt-1 break-all">
+          {supa.error}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          .env.local 값 확인 · dev 서버 재시작 · 마이그레이션 적용 여부 확인
+        </div>
+      </div>
     </div>
   );
 }
