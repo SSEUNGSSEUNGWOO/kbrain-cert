@@ -1,6 +1,6 @@
 # kbrain-cert — 아키텍처
 
-**핵심 목표**: 동시 응시 300명이 시험 진행하는 동안 답안 유실 0건, p95 응답 시간 500ms 이하 유지.
+**핵심 목표**: 동시 응시 300명이 시험 진행하는 동안 답안 유실 0건, p95 응답 시간 500ms 이하 유지, 실시간 화상 관찰·전면 녹화 안정 동작.
 
 ---
 
@@ -8,17 +8,23 @@
 
 | 레이어 | 기술 | 선택 이유 |
 |---|---|---|
-| Frontend / Backend | **Next.js 15 (App Router) + TypeScript** | 서버 컴포넌트로 정답 격리, Server Actions로 채점 로직 서버 격리, kbrain-ems·dataeasy와 스택 통일 |
-| UI | **shadcn/ui + Tailwind CSS + Radix Primitives** | 원본과 동일 라이브러리 → 컴포넌트 참고 이식 쉬움 |
-| 상태 관리 | **React Query (TanStack Query) v5** | 서버 상태 캐싱, 답안 저장 debounce · retry에 유리 |
-| DB · Auth · Storage · Realtime | **Supabase (Pro 티어)** | RLS로 응시자 데이터 격리, Realtime으로 감독 이벤트 · 답안 sync |
-| 감독 (얼굴) | **face-api.js (TensorFlow.js)** | 브라우저 로컬 추론, 서버 부담 0 |
-| 감독 (음성) | **WebAudio API (native)** | 브라우저 native, 라이브러리 없음 |
-| 감독 (화면) | **Fullscreen API · Page Visibility API** | 브라우저 native |
-| E2E 테스트 | **Playwright** | 원본과 동일, 다중 세션 부하 시뮬레이션도 가능 |
-| 단위 테스트 | **Vitest** | Next.js 15 호환, 빠름 |
-| 배포 | **Vercel (Frontend) + Supabase (Backend)** | 서버리스, 자동 스케일링 |
-| 코드 품질 | **ESLint (flat config) + Prettier + TypeScript strict** | |
+| Frontend / Backend | **Next.js 15 (App Router) + TypeScript** | 서버 컴포넌트로 정답 격리, Server Actions, kbrain-ems·dataeasy와 스택 통일 |
+| UI | **shadcn/ui + Tailwind CSS + Radix Primitives** | 원본과 동일 |
+| 상태 관리 | **TanStack Query v5** | 서버 상태 캐싱, 답안 저장 debounce · retry |
+| DB · Auth · Storage · Realtime | **Supabase Pro** | RLS·Realtime·PgBouncer·Storage 통합 |
+| **화상회의 (감독관 관찰)** | **Daily.co (Prime 플랜)** | 원본과 동일 (SFU, 300명 동시 스트림) |
+| **응시 녹화 스토리지** | **Cloudflare R2** + WebAssembly MediaRecorder + AWS SigV4 | 원본과 동일 (S3보다 저렴, egress 무료) |
+| **이메일 발송** | **Resend** (or Supabase Auth 내장, 최종결정 대기) | 초대 · OTP 이메일 |
+| 감독 (얼굴) | **face-api.js (TinyFaceDetector, v0.22.2)** | 브라우저 로컬 추론 (원본 유지) |
+| 감독 (음성) | **WebAudio API (native, RMS)** | native |
+| 감독 (화면) | **Fullscreen API + Page Visibility API** | native |
+| 문제 렌더링 | **remark-gfm (Markdown)** | 원본과 동일 |
+| E2E 테스트 | **Playwright** | WebRTC 부분은 실기기 리허설 필요 |
+| Unit 테스트 | **Vitest** | Next.js 15 호환 |
+| 배포 | **Vercel** (Frontend) + Supabase (Backend) + Daily.co + R2 | 서버리스 · 자동 스케일 |
+| 코드 품질 | ESLint (flat) + Prettier + TypeScript strict | |
+
+**의도적으로 제외**: AWS Rekognition (신분증 → 업로드만), Lovable Gemini (AI 채점 미사용), Zoom SDK.
 
 ---
 
@@ -27,255 +33,410 @@
 ```
 kbrain-cert/
 ├── app/
-│   ├── (admin)/                # 관리자 라우트 그룹
-│   │   ├── layout.tsx
-│   │   ├── dashboard/page.tsx
-│   │   ├── questions/          # 문제은행
-│   │   ├── question-sets/      # 세트 (proctoring_disabled 포함)
-│   │   ├── exams/              # 시험 관리
-│   │   ├── monitor/            # 실시간 모니터링
-│   │   ├── grading/            # 채점 관리
-│   │   └── results/            # 결과·통계
-│   ├── (applicant)/            # 응시자 라우트 그룹
-│   │   ├── layout.tsx
-│   │   ├── waiting/[examId]/   # 대기실
-│   │   ├── exam/[examId]/      # 응시 (타이머 · 감독)
-│   │   └── result/[examId]/    # 결과 확인
-│   ├── (grader)/               # 채점자 라우트 그룹
-│   │   ├── layout.tsx
-│   │   └── queue/              # 채점 대기열
 │   ├── (auth)/
 │   │   ├── login/
-│   │   └── callback/
+│   │   ├── callback/
+│   │   ├── reset-password/
+│   │   └── invite/[token]/            # 초대 링크 진입 → OTP
+│   ├── (admin)/                        # role=admin
+│   │   ├── layout.tsx
+│   │   ├── dashboard/
+│   │   ├── questions/                  # 문제은행
+│   │   ├── question-sets/              # 세트 (proctoring_disabled)
+│   │   ├── categories/                 # 카테고리 관리 (신규)
+│   │   ├── grades/                     # 등급 관리 (신규)
+│   │   ├── exams/                      # 시험 관리
+│   │   ├── invitations/                # 초대 명단 · 이메일 발송
+│   │   ├── identity-review/            # 신분증 사후 검토 (신규)
+│   │   ├── grading/                    # 채점 관리
+│   │   ├── results/                    # 결과 · 통계
+│   │   ├── recordings/                 # 녹화 검토
+│   │   ├── users/                      # 사용자 관리
+│   │   └── settings/                   # 사이트 설정
+│   ├── (examiner)/                     # role=examiner
+│   │   ├── layout.tsx
+│   │   ├── monitor/                    # 실시간 대시보드
+│   │   └── events/                     # 이벤트 로그
+│   ├── (grader)/                       # role=grader
+│   │   ├── layout.tsx
+│   │   ├── queue/
+│   │   └── export/                     # 답안 export (신규)
+│   ├── (applicant)/                    # role=applicant
+│   │   ├── layout.tsx
+│   │   ├── my/                         # 마이페이지
+│   │   ├── waiting/[sessionId]/        # 대기실 (환경체크 + 신분증)
+│   │   ├── exam/[sessionId]/           # 응시 (타이머 · 감독 · Daily · 녹화)
+│   │   ├── submitted/[sessionId]/
+│   │   └── result/[sessionId]/
 │   └── api/
-│       ├── proctoring/events/  # 감독 이벤트 배치 수신
-│       └── exam/submit/        # 최종 제출
+│       ├── time/                       # 서버 시간 (타이머 동기화)
+│       ├── proctoring/events/          # 감독 이벤트 배치
+│       ├── exam/submit/                # 최종 제출
+│       ├── invitation/otp/             # 초대 OTP 발송·검증
+│       ├── daily/room/                 # Daily.co 룸 생성 · 토큰
+│       ├── r2/presign/                 # R2 Presigned URL
+│       ├── r2/playback/                # R2 재생 프록시
+│       └── export/answers/             # 답안 CSV/JSON export
 ├── components/
-│   ├── ui/                     # shadcn 생성물
-│   ├── proctoring/             # FullscreenGuard, FaceMonitor, VoiceMonitor
-│   ├── exam/                   # QuestionRenderer, Timer, Navigator
-│   ├── admin/                  # 관리자 전용 위젯
+│   ├── ui/                             # shadcn
+│   ├── proctoring/                     # FaceMonitor, VoiceMonitor, FullscreenGuard, EventBatcher
+│   ├── exam/                           # QuestionRenderer, Timer, SlotAnswerPanel, MarkdownView, PolicyBanner
+│   ├── daily/                          # DailyProctor, DailyMonitorGrid
+│   ├── recording/                      # RecordingStatusBadge, RecordingChunker
+│   ├── waiting-room/                   # EnvCheck, WebcamSelector, IdentityUpload, SecurityPledge
+│   ├── admin/                          # 관리자 위젯
+│   ├── examiner/                       # MonitorGrid, MonitorPerfPanel
 │   └── grader/
 ├── lib/
-│   ├── supabase/               # server / client / middleware
-│   ├── grading/                # 점수 계산 (raw ↔ 100점 환산 헬퍼)
-│   ├── proctoring/             # 감독 이벤트 배치 · Realtime
-│   └── time/                   # 서버 시간 동기화 · 타이머 로직
-├── types/                      # DB 스키마 타입 (supabase gen types)
+│   ├── supabase/                       # server / client / middleware / rls
+│   ├── daily/                          # SDK 래퍼 · 토큰
+│   ├── r2/                             # SigV4 서명 · presign
+│   ├── resend/                         # 이메일 템플릿
+│   ├── grading/                        # score.ts (toPercentage)
+│   ├── proctoring/                     # 이벤트 배치 · Realtime
+│   ├── time/                           # 서버 시간 동기화 · 타이머
+│   └── invite/                         # 초대 토큰 · OTP
+├── types/                              # DB 타입 (supabase gen)
 ├── supabase/
 │   ├── migrations/
+│   ├── functions/                      # daily-room, r2-presign, r2-upload, r2-playback, send-guest-otp, verify-guest-otp, send-exam-invitation, delete-user
 │   └── config.toml
-├── e2e/                        # Playwright
-├── docs/                       # 현재 계획 문서들
-├── public/
+├── e2e/                                # Playwright
+├── docs/                               # MASTER_PLAN, FEATURES, ARCHITECTURE, INVENTORY, DECISIONS
+├── public/models/                      # face-api 모델 (self-host, CDN 대체)
 ├── .env.local.example
 ├── package.json
-├── next.config.ts
-├── tailwind.config.ts
-└── tsconfig.json
+└── next.config.ts / tsconfig.json / tailwind.config.ts
 ```
 
 ---
 
-## 데이터 모델 (핵심 테이블 초안)
+## 데이터 모델 (핵심 테이블)
 
 ```sql
--- 문제
+-- 사용자 & 역할
+user_roles (
+  id uuid pk, user_id uuid fk auth.users, role text
+    -- ('admin','examiner','grader','applicant')
+)
+profiles (id uuid pk fk auth.users, name, email, organization, department, position, phone)
+
+-- 카테고리 / 등급 (원본 하드코딩 해제)
+question_categories (id uuid pk, name text, color text, order_num int)
+exam_grades (id uuid pk, name text, color text, order_num int)
+
+-- 문제 & 세트
 questions (
-  id uuid pk,
-  type text check (type in ('mcq','short','essay','task')),
-  prompt text,
-  choices jsonb,             -- 객관식
-  correct_answer jsonb,      -- 서버 전용 (RLS로 응시자 access 차단)
-  rubric jsonb,              -- 서버 전용
+  id uuid pk, code text unique,
+  category_id uuid fk question_categories,
+  grade_id uuid fk exam_grades,
+  type text check (type in ('multiple_choice','short_answer','essay','file_upload','work_based')),
+  difficulty text, tags text[],
+  content text, attachments jsonb[],
+  options jsonb,               -- 객관식 [{ id, text, is_correct }]
+  correct_answer jsonb,        -- ⚠️ 서버 전용 (뷰로 격리)
+  submission_slots jsonb,      -- 슬롯형: [{ id, type, label, max_score, auto_grade, tolerance, accept }]
   max_score numeric,
+  set_id uuid fk question_sets nullable,
+  set_order int,
   created_by uuid, created_at timestamptz
 )
 
--- 문제 세트
 question_sets (
   id uuid pk,
-  title text,
-  proctoring_disabled boolean not null default false,  -- ⚠️ 최초 설계부터 포함
-  created_by uuid, created_at timestamptz
-)
-
-question_set_items (
-  set_id uuid fk,
-  question_id uuid fk,
-  order_index int,
-  primary key (set_id, question_id)
+  title text, scenario text,
+  attachments jsonb[], total_score int, order_num int,
+  category_id uuid, grade_id uuid,
+  proctoring_disabled boolean not null default false,  -- ⚠️ 이슈 #1 최초부터
+  created_at, updated_at
 )
 
 -- 시험
 exams (
   id uuid pk,
-  title text,
-  mode text check (mode in ('absolute','relative')),
-  exam_date timestamptz,     -- absolute 모드
-  duration_minutes int,      -- relative 모드
-  passing_score int,         -- (100점 환산 기준)
-  created_by uuid
+  title text, grade_id uuid,
+  exam_date timestamptz,
+  duration_minutes int,
+  max_participants int,
+  status text check (status in ('draft','open','closed')),
+  instructions text,
+  registration_mode text check (registration_mode in ('invite_only','open','hybrid')) default 'invite_only',
+  pass_score int,                        -- 100점 환산 기준
+  is_test_mode boolean default false,
+  use_absolute_end boolean default false,
+  entry_start_minutes int default 60,
+  allow_dual_monitor boolean default false,
+  skip_waiting_checks boolean default false,
+  daily_room_name text, daily_room_url text,
+  custom_texts jsonb,
+  alert_event_types text[],              -- 감독관 알림 화이트리스트
+  created_by uuid, created_at, updated_at
 )
 
-exam_sets (
-  exam_id uuid fk,
-  set_id uuid fk,
-  order_index int,
-  primary key (exam_id, set_id)
-)
+exam_sets (exam_id uuid fk, set_id uuid fk, order_num int, primary key (exam_id, set_id))
+exam_questions (exam_id uuid fk, question_id uuid fk, order_num int)
 
--- 응시
-attempts (
+-- 응시자 초대
+exam_invitations (
+  id uuid pk, exam_id uuid fk,
+  email text, name text, invite_code text unique,
+  is_used boolean default false,
+  allow_dual_monitor boolean, allow_no_webcam boolean, allow_no_screen_share boolean,
+  created_at
+)
+guest_otp_codes (invitation_id uuid fk, email text, code text, expires_at, verified boolean)
+
+-- 응시 세션
+exam_sessions (
   id uuid pk,
-  exam_id uuid fk,
-  applicant_id uuid fk,
-  start_time timestamptz,
-  submit_time timestamptz,
+  exam_id uuid fk, applicant_id uuid fk,
+  status text check (status in ('waiting','in_progress','submitted','passed','failed')),
+  start_time timestamptz, submit_time timestamptz,
+  score_total numeric,          -- raw 저장, 표시는 헬퍼로 환산
+  is_flagged boolean default false,
+  identity_image_url text,      -- 신분증 이미지 (관리자 사후 검토)
+  identity_review_status text check (identity_review_status in ('pending','approved','rejected')),
+  identity_review_note text,
+  monitoring_notes text,
+  daily_room_url text,
   auto_submitted boolean default false,
-  status text check (status in ('pending','in_progress','submitted','graded'))
+  created_at, updated_at
 )
 
+-- 답안
 answers (
-  attempt_id uuid fk,
-  question_id uuid fk,
-  response jsonb,
-  raw_score numeric,          -- 저장은 raw만
+  id uuid pk, session_id uuid fk, question_id uuid fk,
+  content text, file_url text,
+  slot_values jsonb, slot_scores jsonb,   -- 슬롯형
+  score numeric,                          -- raw
+  feedback text,
   graded_by uuid, graded_at timestamptz,
-  primary key (attempt_id, question_id)
+  submitted_at timestamptz
 )
 
 -- 감독 이벤트
-proctoring_events (
+monitoring_events (
   id bigserial pk,
-  attempt_id uuid fk,
-  event_type text,
-  payload jsonb,
-  occurred_at timestamptz,
-  severity text
+  session_id uuid fk,
+  event_type text,                        -- face_missing, multiple_faces, voice_detected, fullscreen_exit, tab_switch, screen_share_off, recording_error
+  detected_at timestamptz,
+  screenshot_url text,
+  question_index int,
+  severity text,
+  is_reviewed boolean default false, reviewer_note text
 )
--- 파티셔닝: attempt_id 기준 monthly partition (300명 * 이벤트 다수 → 커짐)
+-- session_id · 월 파티셔닝 (300명 * 이벤트 다수)
+
+-- 녹화 청크
+recording_chunks (
+  id uuid pk, session_id uuid fk,
+  kind text check (kind in ('webcam','screen')),
+  chunk_index int,
+  object_key text,                        -- R2 경로
+  mime_type text, size_bytes int, duration_ms int,
+  started_at, ended_at, created_at,
+  is_header boolean default false
+)
+
+-- 사이트 설정
+site_settings (key text pk, value text)   -- title, subtitle, footerOrg, email_from_*, ...
 ```
 
-**표시·판정 규칙 (강제)**: `lib/grading/score.ts`에 `toPercentage(raw, max)` 헬퍼 하나만 두고, 화면·CSV·DB view는 반드시 이 함수를 통해서만 100점 환산. 저장은 raw 유지.
+⚠️ **격리 뷰**:
+```sql
+create view questions_for_applicant as
+  select id, code, category_id, grade_id, type, content, attachments,
+         options,           -- 객관식 표시용 (is_correct 제거된 형태로 sanitize)
+         submission_slots,  -- 서버에서 sanitize 후 노출
+         max_score, set_id, set_order
+  from questions;
+-- correct_answer, rubric 컬럼 제외
+-- RLS: applicant role은 이 뷰만 access
+```
+
+`options` 렌더 시 `is_correct` 제거는 뷰 정의부에서 `jsonb_build_array(...)` 로 수동 재구성.
+
+**표시·판정 규칙**: `lib/grading/score.ts` 의 `toPercentage(raw, max)` 헬퍼 하나만. DB view·CSV·화면 전부 여기 통과.
 
 ---
 
 ## 데이터 격리 (원본 이슈 #2 근본 해결)
 
-**원본의 문제**: 응시자용 API가 문제 전체를 내려주고, 클라이언트에서 `correct_answer`/`rubric`을 sanitize. 운영자가 실수로 `submission_slots[].placeholder`에 정답을 넣으면 그대로 노출.
+**원본 문제**: 응시자 API가 문제 전체(정답·rubric 포함) 반환 후 클라 sanitize. 운영자가 `placeholder`에 정답 넣으면 노출.
 
-**kbrain-cert 처리**:
+**kbrain-cert 처리** (2중 방어):
 
-1. **RLS 정책 레벨**
-   - `questions` 테이블에 응시자용 컬럼 셀렉트를 제한하는 뷰 `questions_for_applicant`를 만들고, applicant role은 이 뷰만 접근 가능
-   - 뷰는 `correct_answer`, `rubric` 컬럼 제외
+1. **DB 뷰 격리**
+   - `questions_for_applicant` 뷰가 정답 컬럼을 제외
+   - RLS: applicant role은 이 뷰만 select 가능, 원본 테이블은 admin/grader/examiner만
 2. **서버 컴포넌트**
-   - `app/(applicant)/exam/[examId]/page.tsx`는 서버 컴포넌트에서 뷰를 통해 페치, 클라에는 sanitize 된 payload만 전달
+   - `app/(applicant)/exam/[sessionId]/page.tsx`는 서버에서 뷰를 통해 페치, 클라 payload에 정답 존재 자체가 없음
 3. **업로드 파서 가드**
-   - JSON 업로드 시 `submission_slots[].placeholder == correct_answer` 검사 → 경고 토스트
-
-두 계층으로 방어. 관리자가 실수해도 클라에 정답이 존재하지 않음.
+   - `placeholder == correct_answer` 검사 → 경고 토스트 (2차 방어, 예방)
 
 ---
 
 ## 300명 동시 응시 처리
 
-### 병목 예상 지점 & 대응
+### 병목 & 대응
 
 | 병목 | 예상 부하 | 대응 |
 |---|---|---|
-| 시험 시작 순간 문제 페치 300 요청 폭주 | 300 req/s (수 초 내) | Next.js `revalidate` 캐시 + Supabase RLS 뷰 응답을 Vercel Edge Cache로 캐싱 (문제 payload는 응시자 공용) |
-| 답안 저장 (문제당 debounce 3s) | 300명 * 개당 문제 = 지속적 write | React Query mutation + `PATCH /answers` upsert, Supabase PgBouncer transaction mode 커넥션 풀 |
-| 감독 이벤트 (초당 다수) | 최악 300명 * 초당 2개 = 600 write/s | 클라에서 **5초 단위 배치**로 묶어 `POST /api/proctoring/events` 1번만. 서버는 bulk insert |
-| 실시간 응시 모니터링 (관리자) | Realtime 구독 확산 | 관리자 대시보드는 5초 폴링(Realtime 대신), 상세 진입 시에만 Realtime 채널 개별 구독 |
-| 최종 제출 순간 폭주 | 시험 종료 시각 근처 300 요청 동시 | 서버 액션에서 idempotency key(`attempt_id`) 강제, 재시도 안전 |
+| 시험 시작 순간 문제 페치 | 300 req/s | `unstable_cache` + Vercel Edge Cache (문제 payload는 응시자 공용) |
+| 답안 저장 | 지속적 write (debounce 3s) | React Query mutation + PgBouncer transaction mode + upsert |
+| 감독 이벤트 | 최악 초당 600+ | 클라 **5s 배치** → bulk insert. 파티셔닝(월/세션) |
+| Daily.co 스트림 | 300 SFU 스트림 | Daily Prime 플랜, 감독관은 그리드 페이지네이션(30~50명 단위) |
+| R2 녹화 업로드 | 청크 500ms × 300명 × 2트랙 = ~1200 upload/s peak | Presigned URL로 클라 → R2 직접 업로드, 서버 개입 최소 |
+| 관리자 실시간 모니터링 | Realtime 채널 확산 | 관리자 대시보드 = 5s 폴링. Realtime은 개별 상세 진입 시만 |
+| 최종 제출 폭주 | 종료 시각 근처 300 요청 동시 | 서버 액션 idempotency key(`session_id`) |
+| Resend 이메일 발송 | 초대 명단 300건 배치 | Resend 배치 API, 백엔드 큐 |
 
-### Supabase 티어
+### 티어 요구사항
 
-- **Pro 티어 필요** (동시 커넥션 200+ · Realtime 채널 제한 상향 · PgBouncer 지원)
-- 감독 이벤트 테이블은 `attempt_id` 기준 monthly partitioning
-- Read replica는 초기엔 불필요, M5 부하테스트 결과 보고 판단
-
-### Vercel
-
-- Edge Runtime: 인증 미들웨어, 감독 이벤트 수신 API
-- Node Runtime: 채점, 파일 처리
-- 문제 payload는 `unstable_cache` + tag revalidation
+- **Supabase Pro** (커넥션 200+, PgBouncer, Realtime 상향)
+- **Daily.co Prime** (300명 동시 SFU)
+- **R2**: 저장 무제한(사용량 과금), egress 무료 (S3 대비 큰 이점)
+- **Vercel Pro** (Edge Config, longer function timeout)
 
 ### 클라이언트 최적화
 
-- 문제 세트 전체를 초기 1회에 로드 (오프라인/네트워크 순단 대비)
-- 답안은 IndexedDB에 로컬 백업 → 네트워크 복구 시 sync
-- face-api.js 모델은 CDN 캐시, 첫 로드 이후 재사용
+- 문제 전체 초기 1회 페치 → 오프라인/순단 대비
+- 답안 IndexedDB 로컬 백업 → 네트워크 복구 시 sync
+- face-api.js 모델 self-host (`public/models`), Service Worker precache
+- Daily SDK · face-api · MediaRecorder 병렬 초기화 (대기실에서 warmup)
 
 ---
 
-## 시간 동기화 (원본 이슈 #4 대응)
+## 시간 동기화 (원본 이슈 #4)
 
 `lib/time/serverClock.ts`:
 
 ```ts
-// 응시 시작 시 서버 시간 오프셋 계산
-const serverTime = await fetch('/api/time').then(r => r.json());
-const offset = serverTime - Date.now();
-
-// 타이머는 (Date.now() + offset)으로 계산
+// 대기실에서 오프셋 계산
+const t0 = Date.now();
+const { serverTime } = await fetch('/api/time').then(r => r.json());
+const t1 = Date.now();
+const rtt = t1 - t0;
+const offset = serverTime - (t0 + rtt / 2);
+// 응시 중 타이머: (Date.now() + offset)
 ```
 
-`start_time` 누락 시 처리:
-
+`recomputeTimeLeft`:
 ```ts
-async function recomputeTimeLeft(attempt) {
-  if (!attempt.start_time) {
+async function recomputeTimeLeft(session) {
+  if (!session.start_time) {
     for (let i = 0; i < 3; i++) {
-      toast('시간 동기화 재시도 중… (' + (i+1) + '/3)');
-      const fresh = await refetchAttempt();
+      toast(`시간 동기화 재시도 중… (${i+1}/3)`);
+      const fresh = await refetchSession();
       if (fresh.start_time) return computeFrom(fresh);
       await sleep(2000);
     }
     return autoSubmit();  // 3회 실패 후에만
   }
-  return computeFrom(attempt);
+  return computeFrom(session);
 }
 ```
 
-절대시간 모드는 `exam_date` 파싱 후 `isNaN(date.getTime())` 가드.
+절대시간 모드는 `isNaN(new Date(exam_date).getTime())` 가드.
 
 ---
 
-## 감독 아키텍처 (원본 이슈 #1 대응)
+## 감독 아키텍처 (원본 이슈 #1)
 
 ```
 [Browser]
-  ├─ FaceMonitor (face-api.js, 500ms interval)
-  ├─ VoiceMonitor (WebAudio RMS, 200ms interval)
-  ├─ FullscreenGuard (event listener)
+  ├─ FaceMonitor (face-api.js, 2.5s interval)
+  ├─ VoiceMonitor (WebAudio RMS, 20fps)
+  ├─ FullscreenGuard + Page Visibility
+  ├─ DailyProctor (Daily SDK: 웹캠·화면공유 send)
+  ├─ RecordingChunker (MediaRecorder 500ms → R2 presigned upload)
   │
-  └─ EventBatcher (5초 window)
-        │
+  └─ EventBatcher (5s window)
         └─→ POST /api/proctoring/events (bulk)
-              │
-              └─→ Supabase bulk insert → proctoring_events
-                    │
-                    └─→ Realtime channel → 관리자 상세 뷰
+              └─→ Supabase insert → monitoring_events
+                    └─→ Realtime → 감독관 상세 뷰
+
+[Examiner]
+  ├─ MonitorGrid (Daily SFU receive, 30~50개 그리드)
+  └─ 이벤트 알림 토스트 (alert_event_types 필터)
 ```
 
-**세트별 비활성화**:
-- `currentQuestion.set.proctoring_disabled === true`이면 감독 3개 컴포넌트 unmount + EventBatcher 정지
-- 상단 배너 렌더
-- 다음 세트로 이동 시 자동 재활성화 (컴포넌트 remount)
+**세트별 비활성화** (`proctoring_disabled=true`):
+- FaceMonitor · VoiceMonitor · FullscreenGuard 컴포넌트 unmount
+- EventBatcher 정지 (이벤트 발생 자체를 안 함)
+- Daily·녹화는 **유지** (감독관 관찰·사후 검토 목적, 응시자에겐 배너로 명시)
+- 다른 세트 이동 시 자동 재활성화 (remount)
 
 ---
 
-## 환경 변수 (초안)
+## Daily.co 통합 요약
+
+- **룸 생성**: 시험 오픈 시 `daily-room` Edge Function이 방 생성 → `exams.daily_room_url` 저장
+- **응시자 토큰**: 응시 시작 시 서명 토큰 발급 (owner=false, 화면공유 send 권한)
+- **감독관 토큰**: 감독관 로그인 시 owner=true 토큰 (모든 스트림 receive)
+- **채팅**: Daily chat API (응시자↔감독관)
+- **비용 관리**: 시험 시작 전엔 방 생성 안 함, 종료 후 방 자동 destroy
+
+## R2 녹화 통합 요약
 
 ```
-# .env.local.example
+Browser MediaRecorder
+  → 500ms chunk (webm)
+  → POST /api/r2/presign (session_id, kind, chunk_index)
+  → PUT chunk to R2 (presigned URL)
+  → POST /api/r2/confirm (metadata → recording_chunks 테이블 insert)
+
+실패 시 3회 재시도 → 실패해도 로컬 IndexedDB 큐잉 후 백그라운드 재전송
+```
+
+재생: `api/r2/playback` 서버 프록시로 R2 GET → MSE (Media Source Extension)로 청크 병합 스트리밍.
+
+## 초대 · OTP 흐름
+
+```
+관리자
+  → CSV 업로드 → exam_invitations 생성
+  → send-exam-invitation Edge Function
+       → Resend batch send (초대 링크 = /invite/{invite_code})
+
+응시자
+  → 링크 진입 → /invite/[token]
+  → 이메일 입력 → send-guest-otp (Resend 6자리 코드)
+  → OTP 입력 → verify-guest-otp
+       → Supabase Auth 세션 생성 (또는 커스텀 JWT)
+       → exam_sessions.applicant_id 연결
+```
+
+---
+
+## 환경 변수
+
+```
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=       # 서버 전용 (RLS bypass — 채점·집계용)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Next.js
+NEXT_PUBLIC_APP_URL=
+
+# Daily.co
+DAILY_API_KEY=
+DAILY_DOMAIN=
+
+# Cloudflare R2
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_BASE_URL=
+
+# Resend
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+
+# 시크릿
+OTP_SECRET=              # OTP HMAC
 ```
 
 ---
@@ -284,7 +445,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 | 리스크 | 대응 |
 |---|---|
-| face-api.js 모델 크기(~10MB) → 첫 로드 지연 | Vercel Edge Cache + Service Worker precache |
-| 300명 동시 시험 시작이 특정 초에 몰림 → thundering herd | 응시자별 시작 시각 랜덤 지연(±3s) 옵션 |
-| 브라우저별 Fullscreen/WebAudio 호환성 | Playwright 크로스브라우저 테스트 (Chrome · Edge 필수, Safari best-effort) |
-| Supabase Realtime 채널 300개 동시 → 요금·안정성 | 관리자는 폴링, 응시자는 outbound POST만 (Realtime inbound 최소화) |
+| Daily.co 300 동시 SFU 요금 급증 | Prime 플랜 견적 사전 확인, 감독관 그리드 페이지네이션으로 실제 수신 스트림 수 억제 |
+| R2 저장 무제한 → 비용 지속 증가 | 녹화 보관 정책 (기본 30일 후 자동 삭제 · 필요 시 archive 티어로 이동) |
+| 브라우저 부하 (Daily·MediaRecorder·face-api·WebAudio 동시) | 대기실 CPU 벤치마크 · 최소 사양 표시 · 저사양 응시자는 관리자 예외 승인 |
+| face-api 모델 첫 로드 지연(~10MB) | self-host + Service Worker precache + 대기실에서 warmup |
+| WebRTC (Daily) Playwright 미지원 → 자동화 어려움 | M6에 실기기 다중 노트북 리허설 |
+| Fullscreen API 브라우저 우회 가능 | 다층 이벤트(Page Visibility·pointerlock loss) 조합 + 녹화로 사후 증거 확보 |
+| Supabase Realtime 채널 300 동시 | 관리자는 폴링, 응시자는 outbound POST만 (Realtime inbound 최소화) |
+| Resend 발송 실패 (도메인 스팸 처리) | 대체 발신 도메인 · SPF/DKIM 인증 · 실패 시 관리자 대시보드에 재전송 버튼 |
+| 신분증 이미지 개인정보 | Supabase Storage 격리 버킷 · 응시 종료 후 N일 자동 삭제 · 접근 로그 |
