@@ -8,6 +8,7 @@ import { SecurityPledge } from "@/components/security-pledge";
 import { WaitingRoom } from "@/components/waiting-room";
 import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
 import { useAutoSaveAnswer } from "@/lib/hooks/use-auto-save-answer";
+import { useExamTimer, formatHms } from "@/lib/hooks/use-exam-timer";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -92,8 +93,50 @@ export function PracticeRunner({
   const [submitting, setSubmitting] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [serverStartTime, setServerStartTime] = useState<string | null>(null);
 
   const isRealExam = sessionId != null;
+
+  // exam 탭 진입 시 시작 시각 서버에서 확정 (실 시험만)
+  useEffect(() => {
+    if (tab !== "exam" || !isRealExam || !sessionId || serverStartTime) return;
+    void fetch("/api/exam/session/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.startTime) setServerStartTime(data.startTime);
+      })
+      .catch(() => {});
+  }, [tab, isRealExam, sessionId, serverStartTime]);
+
+  // Practice는 로컬 시간 기준 · exam 탭 진입 시각으로 폴백
+  const [practiceStartTime, setPracticeStartTime] = useState<string | null>(null);
+  useEffect(() => {
+    if (tab === "exam" && !isRealExam && !practiceStartTime) {
+      setPracticeStartTime(new Date().toISOString());
+    }
+  }, [tab, isRealExam, practiceStartTime]);
+
+  const effectiveStartTime = isRealExam ? serverStartTime : practiceStartTime;
+  const timer = useExamTimer(effectiveStartTime, exam.durationMinutes);
+
+  // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    if (
+      timer.expired &&
+      isRealExam &&
+      !submitting &&
+      !autoSubmittedRef.current
+    ) {
+      autoSubmittedRef.current = true;
+      void doSubmit(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.expired, isRealExam, submitting]);
   const answeredCount = Object.keys(answers).filter(
     (qId) => Object.values(answers[qId] ?? {}).some((v) => v !== "" && v != null)
   ).length;
@@ -130,9 +173,16 @@ export function PracticeRunner({
     questionsBySet[currentQ?.set_id]?.findIndex((q) => q.id === currentQ.id) ??
     -1;
 
+  const showTimer = tab === "exam";
+
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar exam={exam} slug={slug} />
+      <TopBar
+        exam={exam}
+        slug={slug}
+        timer={showTimer ? timer : null}
+        isRealExam={isRealExam}
+      />
 
       <div className="border-b border-border bg-white">
         <div className="mx-auto max-w-7xl px-6 flex gap-1 overflow-x-auto">
@@ -518,6 +568,8 @@ function TabButton({
 function TopBar({
   exam,
   slug,
+  timer,
+  isRealExam,
 }: {
   exam: {
     title: string;
@@ -526,7 +578,12 @@ function TopBar({
     grade: string;
   };
   slug: string;
+  timer: { remainingMs: number; totalMs: number; expired: boolean } | null;
+  isRealExam: boolean;
 }) {
+  const minutes = timer ? timer.remainingMs / 60000 : Number.POSITIVE_INFINITY;
+  const dangerZone = minutes < 3;
+  const warnZone = !dangerZone && minutes < 10;
   return (
     <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/90 border-b border-border">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-4">
@@ -537,11 +594,51 @@ function TopBar({
           <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-widest text-info uppercase mb-0.5">
-            Practice · 테스트 링크
+          <div
+            className={cn(
+              "text-[10px] font-bold tracking-widest uppercase mb-0.5",
+              isRealExam ? "text-danger" : "text-info"
+            )}
+          >
+            {isRealExam ? "REAL · 실 응시" : "Practice · 테스트 링크"}
           </div>
           <div className="font-bold text-sm truncate">{exam.title}</div>
         </div>
+        {timer && (
+          <div
+            className={cn(
+              "text-right leading-tight px-3 py-1.5 rounded-md",
+              dangerZone && "bg-danger-soft animate-pulse",
+              warnZone && "bg-warning-soft",
+              !dangerZone && !warnZone && "bg-info-soft"
+            )}
+          >
+            <div
+              className={cn(
+                "text-[10px] font-bold tracking-widest uppercase",
+                dangerZone
+                  ? "text-danger"
+                  : warnZone
+                  ? "text-warning"
+                  : "text-info"
+              )}
+            >
+              {timer.expired ? "시간 종료" : "남은 시간"}
+            </div>
+            <div
+              className={cn(
+                "font-tabular tabular-nums text-lg font-bold",
+                dangerZone
+                  ? "text-danger"
+                  : warnZone
+                  ? "text-warning"
+                  : "text-info"
+              )}
+            >
+              {formatHms(timer.remainingMs)}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-xs">
           {exam.grade && (
             <span className="hidden md:inline-flex text-[10px] font-bold text-primary bg-primary-soft px-2 py-1 rounded-sm">
@@ -551,10 +648,12 @@ function TopBar({
           <span className="hidden md:inline-flex text-[10px] font-bold text-muted-foreground bg-surface-soft px-2 py-1 rounded-sm">
             {exam.durationMinutes}분
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-info bg-info-soft px-2.5 py-1 rounded-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-info" />
-            답안 저장 X
-          </span>
+          {!isRealExam && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-info bg-info-soft px-2.5 py-1 rounded-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-info" />
+              답안 저장 X
+            </span>
+          )}
         </div>
       </div>
     </nav>
