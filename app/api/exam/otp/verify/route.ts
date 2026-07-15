@@ -57,38 +57,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "otp mismatch" }, { status: 400 });
   }
 
-  // OTP verified · exam_session 생성 (applicant_id는 null · invitation으로 추적)
+  // OTP verified · 기존 세션 있으면 재사용 · 없으면 신규 생성
   const nowIso = new Date().toISOString();
   await admin
     .from("guest_otp_codes")
     .update({ verified_at: nowIso })
     .eq("id", otpRow.id);
 
-  const { data: session, error: sessionErr } = await admin
+  const { data: existingSession } = await admin
     .from("exam_sessions")
-    .insert({
-      exam_id: invitation.exam_id,
-      applicant_id: null,
-      invitation_id: invitation.id,
-      status: "waiting",
-    })
-    .select("id")
-    .single();
-  if (sessionErr || !session) {
+    .select("id, submit_time")
+    .eq("invitation_id", invitation.id)
+    .maybeSingle();
+
+  if (existingSession?.submit_time) {
     return NextResponse.json(
-      { error: sessionErr?.message ?? "session create failed" },
-      { status: 500 }
+      { error: "already submitted" },
+      { status: 400 }
     );
   }
 
-  // invitation 상태 업데이트
-  await admin
-    .from("exam_invitations")
-    .update({ status: "used", used_at: nowIso })
-    .eq("id", invitation.id);
+  let sessionId: string;
+  if (existingSession) {
+    sessionId = existingSession.id;
+  } else {
+    const { data: session, error: sessionErr } = await admin
+      .from("exam_sessions")
+      .insert({
+        exam_id: invitation.exam_id,
+        applicant_id: null,
+        invitation_id: invitation.id,
+        status: "waiting",
+      })
+      .select("id")
+      .single();
+    if (sessionErr || !session) {
+      return NextResponse.json(
+        { error: sessionErr?.message ?? "session create failed" },
+        { status: 500 }
+      );
+    }
+    sessionId = session.id;
+  }
+
+  // invitation 상태 업데이트 (첫 사용 시만 used_at 설정)
+  if (invitation.status !== "used") {
+    await admin
+      .from("exam_invitations")
+      .update({ status: "used", used_at: nowIso })
+      .eq("id", invitation.id);
+  }
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, makeSessionCookieValue(session.id), {
+  cookieStore.set(SESSION_COOKIE_NAME, makeSessionCookieValue(sessionId), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -96,5 +117,9 @@ export async function POST(request: Request) {
     maxAge: COOKIE_MAX_AGE_SECONDS,
   });
 
-  return NextResponse.json({ ok: true, sessionId: session.id });
+  return NextResponse.json({
+    ok: true,
+    sessionId,
+    reconnect: !!existingSession,
+  });
 }

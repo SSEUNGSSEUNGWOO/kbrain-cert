@@ -1,6 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { createAdminSupabase } from "@/lib/supabase/server";
+import {
+  SESSION_COOKIE_NAME,
+  verifySessionCookieValue,
+} from "@/lib/exam/session-cookie";
 import { EntryFlow } from "./entry-flow";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +37,39 @@ export default async function ExamEntryPage({
     .single();
   if (!exam) return notFound();
 
+  // 유효한 세션 쿠키가 있고 · 이 초대의 세션이며 · 미제출이면 자동 재접속
+  const cookieStore = await cookies();
+  const cookieSessionId = verifySessionCookieValue(
+    cookieStore.get(SESSION_COOKIE_NAME)?.value
+  );
+  if (cookieSessionId) {
+    const { data: cookieSession } = await admin
+      .from("exam_sessions")
+      .select("id, invitation_id, submit_time")
+      .eq("id", cookieSessionId)
+      .maybeSingle();
+    if (
+      cookieSession &&
+      cookieSession.invitation_id === invitation.id &&
+      !cookieSession.submit_time
+    ) {
+      redirect(`/exam/session/${cookieSession.id}/take`);
+    }
+    if (cookieSession?.submit_time) {
+      redirect(`/exam/session/${cookieSession.id}/done`);
+    }
+  }
+
   const isExpired = invitation.status === "expired";
-  const isUsed = invitation.status === "used";
   const maskedEmail = maskEmail(invitation.email);
+  // 세션이 이미 제출된 경우만 차단 · used 상태는 재접속 허용
+  const { data: existingSession } = await admin
+    .from("exam_sessions")
+    .select("submit_time")
+    .eq("invitation_id", invitation.id)
+    .maybeSingle();
+  const alreadySubmitted = !!existingSession?.submit_time;
+  const isReconnect = invitation.status === "used" && !alreadySubmitted;
 
   return (
     <div className="min-h-screen bg-surface-soft flex flex-col">
@@ -62,17 +97,13 @@ export default async function ExamEntryPage({
           </div>
         </div>
 
-        {isUsed && (
-          <div className="rounded-md bg-warning-soft border border-warning p-5">
-            <div className="font-bold text-warning text-sm mb-1">
-              이미 사용된 초대 코드
+        {alreadySubmitted && (
+          <div className="rounded-md bg-info-soft border border-info p-5">
+            <div className="font-bold text-info text-sm mb-1">
+              이미 제출된 시험
             </div>
             <div className="text-xs text-muted-foreground">
-              이 초대는{" "}
-              {invitation.used_at
-                ? new Date(invitation.used_at).toLocaleString("ko-KR")
-                : "이미"}{" "}
-              사용되었습니다. 관리자에게 문의해주세요.
+              이 초대의 시험은 이미 제출되었습니다. 결과 이메일을 기다려주세요.
             </div>
           </div>
         )}
@@ -86,7 +117,15 @@ export default async function ExamEntryPage({
             </div>
           </div>
         )}
-        {!isUsed && !isExpired && (
+        {isReconnect && !alreadySubmitted && (
+          <div className="rounded-md bg-warning-soft border border-warning p-4 text-xs">
+            <span className="font-bold text-warning">🔄 재접속</span>{" "}
+            <span className="text-muted-foreground">
+              이전 세션이 있습니다. 이메일 · OTP를 다시 인증하면 이어서 응시할 수 있습니다.
+            </span>
+          </div>
+        )}
+        {!alreadySubmitted && !isExpired && (
           <EntryFlow
             code={code}
             maskedEmail={maskedEmail}
