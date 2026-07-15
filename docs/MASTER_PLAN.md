@@ -1,7 +1,7 @@
 # kbrain-cert — 마스터 플랜
 
-**최종 갱신**: 2026-07-14
-**소유자**: 승우님 (ohjieun25@daeasy.co.kr)
+**최종 갱신**: 2026-07-15
+**소유자**: 승우님 (sseung@kbrainc.com)
 **한 줄 요약**: 100명 동시 응시(120분·회당) 공식 자격증급 CBT 플랫폼. 원본 "AI Champion Certification System"(Lovable · 남의 코드)에서 기능 방향을 가져와 Next.js로 새로 구축. 원본 대비 개선점 4개(감독 유연성·정답 격리·점수 통일·타이머).
 
 ---
@@ -78,14 +78,34 @@
 - 문제 변경 이력 로그
 - **검증**: Playwright — 응시자용 API 응답에 `rubric` 없음을 확인
 
-### M3 — 시험 관리 + 초대 시스템 (4~6일)
+### M3 — 시험 관리 + 초대 + 응시 core loop (2026-07-15 대부분 완료)
 - **관리자 시험 관리**: 시험 CRUD, 세트 조합, 절대/상대/테스트 모드, `entry_start_minutes`, `alert_event_types`, `custom_texts`, `pass_score`
 - **초대전용 흐름**:
-  - 관리자가 명단 CSV 업로드 → `exam_invitations` 생성
-  - Resend로 초대코드 + 상시링크 이메일 발송
-  - 응시자는 링크 진입 → 이메일 OTP 검증 → 세션 생성
-- 응시자 개별 예외(듀얼 모니터 허용·웹캠 없음 허용) 설정
-- **검증**: 초대 발송→링크 진입→OTP 검증→응시 세션 생성 end-to-end
+  - [x] `POST /api/admin/invitations` — 12자 hex invite_code 발급 + `exam_invitations.status='sent'`
+  - [x] 관리자 페이지 `+ 초대 만들기` 모달 (개별 폼)
+  - [x] Resend **stub** (`lib/email/send-invitation.ts` · 콘솔 출력 · API 등록 후 4줄 교체하면 실 발송)
+  - [ ] CSV 명단 업로드 (100명 일괄) — 후속
+  - [x] `/exam/[code]` 응시자 진입 · 이메일 확인 · OTP 요청/검증
+  - [x] `POST /api/exam/otp/{request,verify}` · `guest_otp_codes` 활용
+  - [x] OTP 검증 시 `exam_sessions` 생성 + HMAC 서명 쿠키(`kbrain_exam_session`) 발급
+- **4-step 응시자 wizard** (Practice + 실 시험 공용 `PracticeRunner`)
+  - [x] Step 1 · 환경 체크 6개 항목 (듀얼모니터 → 웹캠 → 화면공유 → 네트워크 → CPU 벤치 → 브라우저)
+  - [x] Step 2 · 보안 서약 7개 항목 체크 (원본 텍스트 다듬음)
+  - [x] Step 3 · 대기실 (Practice는 즉시 · 실 시험은 `exam.exam_date` 카운트다운 후 자동 입장)
+  - [x] Step 4 · 시험창 · 웹캠/화면공유 스트림 유지 · 우측 하단 감시 뱃지
+- **Precheck 서버 저장** (A-a-i 정책 · 결정 2026-07-15)
+  - [x] `exam_sessions`에 precheck 컬럼 4개 추가 (env_result · pledge_accepted_at · waiting_entered_at · user_agent)
+  - [x] `POST /api/precheck` (스텝별 upsert · 마지막 스냅샷)
+  - [x] 관리자 초대 테이블에 "준비 상태" 컬럼 + 상세 모달 (5단 타임라인 + 환경 6항목 · UA)
+- **답안 · 타이머 · 자동 제출**
+  - [x] `POST /api/exam/answers/save` — 1.5초 debounce upsert
+  - [x] `POST /api/exam/session/start` — idempotent · start_time 서버 확정
+  - [x] `POST /api/exam/session/submit` — 수동 or `auto:true` 자동
+  - [x] 타이머 3중 방어: `useExamTimer` visibilitychange 재계산 + pg_cron 매분 만료 세션 자동 종료 + exam_date 절대 시각 통일
+- **첨부 파일 인증 3방식**: 로그인 · practice slug · 세션 쿠키(exam 소속 path만)
+- **결과 페이지** `/exam/session/[id]/done` — 응시 완료 · 소요 시간 · 채점 안내
+- 응시자 개별 예외(듀얼 모니터 허용·웹캠 없음 허용) 설정 — 스키마만 있음 · UI 후속
+- **검증**: (수동) `.env.local`에 `EXAM_SESSION_SECRET` 세팅 → SQL Editor에서 `20260715000002_exam_session_precheck.sql`, `20260715000003_auto_submit_cron.sql` 실행 → 초대 → OTP → 4-step → 답안 저장 → 시간 만료 자동 제출까지 end-to-end
 
 ### M4 — 응시 & 감독 & 녹화 (7~10일, 가장 무거움)
 - **대기실**: 환경 체크(웹캠·화면공유·CPU 벤치마크 · 마이크 미사용), 보안 서약, **신분증 이미지 업로드**(Rekognition 없음), 입실 타이밍
@@ -139,12 +159,12 @@ M0(완료) + M1(3~5일) + M2(5~7일) + M3(4~6일) + M4(7~10일) + M5(5~7일) + M
 
 ---
 
-## 미결정 (M1 진입 전 최종 확정)
+## 미결정
 
-1. ~~Daily.co 구독 플랜~~ → **Agora 확정 (2026-07-14)**. agora.io 계정·프로젝트 생성 필요
+1. ~~Daily.co 구독 플랜~~ → **Agora 확정 (2026-07-14)**
 2. **Cloudflare R2 계정 명의** — 개인/daeasy
-3. **이메일 발송 채널** — Resend vs Supabase Auth 내장
+3. **Resend 발신 이메일 주소** — 후보: `onboarding@resend.dev`(개발용) · `no-reply@kbrainc.com`(회사) · `cert@dataeasy.kr`(브랜드) — 코드는 stub 준비 완료, API 키만 넣으면 실 발송
 4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe
-5. **응시 녹화 보관 기간** — 30일 / 6개월 / 1년 (R2 비용에 직결)
-6. **GitHub private repo 생성 시점**
-7. **Vercel 프로젝트 도메인** (임시 `kbrain-cert.vercel.app`)
+5. **응시 녹화 보관 기간** — 30일 / 6개월 / 1년
+6. **Vercel 프로젝트 도메인** (임시 `kbrain-cert.vercel.app`)
+7. ~~GitHub repo~~ → **생성됨** `https://github.com/SSEUNGSSEUNGWOO/kbrain-cert.git`

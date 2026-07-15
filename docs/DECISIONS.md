@@ -1,9 +1,19 @@
 # kbrain-cert — 결정 사항 확정
 
-**최종 갱신**: 2026-07-14
+**최종 갱신**: 2026-07-15
 **목적**: `INVENTORY.md` 검토 후 승우님이 확정한 이식 방향. `FEATURES.md`·`MASTER_PLAN.md`·`ARCHITECTURE.md`는 모두 이 결정을 기반으로 작성됨.
 
-> **2026-07-14 추가 결정**:
+> **2026-07-15 추가 결정 (응시 core loop)**:
+> - **응시자 진입 = 4-step wizard** (환경 체크 → 보안 서약 → 대기실 → 시험창) — Practice/실 시험 공용 컴포넌트 하나
+> - **환경 체크 6개 항목 통과 게이팅** (1듀얼모니터·2웹캠·3화면공유·4네트워크·5CPU·6브라우저)
+> - **타이머 절대 시각 통일** — `exam.exam_date + duration_minutes`. 모든 응시자 동시 시작/종료 (개인차 X)
+> - **타이머 신뢰성 3중 방어** — 클라이언트 visibilitychange 재계산 + pg_cron 매분 서버 자동 제출 + exam_date 절대 시각
+> - **웹캠/화면공유 스트림 재연결 없음** — Step 1에서 획득 후 4스텝 내내 유지 (부모 컴포넌트가 관리)
+> - **응시자 인증 = 익명 세션 쿠키** (HMAC 서명 · 6h · `kbrain_exam_session`)
+> - **Precheck 서버 저장 = A-a-i** (실 시험만 · 스텝별 upsert · 마지막 스냅샷 덮어쓰기)
+> - **이메일 발송 = Resend stub 우선** (콘솔 출력 · API 등록 후 4줄만 교체하면 실 발송)
+
+> **2026-07-14 결정**:
 > - 문제 유형은 **작업형(work_based, 슬롯형) 한 종류만** 사용 (아래 **I** 항목)
 > - **규모: 100명 · 120분 · 회당 계산** (초기 300명 가정에서 축소)
 > - **화상회의: Daily.co → Agora로 재확정** (100명 규모에서 비용 1/6, `docs/CAPACITY.md` §1.2)
@@ -82,10 +92,46 @@
 
 ---
 
-## 미해결 (M1 진입 전 최종 확정 필요)
+## 미해결
 
-1. ~~Daily.co 견적~~ → **Agora 계정 생성 (2026-07-14 확정)** — agora.io Console에서 Seoul 프로젝트 · App ID/Certificate 발급
-2. **R2 계정** — Cloudflare 계정 및 R2 버킷 생성 (승우님 or daeasy 명의)
-3. **Resend vs Supabase Auth 이메일** — 초대 이메일 발송 채널 (Resend가 원본 방식, 브랜드 통일성 유리)
-4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe (성능/정확도 개선 여지)
-5. **응시 녹화 보관 기간** — 30일? 6개월? 1년? (R2 비용에 직결)
+1. ~~Daily.co 견적~~ → **Agora (2026-07-14 확정)**
+2. **R2 계정** — Cloudflare 계정 · R2 버킷 (승우님 or daeasy 명의)
+3. **Resend 발신 이메일** — `onboarding@resend.dev`(개발) / `no-reply@kbrainc.com`(회사) / `cert@dataeasy.kr`(브랜드) 중 승우님 결정 대기. 코드는 stub 상태
+4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe
+5. **응시 녹화 보관 기간** — 30일 / 6개월 / 1년
+
+---
+
+## 2026-07-15 결정 세부 근거
+
+### 1. 4-step wizard (환경 → 서약 → 대기실 → 시험창)
+- **원본 참조**: `AI Champion Certification System`의 `WaitingRoom.tsx` · `SecurityPledge.tsx` · 대기실 자동 입장 흐름을 참고
+- **변경점**: 원본 텍스트 8개 서약 항목 중 5번(AI 도구 항목)이 작업형 전용 프로젝트에는 부적합 → 삭제 후 7개로 축소 · "평가" → "시험" 용어 통일
+- **왜**: 응시자가 실전 전에 미리 익힐 수 있게 Practice 링크에서도 동일 흐름 재사용. 시험 당일 첫 사용이 아님
+
+### 2. 환경 체크 6개 (듀얼모니터·웹캠·화면공유·네트워크·CPU·브라우저)
+- **CPU 벤치마크 추가 이유**: 웹캠 인코딩 + 화면 공유 압축 동시 처리 시 저사양 노트북 프레임 드롭 발생 · `navigator.hardwareConcurrency` + `Math.sqrt` 5M 벤치로 스크리닝
+- **듀얼 모니터 감지**: `Window Management API` (`screen.isExtended`) · Chrome 100+ 지원 · 부정행위 예방 · 감지되면 error로 진입 차단
+- **브라우저 인식만**: 원본은 브라우저 체크 강제 · 여기선 다른 카드가 실 API로 검증하므로 브라우저 카드는 정보만 표시 (통과 조건 X)
+
+### 3. 절대 시각 통일 (exam_date 기준)
+- **원본**: `use_absolute_end` 플래그로 시험별 선택 가능
+- **결정**: 실 시험은 **절대 시각 통일이 기본**. 13:00 시작 시험이면 15:00 전원 자동 제출. 각자 다르지 않음
+- **왜**: 사후 채점·순위 비교 편의 · 감독관이 종료 시각 예측 · 공정성
+
+### 4. 타이머 신뢰성 3중 방어
+- **문제**: 브라우저 백그라운드 탭에서 setInterval throttle (Chrome 1분에 1회) · 페이지 완전 닫힘 시 자동 제출 실패
+- **1단**: `useExamTimer`에 `visibilitychange` · `focus` · `online` 리스너 → 활성화 즉시 재계산 (Date.now() 기반이라 오차 없음)
+- **2단**: `pg_cron` 매분 `auto_submit_expired_sessions()` 함수 실행 → 페이지 닫혀도 서버가 강제 종료 (`auto_submitted=true`)
+- **3단**: exam_date 절대 시각 통일 (개인차 X)
+
+### 5. 응시자 익명 세션 쿠키 (Supabase Auth 자동 가입 대신)
+- **선택**: HMAC 서명 쿠키 (`kbrain_exam_session` · 6h · HttpOnly · SameSite=Lax)
+- **왜**: 응시자마다 auth.users 생성하면 관리 복잡 · 대량 응시(100~300명) 시 계정 폭증 · `exam_sessions.invitation_id`로 추적 가능하므로 불필요
+- **보안**: `EXAM_SESSION_SECRET` 32bytes base64url · 서명 검증으로 위조 방지 · path별 exam 소속 확인 (첨부 API)
+
+### 6. Precheck 저장 A-a-i
+- **A (실 시험만)**: Practice는 응시자 불명 · 저장 노이즈. 실 시험 sessionId 있을 때만 저장. 훅 (`useSavePrecheck`)이 sessionId null이면 no-op
+- **a (스텝별 upsert)**: env 완료 시 · 서약 동의 시 · 대기실 진입 시 각각 POST. 응시자가 어느 스텝에서 이탈했는지 감독관 파악
+- **i (마지막 스냅샷)**: 재시도 이력 저장하면 UI 복잡 · 관리자는 "결과"만 필요
+- **저장 위치**: 별도 테이블 대신 `exam_sessions` 컬럼 확장 — 세션과 1:1이라 join 불필요

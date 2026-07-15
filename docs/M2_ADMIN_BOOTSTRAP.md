@@ -10,7 +10,7 @@
 
 Supabase 대시보드 → **kbrain-cert-dev** 프로젝트 → 좌측 **Authentication** → **Users** → **Add user** → **Create new user**
 
-- Email: 승우님 실제 이메일 (예: `ohjieun25@daeasy.co.kr`)
+- Email: 승우님 실제 이메일 (예: `sseung@kbrainc.com`)
 - Password: 강한 비밀번호 · **이번엔 채팅에 붙이지 마세요 · 승우님만 알기**
 - **Auto Confirm User**: ✅ 체크 (이메일 인증 skip)
 - Create user
@@ -31,7 +31,7 @@ values ('<USER_UID>', 'admin');
 insert into profiles (id, email, name, organization)
 values (
   '<USER_UID>',
-  'ohjieun25@daeasy.co.kr',
+  'sseung@kbrainc.com',
   '오지은',
   'daeasy'
 )
