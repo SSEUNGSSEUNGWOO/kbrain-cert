@@ -1,205 +1,221 @@
 import Link from "next/link";
-import {
-  mockAdminStats,
-  mockExamCards,
-  mockRecentActivity,
-  type ActivityItem,
-  type ExamCard,
-} from "@/lib/mock";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
 
-async function checkSupabase() {
-  try {
-    const supabase = createAdminSupabase();
-    const [{ data: settings, error: e1 }, { data: cats, error: e2 }, { data: grades, error: e3 }] =
-      await Promise.all([
-        supabase.from("site_settings").select("key, value"),
-        supabase.from("question_categories").select("id"),
-        supabase.from("exam_grades").select("id"),
-      ]);
-    if (e1 || e2 || e3) {
-      return { ok: false, error: (e1 ?? e2 ?? e3)?.message ?? "unknown" };
-    }
-    const map = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value]));
-    return {
-      ok: true,
-      siteTitle: map.site_title ?? "-",
-      siteSubtitle: map.site_subtitle ?? "-",
-      categoriesCount: cats?.length ?? 0,
-      gradesCount: grades?.length ?? 0,
-    };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
+export const dynamic = "force-dynamic";
+
+/* ─────────── 데이터 로드 ─────────── */
+
+async function loadDashboard() {
+  const supabase = createAdminSupabase();
+
+  const [
+    { data: settings },
+    { data: categories },
+    { data: grades },
+    { data: exams },
+    { data: sessions },
+    { data: events },
+    { count: totalQuestions },
+  ] = await Promise.all([
+    supabase.from("site_settings").select("key, value"),
+    supabase.from("question_categories").select("id, name"),
+    supabase.from("exam_grades").select("id, name"),
+    supabase
+      .from("exams")
+      .select(
+        "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, created_at"
+      )
+      .order("created_at", { ascending: false }),
+    supabase.from("exam_sessions").select("id, status"),
+    supabase
+      .from("monitoring_events")
+      .select("id, session_id, event_type, detected_at, severity")
+      .order("detected_at", { ascending: false })
+      .limit(5),
+    supabase.from("questions").select("*", { count: "exact", head: true }),
+  ]);
+
+  const settingsMap = Object.fromEntries(
+    (settings ?? []).map((s) => [s.key, s.value])
+  );
+  const gradeMap = Object.fromEntries(
+    (grades ?? []).map((g) => [g.id, g.name])
+  );
+
+  const examIds = (exams ?? []).map((e) => e.id);
+  const [{ data: examSets }, { data: examQuestions }] = examIds.length
+    ? await Promise.all([
+        supabase.from("exam_sets").select("exam_id").in("exam_id", examIds),
+        supabase
+          .from("exam_questions")
+          .select("exam_id")
+          .in("exam_id", examIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const setCount: Record<string, number> = {};
+  for (const s of examSets ?? [])
+    setCount[s.exam_id] = (setCount[s.exam_id] ?? 0) + 1;
+  const qCount: Record<string, number> = {};
+  for (const q of examQuestions ?? [])
+    qCount[q.exam_id] = (qCount[q.exam_id] ?? 0) + 1;
+
+  const stats = {
+    totalActive: (sessions ?? []).filter((s) => s.status === "in_progress")
+      .length,
+    totalSubmitted: (sessions ?? []).filter(
+      (s) => s.status === "submitted" || s.status === "passed" || s.status === "failed"
+    ).length,
+    totalAlerts: (events ?? []).filter((e) => e.severity === "high").length,
+    totalQuestions: totalQuestions ?? 0,
+    totalExams: (exams ?? []).length,
+  };
+
+  return {
+    siteTitle: settingsMap.site_title ?? "kbrain-cert",
+    categoriesCount: (categories ?? []).length,
+    gradesCount: (grades ?? []).length,
+    stats,
+    exams: (exams ?? []).slice(0, 5).map((e) => ({
+      id: e.id,
+      title: e.title,
+      status: e.status,
+      grade: e.grade_id ? gradeMap[e.grade_id] ?? "-" : "-",
+      examDate: e.exam_date,
+      durationMinutes: e.duration_minutes,
+      passScore: e.pass_score,
+      setCount: setCount[e.id] ?? 0,
+      questionCount: qCount[e.id] ?? 0,
+    })),
+    recentEvents: (events ?? []).map((e) => ({
+      id: e.id,
+      type: e.event_type,
+      severity: e.severity,
+      detectedAt: e.detected_at,
+    })),
+  };
 }
 
-const categoryStyle = {
-  blue: "bg-primary-soft text-primary",
-  purple: "bg-primary-soft text-primary",
-  emerald: "bg-success-soft text-success",
-  orange: "bg-warning-soft text-warning",
-  pink: "bg-primary-soft text-primary",
-  teal: "bg-info-soft text-info",
-} as const;
-
-const gradeStyle = {
-  emerald: {
-    dot: "bg-success",
-    bg: "bg-success-soft",
-    text: "text-success",
-  },
-  indigo: {
-    dot: "bg-primary",
-    bg: "bg-primary-soft",
-    text: "text-primary",
-  },
-  red: {
-    dot: "bg-danger",
-    bg: "bg-danger-soft",
-    text: "text-danger",
-  },
-  yellow: {
-    dot: "bg-warning",
-    bg: "bg-warning-soft",
-    text: "text-warning",
-  },
-} as const;
-
-const activityStyle = {
-  blue: { bg: "bg-primary-soft", text: "text-primary", icon: "▶" },
-  emerald: { bg: "bg-success-soft", text: "text-success", icon: "✓" },
-  orange: { bg: "bg-warning-soft", text: "text-warning", icon: "!" },
-  red: { bg: "bg-danger-soft", text: "text-danger", icon: "⚠" },
-  purple: { bg: "bg-primary-soft", text: "text-primary", icon: "+" },
-} as const;
-
-const prototypes = [
-  {
-    href: "/applicant/waiting/session-me",
-    label: "응시자 대기실",
-    role: "APPLICANT · WAITING",
-    step: "01",
-    description: "환경 체크 · 신분증 업로드 · 보안 서약 · 입실 카운트다운",
-  },
-  {
-    href: "/applicant/exam/session-me",
-    label: "응시 페이지",
-    role: "APPLICANT · EXAM",
-    step: "02",
-    description: "타이머 · 슬롯형 답안 · 감독 배지 · 세트별 감독 ON/OFF",
-  },
-  {
-    href: "/examiner/monitor",
-    label: "감독관 대시보드",
-    role: "EXAMINER · MONITOR",
-    step: "03",
-    description: "3단 알림 정렬 · 실시간 이벤트 · 개별 채팅",
-  },
-];
+/* ─────────── Page ─────────── */
 
 export default async function Home() {
   const { user } = await requireRole("admin");
-  const supa = await checkSupabase();
+  const data = await loadDashboard();
+
   return (
     <div className="min-h-screen">
-      <TopNav userEmail={user.email ?? "admin"} />
+      <TopNav userEmail={user.email ?? "admin"} siteTitle={data.siteTitle} />
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <SupabaseHealth supa={supa} />
         <Hero />
 
-        {/* 통계 4개 */}
         <div className="grid grid-cols-4 gap-3 mb-10">
           <StatCard
             label="응시 진행"
-            value={mockAdminStats.totalActive}
+            value={data.stats.totalActive}
             unit="명"
             tone="blue"
-            trend="+12"
           />
           <StatCard
             label="제출 완료"
-            value={mockAdminStats.totalSubmitted}
+            value={data.stats.totalSubmitted}
             unit="명"
             tone="emerald"
-            trend="+3"
           />
           <StatCard
             label="주목 필요"
-            value={mockAdminStats.totalAlerts}
+            value={data.stats.totalAlerts}
             unit="건"
             tone="red"
-            trend="live"
           />
           <StatCard
-            label="평균 진행"
-            value={mockAdminStats.averageProgress}
-            unit="%"
+            label="등록 시험 · 문제"
+            value={`${data.stats.totalExams}·${data.stats.totalQuestions}`}
+            unit=""
             tone="orange"
-            trend="+2"
           />
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-          {/* 진행중 시험 리스트 (2/3) */}
           <section className="col-span-2 space-y-3">
             <SectionHeader
               title="진행 · 예정 시험"
               tag="EXAMS"
               action="전체 보기"
+              href="/admin/exams"
             />
-            {mockExamCards.map((e) => (
-              <ExamListCard key={e.id} exam={e} />
-            ))}
+            {data.exams.length === 0 ? (
+              <EmptyRow message="등록된 시험이 없습니다. /admin/exams 에서 첫 시험을 등록하세요." />
+            ) : (
+              data.exams.map((e) => <ExamListCard key={e.id} exam={e} />)
+            )}
           </section>
 
-          {/* 최근 활동 (1/3) */}
           <section>
             <SectionHeader
-              title="최근 활동"
+              title="최근 감독 이벤트"
               tag="LIVE"
-              action="이벤트 로그"
+              action=""
+              href=""
             />
-            <div className="rounded-2xl bg-white p-2 shadow-card">
-              {mockRecentActivity.map((a) => (
-                <ActivityRow key={a.id} item={a} />
-              ))}
+            <div className="rounded-md bg-white border border-border p-2">
+              {data.recentEvents.length === 0 ? (
+                <div className="p-4 text-xs text-muted-foreground text-center">
+                  최근 이벤트 없음 · 시험 시작 시 실시간 표시
+                </div>
+              ) : (
+                data.recentEvents.map((e) => <ActivityRow key={e.id} item={e} />)
+              )}
             </div>
           </section>
         </div>
 
-        {/* 프로토타입 3개 링크 */}
         <section className="mt-12">
           <SectionHeader
             title="프로토타입 미리보기"
             tag="PREVIEW"
             action=""
+            href=""
           />
           <div className="grid grid-cols-3 gap-4">
-            {prototypes.map((p) => (
-              <PrototypeCard key={p.href} {...p} />
-            ))}
+            <PrototypeCard
+              href="/applicant/waiting/session-me"
+              label="응시자 대기실"
+              role="APPLICANT · WAITING"
+              step="01"
+              description="환경 체크 · 신분증 · 서약 · 입실 카운트다운"
+            />
+            <PrototypeCard
+              href="/applicant/exam/session-me"
+              label="응시 페이지"
+              role="APPLICANT · EXAM"
+              step="02"
+              description="타이머 · 슬롯형 답안 · 감독 배지"
+            />
+            <PrototypeCard
+              href="/examiner/monitor"
+              label="감독관 대시보드"
+              role="EXAMINER · MONITOR"
+              step="03"
+              description="3단 알림 정렬 · 실시간 이벤트"
+            />
           </div>
         </section>
       </main>
 
       <footer className="mx-auto max-w-6xl px-6 pb-12 pt-6 mt-8 text-sm text-muted-foreground">
-        <div className="rounded-2xl bg-surface-soft px-6 py-5 flex items-center justify-between">
+        <div className="rounded-md bg-surface-soft px-6 py-5 flex items-center justify-between">
           <div>
             <div className="font-semibold text-foreground mb-1">
-              kbrain-cert
+              {data.siteTitle}
             </div>
             <div className="text-xs">
-              승우님(daeasy) 소유 · 프로토타입 v0.3 · Toss-inspired ·
-              작업형(슬롯형) 전용 결정 반영
+              카테고리 {data.categoriesCount}개 · 등급 {data.gradesCount}개 · Supabase 실 데이터
             </div>
           </div>
           <div className="text-xs text-right">
             <div className="text-muted">최종 갱신</div>
-            <div className="font-tabular text-foreground">
-              2026.07.14
-            </div>
+            <div className="font-tabular text-foreground">2026.07.15</div>
           </div>
         </div>
       </footer>
@@ -207,9 +223,15 @@ export default async function Home() {
   );
 }
 
-/* ─────────── 최상단 네비 ─────────── */
+/* ─────────── Nav ─────────── */
 
-function TopNav({ userEmail }: { userEmail: string }) {
+function TopNav({
+  userEmail,
+  siteTitle,
+}: {
+  userEmail: string;
+  siteTitle: string;
+}) {
   const initial = userEmail.slice(0, 2).toUpperCase();
   return (
     <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-border">
@@ -218,7 +240,7 @@ function TopNav({ userEmail }: { userEmail: string }) {
           <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
             k
           </div>
-          <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
+          <div className="font-bold text-lg tracking-tight">{siteTitle}</div>
           <div className="ml-3 text-[10px] font-bold tracking-[0.15em] text-primary bg-primary-soft px-2 py-0.5 rounded-sm">
             ADMIN
           </div>
@@ -284,78 +306,32 @@ function NavItem({
   );
 }
 
-/* ─────────── 히어로 ─────────── */
-
 function Hero() {
   return (
     <div className="mb-8 pb-8 border-b border-border">
       <div className="text-[11px] font-bold text-primary mb-2 tracking-[0.2em] uppercase">
-        Dashboard · 2026.07.14
+        Dashboard · 2026.07.15
       </div>
-      <h1>오늘 3개 시험이 진행 · 예정입니다.</h1>
+      <h1>실 데이터 기반 관리자 대시보드입니다.</h1>
       <p className="mt-2 text-muted-foreground text-sm">
-        가장 가까운 시험까지{" "}
-        <span className="font-bold text-foreground font-tabular">02:14</span> 남았습니다. 응시 상황을 확인해주세요.
+        Supabase에서 실시간 조회 · 응시 세션이 시작되면 통계·이벤트가 자동 채워집니다.
       </p>
     </div>
   );
 }
 
-/* ─────────── Supabase 접속 헬로월드 ─────────── */
-
-type SupaHealth = Awaited<ReturnType<typeof checkSupabase>>;
-
-function SupabaseHealth({ supa }: { supa: SupaHealth }) {
-  if (supa.ok) {
-    return (
-      <div className="mb-6 rounded-md border border-success bg-success-soft px-5 py-3 flex items-center gap-4">
-        <div className="w-8 h-8 rounded-sm bg-success text-white flex items-center justify-center font-bold text-sm">
-          ✓
-        </div>
-        <div className="text-sm">
-          <div className="font-bold text-success">
-            Supabase 연결 OK · dev 프로젝트
-          </div>
-          <div className="text-xs text-muted-foreground">
-            <b>site_title</b>: {supa.siteTitle} · <b>subtitle</b>: {supa.siteSubtitle} ·
-            categories {supa.categoriesCount}개 · grades {supa.gradesCount}개 (seed 확인)
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="mb-6 rounded-md border border-danger bg-danger-soft px-5 py-3 flex items-start gap-4">
-      <div className="w-8 h-8 rounded-sm bg-danger text-white flex items-center justify-center font-bold text-sm shrink-0">
-        !
-      </div>
-      <div className="text-sm">
-        <div className="font-bold text-danger">Supabase 연결 실패</div>
-        <div className="text-xs text-muted-foreground font-tabular mt-1 break-all">
-          {supa.error}
-        </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          .env.local 값 확인 · dev 서버 재시작 · 마이그레이션 적용 여부 확인
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────── 통계 카드 ─────────── */
+/* ─────────── Stat Card ─────────── */
 
 function StatCard({
   label,
   value,
   unit,
   tone,
-  trend,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   unit: string;
   tone: "blue" | "emerald" | "red" | "orange";
-  trend: string;
 }) {
   const style = {
     blue: "text-primary",
@@ -363,180 +339,174 @@ function StatCard({
     red: "text-danger",
     orange: "text-warning",
   }[tone];
-  const bg = {
-    blue: "bg-primary-soft",
-    emerald: "bg-success-soft",
-    red: "bg-danger-soft",
-    orange: "bg-warning-soft",
-  }[tone];
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-card">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[13px] font-semibold text-muted-foreground">
-          {label}
-        </div>
-        <div className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${bg} ${style}`}>
-          {trend}
-        </div>
+    <div className="rounded-md bg-white border border-border p-5">
+      <div className="text-[13px] font-semibold text-muted-foreground mb-2">
+        {label}
       </div>
       <div className="flex items-baseline gap-1">
         <div className={`font-tabular text-3xl font-bold ${style}`}>
-          {value.toLocaleString()}
+          {typeof value === "number" ? value.toLocaleString() : value}
         </div>
-        <div className="text-sm font-semibold text-muted">{unit}</div>
+        {unit && (
+          <div className="text-sm font-semibold text-muted">{unit}</div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─────────── 섹션 헤더 ─────────── */
+/* ─────────── Section header ─────────── */
 
 function SectionHeader({
   title,
   tag,
   action,
+  href,
 }: {
   title: string;
   tag: string;
   action: string;
+  href: string;
 }) {
   return (
     <div className="flex items-baseline justify-between mb-3">
       <div className="flex items-baseline gap-2">
         <h2 className="text-xl font-bold">{title}</h2>
-        <div className="text-[10px] font-bold tracking-[0.15em] text-muted bg-surface-soft px-2 py-0.5 rounded-md">
+        <div className="text-[10px] font-bold tracking-[0.15em] text-muted bg-surface-soft px-2 py-0.5 rounded-sm">
           {tag}
         </div>
       </div>
-      {action && (
-        <button className="text-sm font-semibold text-primary hover:underline">
+      {action && href && (
+        <Link
+          href={href}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
           {action} →
-        </button>
+        </Link>
       )}
     </div>
   );
 }
 
-/* ─────────── 시험 리스트 카드 ─────────── */
-
-function ExamListCard({ exam }: { exam: ExamCard }) {
-  const cat = categoryStyle[exam.categoryTone];
-  const grade = gradeStyle[exam.gradeTone];
-  const registrationPct = Math.round((exam.registered / exam.capacity) * 100);
+function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-card hover:shadow-card-hover transition cursor-pointer">
+    <div className="rounded-md border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+      {message}
+    </div>
+  );
+}
+
+/* ─────────── Exam Card (실 데이터) ─────────── */
+
+type ExamRow = Awaited<ReturnType<typeof loadDashboard>>["exams"][number];
+
+const statusStyle = {
+  open: { text: "text-danger", bg: "bg-danger-soft", label: "OPEN", pulse: true },
+  draft: { text: "text-info", bg: "bg-info-soft", label: "DRAFT", pulse: false },
+  closed: {
+    text: "text-muted-foreground",
+    bg: "bg-surface-soft",
+    label: "CLOSED",
+    pulse: false,
+  },
+} as const;
+
+function ExamListCard({ exam }: { exam: ExamRow }) {
+  const status = statusStyle[exam.status as keyof typeof statusStyle] ?? statusStyle.draft;
+  const examDate = exam.examDate
+    ? new Date(exam.examDate).toISOString().slice(0, 10).replace(/-/g, ".")
+    : "미정";
+  return (
+    <div className="rounded-md bg-white border border-border p-5 hover:border-primary transition cursor-pointer">
       <div className="flex items-start gap-4 mb-3">
-        <div className={`w-11 h-11 rounded-xl ${cat} flex items-center justify-center font-bold text-sm shrink-0`}>
-          {exam.category.slice(0, 2)}
+        <div className="w-11 h-11 rounded-md bg-primary-soft text-primary flex items-center justify-center font-bold text-sm shrink-0">
+          {exam.grade.slice(0, 1)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span
-              className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md ${cat}`}
+              className={`inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-sm ${status.bg} ${status.text}`}
             >
-              {exam.category.toUpperCase()}
+              {status.pulse && (
+                <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+              )}
+              {status.label}
             </span>
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md ${grade.bg} ${grade.text}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${grade.dot}`} />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               {exam.grade}
             </span>
-            {exam.status === "live" && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-danger-soft text-danger">
-                <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-                LIVE
-              </span>
-            )}
           </div>
-          <div className="font-bold text-heading text-base mb-1 truncate">
+          <div className="font-bold text-[--color-heading] text-base mb-1 truncate">
             {exam.title}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {exam.date} · {exam.time}
+          <div className="text-xs text-muted-foreground font-tabular">
+            {examDate} · {exam.durationMinutes}분 · 합격 {exam.passScore}/100
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
-            응시 등록
-          </div>
-          <div className="flex items-baseline gap-1 mb-1.5">
-            <span className="font-tabular text-lg font-bold text-foreground">
-              {exam.registered}
-            </span>
-            <span className="text-sm text-muted">
-              / {exam.capacity}명 · {registrationPct}%
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-subtle overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${registrationPct}%` }}
-            />
-          </div>
-        </div>
-        {exam.status === "live" && exam.progress !== undefined && (
-          <div>
-            <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
-              평균 진행률
-            </div>
-            <div className="flex items-baseline gap-1 mb-1.5">
-              <span className="font-tabular text-lg font-bold text-success">
-                {exam.progress}
-              </span>
-              <span className="text-sm text-muted">%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-subtle overflow-hidden">
-              <div
-                className="h-full bg-success rounded-full"
-                style={{ width: `${exam.progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-        {exam.status === "upcoming" && (
-          <div className="flex items-end">
-            <button className="ml-auto rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-sm px-4 py-2">
-              응시자 초대
-            </button>
-          </div>
-        )}
+      <div className="grid grid-cols-3 gap-3">
+        <MiniStat label="세트" value={`${exam.setCount}`} />
+        <MiniStat label="문항" value={`${exam.questionCount}`} />
+        <MiniStat label="합격" value={`${exam.passScore}/100`} />
       </div>
     </div>
   );
 }
 
-/* ─────────── 활동 로그 아이템 ─────────── */
-
-function ActivityRow({ item }: { item: ActivityItem }) {
-  const style = activityStyle[item.tone];
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-surface-hover transition cursor-pointer">
+    <div>
+      <div className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase mb-1">
+        {label}
+      </div>
+      <div className="font-tabular text-sm font-bold text-foreground">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── Activity Row ─────────── */
+
+const eventLabel: Record<string, string> = {
+  face_missing: "얼굴 미검출",
+  multiple_faces: "복수 인원 감지",
+  fullscreen_exit: "전체화면 이탈",
+  tab_switch: "탭 전환",
+  recording_error: "녹화 오류",
+};
+
+const severityStyle: Record<string, { bg: string; text: string; icon: string }> = {
+  high: { bg: "bg-danger-soft", text: "text-danger", icon: "⚠" },
+  warn: { bg: "bg-warning-soft", text: "text-warning", icon: "!" },
+  info: { bg: "bg-primary-soft", text: "text-primary", icon: "·" },
+};
+
+type EventRow = Awaited<ReturnType<typeof loadDashboard>>["recentEvents"][number];
+
+function ActivityRow({ item }: { item: EventRow }) {
+  const style = severityStyle[item.severity] ?? severityStyle.info;
+  const label = eventLabel[item.type] ?? item.type;
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-sm hover:bg-surface-hover transition cursor-pointer">
       <div
-        className={`w-9 h-9 rounded-full ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold shrink-0`}
+        className={`w-9 h-9 rounded-sm ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold shrink-0`}
       >
         {style.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm mb-0.5">
-          <span className="font-bold">{item.actor}</span>
-          <span className="text-muted-foreground"> · {item.action}</span>
-        </div>
+        <div className="text-sm font-bold text-foreground mb-0.5">{label}</div>
         <div className="text-xs text-muted-foreground truncate">
-          {item.target}
+          {item.detectedAt}
         </div>
-      </div>
-      <div className="text-[11px] text-muted font-medium shrink-0 mt-0.5">
-        {item.time}
       </div>
     </div>
   );
 }
 
-/* ─────────── 프로토타입 카드 ─────────── */
+/* ─────────── Prototype Card ─────────── */
 
 function PrototypeCard({
   href,
@@ -554,7 +524,7 @@ function PrototypeCard({
   return (
     <Link
       href={href}
-      className="rounded-lg bg-white p-5 border border-border hover:border-primary transition cursor-pointer block group"
+      className="rounded-md bg-white p-5 border border-border hover:border-primary transition cursor-pointer block group"
     >
       <div className="flex items-baseline gap-3 mb-3">
         <div className="font-tabular text-xl font-bold text-primary tabular-nums">
