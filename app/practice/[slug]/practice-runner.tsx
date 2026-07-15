@@ -826,17 +826,51 @@ function QuestionCard({
 }) {
   return (
     <div className="rounded-md bg-white border border-border overflow-hidden">
-      <div className="px-8 py-4 border-b border-border bg-surface-soft flex items-center justify-between">
-        <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
-          문항 {question.set_order}
+      {/* 큰 문항 헤더 */}
+      <div className="px-8 py-5 border-b border-border bg-gradient-to-r from-primary-soft to-white flex items-center gap-4">
+        <div className="w-14 h-14 rounded-md bg-primary text-white flex items-center justify-center font-bold text-xl font-tabular shrink-0 shadow-sm">
+          {String(question.set_order).padStart(2, "0")}
         </div>
-        <div className="text-xs font-bold text-muted-foreground">
-          배점 {question.max_score}점
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-0.5">
+            Question · 문제
+          </div>
+          <div className="font-bold text-lg text-foreground">
+            문항 {question.set_order}
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-0.5">
+            배점
+          </div>
+          <div className="font-bold text-2xl text-primary font-tabular tabular-nums">
+            {question.max_score}
+            <span className="text-sm text-muted-foreground font-normal ml-0.5">
+              점
+            </span>
+          </div>
         </div>
       </div>
-      <div className="px-8 py-6">
-        <div className="text-[15px] leading-relaxed whitespace-pre-line text-foreground mb-6">
-          {question.content}
+
+      {/* 문제 본문 · 읽기 편한 폭 · 큰 폰트 · 넓은 줄간격 */}
+      <div className="px-8 py-8">
+        <QuestionBody content={question.content} />
+      </div>
+
+      {/* 답안 섹션 · 시각적 구분 */}
+      <div className="px-8 py-6 border-t-2 border-dashed border-border bg-surface-soft/50">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-success text-white flex items-center justify-center font-bold text-sm">
+            ✎
+          </div>
+          <div>
+            <div className="text-[10px] font-bold tracking-widest text-success uppercase mb-0.5">
+              Answer · 답안 작성
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {question.submission_slots.length}개 항목 · 자동 저장 (1.5초)
+            </div>
+          </div>
         </div>
         <SlotEditor
           slots={question.submission_slots}
@@ -845,6 +879,53 @@ function QuestionCard({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * 문제 본문 렌더러 · 가독성 최적화
+ * - 문단(빈 줄로 구분) 감지 · 문단 간 공백
+ * - 리스트(1./•/-) 자동 인식 · indent
+ * - 코드/강조는 지금 텍스트만이라 스킵
+ */
+function QuestionBody({ content }: { content: string }) {
+  const blocks = content
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  return (
+    <article className="max-w-3xl mx-auto space-y-5 text-[17px] leading-[1.85] text-foreground">
+      {blocks.map((block, i) => {
+        const lines = block.split("\n");
+        const isList = lines.every((l) =>
+          /^\s*(\d+\.|[-•·])\s+/.test(l.trim())
+        );
+        if (isList) {
+          return (
+            <ul key={i} className="space-y-2 pl-1">
+              {lines.map((line, j) => {
+                const cleaned = line.replace(/^\s*(\d+\.|[-•·])\s+/, "");
+                return (
+                  <li key={j} className="flex gap-3">
+                    <span className="text-primary font-bold shrink-0 min-w-[1.5rem]">
+                      {(line.match(/^\s*(\d+\.|[-•·])/) ?? ["•"])[0].trim()}
+                    </span>
+                    <span className="flex-1">{cleaned}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        }
+        return (
+          <p key={i} className="whitespace-pre-line">
+            {block}
+          </p>
+        );
+      })}
+    </article>
   );
 }
 
