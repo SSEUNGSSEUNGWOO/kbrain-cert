@@ -1,8 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type Status = "created" | "sent" | "used" | "expired";
+type EnvItem = { status: string; detail: string };
+type SessionInfo = {
+  id: string;
+  status: string;
+  startTime: string | null;
+  submitTime: string | null;
+  autoSubmitted: boolean;
+  envResult: Record<string, EnvItem> | null;
+  pledgeAcceptedAt: string | null;
+  waitingEnteredAt: string | null;
+  userAgent: string | null;
+};
 type Row = {
   id: string;
   name: string;
@@ -13,6 +26,7 @@ type Row = {
   status: Status;
   sentAt: string | null;
   usedAt: string | null;
+  session: SessionInfo | null;
 };
 
 type StatusFilter = "전체" | "미발송" | "발송됨" | "사용됨" | "만료";
@@ -35,6 +49,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<Row | null>(null);
 
   const filtered = useMemo(() => {
     return rows.filter((inv) => {
@@ -130,6 +145,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
             <th className="px-3 py-3">시험</th>
             <th className="px-3 py-3">초대코드</th>
             <th className="px-3 py-3">상태</th>
+            <th className="px-3 py-3">준비 상태</th>
             <th className="px-3 py-3">발송</th>
             <th className="px-5 py-3">사용</th>
           </tr>
@@ -177,6 +193,9 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                     {st.label}
                   </span>
                 </td>
+                <td className="px-3 py-3">
+                  <PrecheckSummary session={inv.session} onOpen={() => setDetail(inv)} />
+                </td>
                 <td className="px-3 py-3 text-xs text-muted-foreground font-tabular whitespace-nowrap">
                   {inv.sentAt ?? "-"}
                 </td>
@@ -189,7 +208,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           {filtered.length === 0 && (
             <tr>
               <td
-                colSpan={8}
+                colSpan={9}
                 className="px-5 py-16 text-center text-sm text-muted-foreground"
               >
                 <div className="font-bold text-foreground mb-1">
@@ -213,6 +232,259 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           {filtered.length}명 표시 · 전체 {rows.length}명
         </div>
       </div>
+
+      {detail && (
+        <PrecheckDetailModal row={detail} onClose={() => setDetail(null)} />
+      )}
     </div>
   );
+}
+
+const ENV_LABELS: Record<string, string> = {
+  monitor: "1. 듀얼 모니터",
+  webcam: "2. 웹캠",
+  screen: "3. 화면 공유",
+  network: "4. 네트워크",
+  cpu: "5. CPU",
+  browser: "6. 브라우저",
+};
+
+const STATUS_STYLE: Record<string, { color: string; label: string }> = {
+  ok: { color: "bg-success text-white", label: "OK" },
+  warn: { color: "bg-warning text-white", label: "WARN" },
+  error: { color: "bg-danger text-white", label: "ERROR" },
+  pending: { color: "bg-subtle text-muted", label: "..." },
+};
+
+function PrecheckSummary({
+  session,
+  onOpen,
+}: {
+  session: SessionInfo | null;
+  onOpen: () => void;
+}) {
+  if (!session) {
+    return (
+      <span className="text-[10px] text-muted-foreground">미접속</span>
+    );
+  }
+  const envOk =
+    session.envResult &&
+    Object.values(session.envResult).every(
+      (r) => r.status === "ok" || r.status === "warn"
+    );
+  const pledgeOk = !!session.pledgeAcceptedAt;
+  const waitingOk = !!session.waitingEnteredAt;
+  return (
+    <button
+      onClick={onOpen}
+      className="flex items-center gap-1.5 h-7 px-2 rounded-sm bg-white border border-border hover:border-primary transition"
+    >
+      <Dot label="환경" ok={!!envOk} />
+      <Dot label="서약" ok={pledgeOk} />
+      <Dot label="대기" ok={waitingOk} />
+    </button>
+  );
+}
+
+function Dot({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-bold">
+      <span
+        className={cn(
+          "w-2 h-2 rounded-full",
+          ok ? "bg-success" : "bg-subtle border border-muted"
+        )}
+      />
+      <span className={ok ? "text-foreground" : "text-muted"}>{label}</span>
+    </span>
+  );
+}
+
+function PrecheckDetailModal({
+  row,
+  onClose,
+}: {
+  row: Row;
+  onClose: () => void;
+}) {
+  const s = row.session;
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-md bg-white border border-border w-full max-w-2xl max-h-[90vh] overflow-auto"
+      >
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-0.5">
+              응시자 준비 상태
+            </div>
+            <h3 className="font-bold text-base">
+              {row.name} · {row.email}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {!s && (
+            <div className="rounded-md bg-surface-soft p-8 text-center text-sm text-muted-foreground">
+              아직 응시자가 진입하지 않았습니다.
+            </div>
+          )}
+
+          {s && (
+            <>
+              {/* 스텝 타임라인 */}
+              <div className="rounded-md border border-border overflow-hidden">
+                <TimelineRow
+                  n={1}
+                  label="환경 체크 완료"
+                  time={
+                    s.envResult ? Object.keys(s.envResult).length > 0 : false
+                  }
+                  timeLabel={s.envResult ? "저장됨" : "-"}
+                  ok={!!s.envResult}
+                />
+                <TimelineRow
+                  n={2}
+                  label="보안 서약 동의"
+                  time={!!s.pledgeAcceptedAt}
+                  timeLabel={fmtTime(s.pledgeAcceptedAt)}
+                  ok={!!s.pledgeAcceptedAt}
+                />
+                <TimelineRow
+                  n={3}
+                  label="대기실 진입"
+                  time={!!s.waitingEnteredAt}
+                  timeLabel={fmtTime(s.waitingEnteredAt)}
+                  ok={!!s.waitingEnteredAt}
+                />
+                <TimelineRow
+                  n={4}
+                  label="시험 시작"
+                  time={!!s.startTime}
+                  timeLabel={fmtTime(s.startTime)}
+                  ok={!!s.startTime}
+                />
+                <TimelineRow
+                  n={5}
+                  label={
+                    s.autoSubmitted ? "시험 제출 (시간 만료 자동)" : "시험 제출"
+                  }
+                  time={!!s.submitTime}
+                  timeLabel={fmtTime(s.submitTime)}
+                  ok={!!s.submitTime}
+                />
+              </div>
+
+              {/* 환경 체크 6개 항목 */}
+              {s.envResult && (
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-2">
+                    환경 체크 6개 항목 스냅샷
+                  </div>
+                  <div className="rounded-md border border-border overflow-hidden">
+                    {Object.entries(ENV_LABELS).map(([key, label]) => {
+                      const item = s.envResult?.[key];
+                      const style =
+                        STATUS_STYLE[item?.status ?? "pending"] ??
+                        STATUS_STYLE.pending;
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0"
+                        >
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded-sm text-[10px] font-bold w-14 text-center",
+                              style.color
+                            )}
+                          >
+                            {style.label}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold">{label}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {item?.detail ?? "-"}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 브라우저 UA */}
+              {s.userAgent && (
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-1">
+                    브라우저 UA
+                  </div>
+                  <div className="rounded-md bg-surface-soft p-3 text-[11px] font-tabular text-muted-foreground break-all">
+                    {s.userAgent}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineRow({
+  n,
+  label,
+  time,
+  timeLabel,
+  ok,
+}: {
+  n: number;
+  label: string;
+  time: boolean;
+  timeLabel: string;
+  ok: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0">
+      <div
+        className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0",
+          ok ? "bg-success text-white" : "bg-subtle text-muted"
+        )}
+      >
+        {ok ? "✓" : n}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div
+          className={cn(
+            "text-sm font-bold",
+            ok ? "text-foreground" : "text-muted"
+          )}
+        >
+          {label}
+        </div>
+      </div>
+      <div className="text-xs font-tabular text-muted-foreground whitespace-nowrap">
+        {time ? timeLabel : "-"}
+      </div>
+    </div>
+  );
+}
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("ko-KR");
 }

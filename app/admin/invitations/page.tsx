@@ -23,6 +23,53 @@ export default async function InvitationsPage() {
     supabase.from("exams").select("id, title"),
   ]);
 
+  const invitationIds = (invitations ?? []).map((i) => i.id);
+  const { data: sessions } = invitationIds.length
+    ? await supabase
+        .from("exam_sessions")
+        .select(
+          "invitation_id, id, status, start_time, submit_time, auto_submitted, precheck_env_result, precheck_pledge_accepted_at, precheck_waiting_entered_at, precheck_user_agent"
+        )
+        .in("invitation_id", invitationIds)
+    : { data: [] };
+
+  const sessionByInv: Record<string, {
+    id: string;
+    status: string;
+    startTime: string | null;
+    submitTime: string | null;
+    autoSubmitted: boolean;
+    envResult: Record<string, { status: string; detail: string }> | null;
+    pledgeAcceptedAt: string | null;
+    waitingEnteredAt: string | null;
+    userAgent: string | null;
+  }> = {};
+  for (const s of sessions ?? []) {
+    const anyS = s as {
+      invitation_id: string;
+      id: string;
+      status: string;
+      start_time: string | null;
+      submit_time: string | null;
+      auto_submitted: boolean;
+      precheck_env_result: Record<string, { status: string; detail: string }> | null;
+      precheck_pledge_accepted_at: string | null;
+      precheck_waiting_entered_at: string | null;
+      precheck_user_agent: string | null;
+    };
+    sessionByInv[anyS.invitation_id] = {
+      id: anyS.id,
+      status: anyS.status,
+      startTime: anyS.start_time,
+      submitTime: anyS.submit_time,
+      autoSubmitted: anyS.auto_submitted,
+      envResult: anyS.precheck_env_result,
+      pledgeAcceptedAt: anyS.precheck_pledge_accepted_at,
+      waitingEnteredAt: anyS.precheck_waiting_entered_at,
+      userAgent: anyS.precheck_user_agent,
+    };
+  }
+
   const examMap = Object.fromEntries((exams ?? []).map((e) => [e.id, e.title]));
   const rows = (invitations ?? []).map((inv) => ({
     id: inv.id,
@@ -34,6 +81,7 @@ export default async function InvitationsPage() {
     status: inv.status as "created" | "sent" | "used" | "expired",
     sentAt: inv.sent_at,
     usedAt: inv.used_at,
+    session: sessionByInv[inv.id] ?? null,
   }));
 
   const stats = {
