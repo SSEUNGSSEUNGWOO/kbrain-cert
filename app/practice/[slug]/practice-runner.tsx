@@ -778,41 +778,54 @@ function SetHeader({
   slug: string;
 }) {
   return (
-    <details className="rounded-md bg-white border border-border overflow-hidden group" open>
-      <summary className="px-6 py-4 border-b border-border bg-surface-soft flex items-center gap-3 cursor-pointer list-none">
-        <span className="font-tabular text-lg font-bold text-primary tabular-nums">
+    <div className="rounded-md bg-white border border-border overflow-hidden">
+      {/* Set 정보 헤더 */}
+      <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-primary-soft/60 to-white flex items-center gap-4">
+        <div className="w-12 h-12 rounded-md bg-white border-2 border-primary text-primary flex items-center justify-center font-bold text-lg font-tabular shrink-0">
           {String(setIndex + 1).padStart(2, "0")}
-        </span>
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
-            Set {setIndex + 1} · {set.title}
+          <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-0.5">
+            Set {setIndex + 1}
           </div>
-          <div className="text-xs text-muted-foreground">
-            현재 문항 {questionIndexInSet + 1} / {totalInSet} · 첨부 {set.attachments.length}개
+          <div className="font-bold text-base truncate">{set.title}</div>
+          <div className="text-[11px] text-muted-foreground font-tabular mt-0.5">
+            현재 문항 {questionIndexInSet + 1} / {totalInSet} · 첨부{" "}
+            {set.attachments.length}개
           </div>
         </div>
-        <span className="text-xs text-muted-foreground group-open:hidden">▾ 열기</span>
-        <span className="text-xs text-muted-foreground hidden group-open:inline">▴ 접기</span>
-      </summary>
+      </div>
+
+      {/* 시나리오 · 눈에 잘 띄게 강조 */}
       {set.scenario && (
-        <div className="px-6 py-4 border-b border-border bg-warning-soft/30">
-          <div className="text-[10px] font-bold tracking-widest text-warning uppercase mb-1">
-            시나리오
+        <div className="border-l-4 border-warning bg-warning-soft/40 px-6 py-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-md bg-warning text-white flex items-center justify-center text-sm font-bold">
+              ⚑
+            </div>
+            <div className="text-[11px] font-bold tracking-widest text-warning uppercase">
+              시나리오 · Scenario
+            </div>
           </div>
-          <div className="text-sm text-foreground whitespace-pre-line leading-relaxed">
+          <div className="text-[15px] text-foreground whitespace-pre-line leading-[1.8] pl-9">
             {set.scenario}
           </div>
         </div>
       )}
+
+      {/* 첨부 자료 */}
       {set.attachments.length > 0 && (
-        <div className="p-4">
+        <div className="p-4 border-t border-border">
+          <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-2">
+            첨부 자료
+          </div>
           <AttachmentViewer
             attachments={set.attachments}
             practiceSlug={slug}
           />
         </div>
       )}
-    </details>
+    </div>
   );
 }
 
