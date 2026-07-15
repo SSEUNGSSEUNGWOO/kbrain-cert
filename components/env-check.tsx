@@ -91,39 +91,35 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     }
   }, []);
 
-  // 네트워크 응답 시간
-  useEffect(() => {
-    let cancelled = false;
-    const measure = async () => {
-      try {
-        const samples: number[] = [];
-        for (let i = 0; i < 3; i++) {
-          const t0 = performance.now();
-          const res = await fetch(`/api/time?t=${Date.now()}`, {
-            cache: "no-store",
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const t1 = performance.now();
-          samples.push(t1 - t0);
-        }
-        if (cancelled) return;
-        const avg = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
-        setNetwork({
-          status: avg < 300 ? "ok" : avg < 800 ? "warn" : "error",
-          detail: `평균 ${avg}ms (${samples.map((s) => Math.round(s)).join(" · ")}ms)`,
+  // 네트워크 응답 시간 · 재측정 가능
+  const measureNetwork = async () => {
+    setNetwork({ status: "pending", detail: "측정 중…" });
+    try {
+      const samples: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const t0 = performance.now();
+        const res = await fetch(`/api/time?t=${Date.now()}`, {
+          cache: "no-store",
         });
-      } catch (err) {
-        if (cancelled) return;
-        setNetwork({
-          status: "error",
-          detail: err instanceof Error ? err.message : "실패",
-        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const t1 = performance.now();
+        samples.push(t1 - t0);
       }
-    };
-    void measure();
-    return () => {
-      cancelled = true;
-    };
+      const avg = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+      setNetwork({
+        status: avg < 300 ? "ok" : avg < 800 ? "warn" : "error",
+        detail: `평균 ${avg}ms (${samples.map((s) => Math.round(s)).join(" · ")}ms)`,
+      });
+    } catch (err) {
+      setNetwork({
+        status: "error",
+        detail: err instanceof Error ? err.message : "실패",
+      });
+    }
+  };
+
+  useEffect(() => {
+    void measureNetwork();
   }, []);
 
   // 웹캠 자동 요청
@@ -362,6 +358,7 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
       title: "네트워크",
       result: network,
       hint: "서버 왕복 시간 3회 평균. 300ms 이하 권장 · 800ms 초과 시 지연 가능.",
+      action: { label: "재측정", onClick: measureNetwork },
     },
     {
       n: 5,
