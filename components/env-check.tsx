@@ -74,6 +74,17 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
         ? "Fullscreen API 지원"
         : "Fullscreen API 미지원 · 다른 브라우저 필요",
     });
+    if (supported && fsSupported) {
+      setBrowserInfo({
+        status: "ok",
+        detail: `${browser} · 지원 브라우저 · Fullscreen OK`,
+      });
+    } else if (supported && !fsSupported) {
+      setBrowserInfo({
+        status: "error",
+        detail: `${browser} · Fullscreen API 미지원 · 다른 브라우저 필요`,
+      });
+    }
   }, []);
 
   // 네트워크 응답 시간
@@ -257,35 +268,27 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
   if (monitor.status === "error") blockers.push("듀얼 모니터");
   if (network.status === "error") blockers.push("네트워크");
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-md bg-white border border-border p-6">
-        <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
-          Step 1 · 응시 환경 체크
-        </div>
-        <h2>시험 전 브라우저·장치 확인</h2>
-        <p className="text-sm text-muted-foreground mt-2">
-          시험 당일 문제 없이 진행되도록 미리 확인해주세요. 이 페이지는 여러 번 접속하실 수 있습니다.
-        </p>
-      </div>
-
-      {/* 웹캠 프리뷰 */}
-      <div className="rounded-md bg-white border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-          <StatusDot status={webcam.status} />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold">웹캠</div>
-            <div className="text-xs text-muted-foreground truncate">
-              {webcam.detail}
-            </div>
-          </div>
-          <button
-            onClick={requestWebcam}
-            className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-xs font-bold transition"
-          >
-            재시도
-          </button>
-        </div>
+  const items: {
+    n: number;
+    title: string;
+    result: CheckResult;
+    hint: string;
+    action?: { label: string; onClick: () => void; primary?: boolean };
+    preview?: React.ReactNode;
+  }[] = [
+    {
+      n: 1,
+      title: "브라우저",
+      result: browserInfo,
+      hint: "Chrome 또는 Edge 최신 버전 권장. Fullscreen API 지원 필요.",
+    },
+    {
+      n: 2,
+      title: "웹캠",
+      result: webcam,
+      hint: "시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다.",
+      action: { label: "재시도", onClick: requestWebcam },
+      preview: (
         <div className="p-4 bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center">
           <video
             ref={videoRef}
@@ -294,86 +297,94 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
             className="w-full max-w-md aspect-video rounded-md bg-black object-cover"
           />
         </div>
-        <div className="px-6 py-3 border-t border-border text-xs text-muted-foreground">
-          시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다. 얼굴이 프리뷰에 잘 보이면 OK입니다.
+      ),
+    },
+    {
+      n: 3,
+      title: "화면 공유",
+      result: screen,
+      hint: "감독관이 응시자 화면을 실시간 관찰합니다. 팝업에서 반드시 '전체 화면'을 선택해주세요.",
+      action: {
+        label: screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트",
+        onClick: requestScreen,
+        primary: true,
+      },
+    },
+    {
+      n: 4,
+      title: "듀얼 모니터",
+      result: monitor,
+      hint: "노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요. 시험 중 감지되면 응시가 중단됩니다.",
+      action: { label: "재감지", onClick: requestMonitorCheck },
+    },
+    {
+      n: 5,
+      title: "네트워크",
+      result: network,
+      hint: "서버 왕복 시간 3회 평균. 300ms 이하 권장 · 800ms 초과 시 지연 가능.",
+    },
+  ];
+
+  const okCount = items.filter((i) => i.result.status === "ok").length;
+
+  return (
+    <div className="space-y-5">
+      {/* 헤더 · 진행 상태 */}
+      <div className="rounded-md bg-white border border-border p-6">
+        <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
+          Step 1 · 응시 환경 체크
+        </div>
+        <h2>시험 전 필수 확인 5가지</h2>
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex-1 h-2 bg-subtle rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                allGood ? "bg-success" : "bg-primary"
+              )}
+              style={{ width: `${(okCount / 5) * 100}%` }}
+            />
+          </div>
+          <div className="text-xs font-bold font-tabular text-muted-foreground">
+            {okCount} / 5
+          </div>
         </div>
       </div>
 
-      {/* 화면 공유 */}
-      <div className="rounded-md bg-white border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-          <StatusDot status={screen.status} />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold">화면 공유</div>
-            <div className="text-xs text-muted-foreground truncate">
-              {screen.detail}
+      {/* 5개 체크 카드 · 세로 스택 */}
+      {items.map((item) => (
+        <div
+          key={item.n}
+          className="rounded-md bg-white border border-border overflow-hidden"
+        >
+          <div className="px-5 py-4 flex items-center gap-4">
+            <NumberBadge n={item.n} status={item.result.status} />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold">{item.title}</div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {item.result.detail}
+              </div>
             </div>
+            {item.action && (
+              <button
+                onClick={item.action.onClick}
+                className={cn(
+                  "h-8 px-3 rounded-sm text-xs font-bold transition shrink-0",
+                  item.action.primary
+                    ? "bg-primary hover:bg-primary-hover text-white"
+                    : "bg-white border border-border hover:border-primary text-foreground"
+                )}
+              >
+                {item.action.label}
+              </button>
+            )}
           </div>
-          <button
-            onClick={requestScreen}
-            className="h-8 px-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold transition"
-          >
-            {screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트"}
-          </button>
-        </div>
-        <div className="px-6 py-3 text-xs text-muted-foreground">
-          시험 중 감독관이 응시자 화면을 실시간 관찰합니다. 버튼 클릭 시 팝업에서 <b>전체 화면</b> 선택 후 공유해주세요. 테스트만 진행하고 즉시 정지됩니다.
-        </div>
-      </div>
-
-      {/* 브라우저 & Fullscreen */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-md bg-white border border-border p-5">
-          <div className="flex items-center gap-3 mb-2">
-            <StatusDot status={browserInfo.status} />
-            <div className="text-sm font-bold">브라우저</div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {browserInfo.detail}
+          {item.preview}
+          <div className="px-5 py-3 border-t border-border text-[11px] text-muted-foreground leading-relaxed">
+            {item.hint}
           </div>
         </div>
-        <div className="rounded-md bg-white border border-border p-5">
-          <div className="flex items-center gap-3 mb-2">
-            <StatusDot status={fullscreen.status} />
-            <div className="text-sm font-bold">Fullscreen API</div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {fullscreen.detail}
-          </div>
-        </div>
-      </div>
-
-      {/* 듀얼 모니터 */}
-      <div className="rounded-md bg-white border border-border p-5">
-        <div className="flex items-center gap-3 mb-2">
-          <StatusDot status={monitor.status} />
-          <div className="text-sm font-bold flex-1">듀얼 모니터 감지</div>
-          <button
-            onClick={requestMonitorCheck}
-            className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-xs font-bold transition"
-          >
-            재감지
-          </button>
-        </div>
-        <div className="text-xs text-muted-foreground">{monitor.detail}</div>
-        <div className="text-[11px] text-muted mt-2 leading-relaxed">
-          시험 중 두 개 이상의 모니터를 사용하면 자동 감지되어 응시가 중단됩니다. 노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요.
-        </div>
-      </div>
-
-      {/* 네트워크 */}
-      <div className="rounded-md bg-white border border-border p-5">
-        <div className="flex items-center gap-3 mb-2">
-          <StatusDot status={network.status} />
-          <div className="text-sm font-bold flex-1">네트워크 응답 시간</div>
-          <div className="text-xs text-muted-foreground font-tabular">
-            {network.detail}
-          </div>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          서버 3회 왕복 평균. 300ms 이하 권장 · 800ms 초과 시 시험 중 지연 가능.
-        </div>
-      </div>
+      ))}
 
       {/* 종합 결과 + 진입 CTA */}
       <div
@@ -427,18 +438,32 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
           </button>
         )}
       </div>
+
+      {/* Fullscreen 상태 (숨김 처리 · 에러 시만 노출) */}
+      {fullscreen.status === "error" && (
+        <div className="text-xs text-danger">
+          Fullscreen API 미지원: {fullscreen.detail}
+        </div>
+      )}
     </div>
   );
 }
 
-function StatusDot({ status }: { status: CheckStatus }) {
+function NumberBadge({ n, status }: { n: number; status: CheckStatus }) {
   const style = {
-    pending: "bg-subtle border-muted",
-    ok: "bg-success",
-    warn: "bg-warning",
-    error: "bg-danger",
+    pending: "bg-subtle text-muted",
+    ok: "bg-success text-white",
+    warn: "bg-warning text-white",
+    error: "bg-danger text-white",
   }[status];
   return (
-    <div className={cn("w-3 h-3 rounded-full border shrink-0", style)} />
+    <div
+      className={cn(
+        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 font-tabular",
+        style
+      )}
+    >
+      {status === "ok" ? "✓" : n}
+    </div>
   );
 }
