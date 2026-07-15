@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Session = {
@@ -59,10 +60,17 @@ export function MonitorLive({
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connecting" | "live" | "polling"
+  >("connecting");
   const [error, setError] = useState<string | null>(null);
+  const sessionIdsRef = useRef<Set<string>>(new Set());
 
+  // 데이터 fetch (refetch)
   useEffect(() => {
     let cancelled = false;
+    let pollingId: ReturnType<typeof setInterval> | null = null;
+
     const fetchData = async () => {
       try {
         const res = await fetch(
@@ -77,6 +85,9 @@ export function MonitorLive({
         }
         setSessions(data.sessions ?? []);
         setEvents(data.events ?? []);
+        sessionIdsRef.current = new Set(
+          (data.sessions ?? []).map((s: Session) => s.sessionId)
+        );
         setLastFetched(new Date());
         setError(null);
       } catch (err) {
@@ -84,11 +95,67 @@ export function MonitorLive({
         setError(err instanceof Error ? err.message : "네트워크 오류");
       }
     };
+
     void fetchData();
-    const id = setInterval(fetchData, 5000);
+    // Realtime 실패 대비 30초 fallback 폴링
+    pollingId = setInterval(fetchData, 30_000);
+
+    // Supabase Realtime 구독
+    const supabase = createClientSupabase();
+    const channel = supabase
+      .channel(`examiner-monitor-${exam.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "monitoring_events",
+        },
+        (payload) => {
+          const sessionId = (payload.new as { session_id?: string })
+            ?.session_id;
+          if (sessionId && sessionIdsRef.current.has(sessionId)) {
+            void fetchData();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "exam_sessions",
+        },
+        (payload) => {
+          const sessionId = (payload.new as { id?: string })?.id;
+          if (sessionId && sessionIdsRef.current.has(sessionId)) {
+            void fetchData();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "exam_sessions",
+        },
+        (payload) => {
+          // 새 세션 생성 (응시자 진입) → refetch
+          const examId = (payload.new as { exam_id?: string })?.exam_id;
+          if (examId === exam.id) void fetchData();
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("live");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT")
+          setRealtimeStatus("polling");
+      });
+
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (pollingId) clearInterval(pollingId);
+      void supabase.removeChannel(channel);
     };
   }, [exam.id]);
 
@@ -142,12 +209,36 @@ export function MonitorLive({
           </div>
 
           <div className="rounded-md bg-white border border-border p-4 flex items-center gap-3 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-sm bg-danger-soft text-danger px-2 py-1 text-[10px] font-bold tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-              Live
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-bold tracking-widest uppercase",
+                realtimeStatus === "live"
+                  ? "bg-success-soft text-success"
+                  : realtimeStatus === "polling"
+                  ? "bg-warning-soft text-warning"
+                  : "bg-info-soft text-info"
+              )}
+            >
+              <span
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full animate-pulse",
+                  realtimeStatus === "live"
+                    ? "bg-success"
+                    : realtimeStatus === "polling"
+                    ? "bg-warning"
+                    : "bg-info"
+                )}
+              />
+              {realtimeStatus === "live"
+                ? "Realtime"
+                : realtimeStatus === "polling"
+                ? "Polling"
+                : "Connecting"}
             </span>
             <div className="text-xs text-muted-foreground flex-1">
-              5초마다 자동 갱신 · 이벤트 발생 응시자는 자동으로 상단에 확대 배치됩니다
+              {realtimeStatus === "live"
+                ? "Supabase Realtime 구독 중 · 이벤트 발생 즉시 반영"
+                : "30초 fallback 폴링 · Realtime 연결 대기"}
             </div>
             {error && (
               <span className="text-[10px] font-bold text-danger">
