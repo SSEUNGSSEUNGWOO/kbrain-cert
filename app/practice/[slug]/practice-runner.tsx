@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
 import { EnvCheck } from "@/components/env-check";
+import { SecurityPledge } from "@/components/security-pledge";
+import { WaitingRoom } from "@/components/waiting-room";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -33,7 +35,7 @@ type Set = {
   attachments: Attachment[];
 };
 
-type Tab = "env" | "questions";
+type Tab = "env" | "pledge" | "waiting" | "exam";
 
 export function PracticeRunner({
   slug,
@@ -54,6 +56,8 @@ export function PracticeRunner({
 }) {
   const [tab, setTab] = useState<Tab>("env");
   const [envPassed, setEnvPassed] = useState(false);
+  const [pledgePassed, setPledgePassed] = useState(false);
+  const [waitingReady, setWaitingReady] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
 
@@ -89,24 +93,40 @@ export function PracticeRunner({
       <TopBar exam={exam} slug={slug} />
 
       <div className="border-b border-border bg-white">
-        <div className="mx-auto max-w-7xl px-6 flex gap-1">
+        <div className="mx-auto max-w-7xl px-6 flex gap-1 overflow-x-auto">
           <TabButton
             active={tab === "env"}
             onClick={() => setTab("env")}
             label="1. 환경 체크"
-            hint="웹캠·화면공유·브라우저·네트워크"
+            hint="6개 항목 자동 검사"
             done={envPassed}
           />
           <TabButton
-            active={tab === "questions"}
-            onClick={() => envPassed && setTab("questions")}
-            label="2. 문항 미리보기"
-            hint={
-              envPassed
-                ? `${questions.length}문항 · ${sets.length}세트`
-                : "환경 체크 통과 후 이용 가능"
-            }
+            active={tab === "pledge"}
+            onClick={() => envPassed && setTab("pledge")}
+            label="2. 보안 서약"
+            hint={envPassed ? "7개 유의사항 동의" : "환경 체크 후 이용"}
+            done={pledgePassed}
             disabled={!envPassed}
+          />
+          <TabButton
+            active={tab === "waiting"}
+            onClick={() => pledgePassed && setTab("waiting")}
+            label="3. 대기실"
+            hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
+            done={waitingReady}
+            disabled={!pledgePassed}
+          />
+          <TabButton
+            active={tab === "exam"}
+            onClick={() => waitingReady && setTab("exam")}
+            label="4. 시험창"
+            hint={
+              waitingReady
+                ? `${questions.length}문항 · ${sets.length}세트`
+                : "대기실에서 입장"
+            }
+            disabled={!waitingReady}
           />
         </div>
       </div>
@@ -120,13 +140,37 @@ export function PracticeRunner({
             setScreenStream={setScreenStream}
             onEnterExam={() => {
               setEnvPassed(true);
-              setTab("questions");
+              setTab("pledge");
             }}
           />
         </div>
       )}
 
-      {tab === "questions" && (
+      {tab === "pledge" && (
+        <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
+          <SecurityPledge
+            onProceed={() => {
+              setPledgePassed(true);
+              setTab("waiting");
+            }}
+          />
+        </div>
+      )}
+
+      {tab === "waiting" && (
+        <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
+          <WaitingRoom
+            exam={exam}
+            isPractice={true}
+            onEnter={() => {
+              setWaitingReady(true);
+              setTab("exam");
+            }}
+          />
+        </div>
+      )}
+
+      {tab === "exam" && (
       <div className="flex-1 mx-auto max-w-7xl w-full px-6 py-6 flex gap-6">
         {/* 감시 스트림 상시 표시 · 우측 하단 · 감독관 감시 중임을 시각화 */}
         <MonitoringBadge
