@@ -323,26 +323,13 @@ function QuestionCard({
 }) {
   return (
     <div className="rounded-md bg-white border border-border overflow-hidden">
-      <div className="px-8 py-4 border-b border-border bg-surface-soft flex items-center gap-3 flex-wrap">
+      <div className="px-8 py-4 border-b border-border bg-surface-soft flex items-center gap-3">
         <div className="font-tabular text-xs font-bold text-primary bg-primary-soft px-2 py-1 rounded-sm">
           {question.code}
         </div>
         <div className="text-xs font-bold text-muted-foreground">
           배점 {question.max_score}점
         </div>
-        {question.difficulty && (
-          <span className="text-[10px] font-bold tracking-widest text-muted bg-surface-soft px-2 py-0.5 rounded-sm uppercase">
-            {question.difficulty}
-          </span>
-        )}
-        {question.tags.slice(0, 4).map((t) => (
-          <span
-            key={t}
-            className="text-[10px] font-bold text-muted-foreground bg-surface-soft px-1.5 py-0.5 rounded-sm"
-          >
-            #{t}
-          </span>
-        ))}
       </div>
       <div className="px-8 py-6">
         <div className="text-[15px] leading-relaxed whitespace-pre-line text-foreground mb-6">
