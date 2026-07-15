@@ -53,6 +53,7 @@ export function PracticeRunner({
   questions: Question[];
 }) {
   const [tab, setTab] = useState<Tab>("env");
+  const [envPassed, setEnvPassed] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
 
@@ -81,21 +82,32 @@ export function PracticeRunner({
           <TabButton
             active={tab === "env"}
             onClick={() => setTab("env")}
-            label="환경 체크"
+            label="1. 환경 체크"
             hint="웹캠·화면공유·브라우저·네트워크"
+            done={envPassed}
           />
           <TabButton
             active={tab === "questions"}
-            onClick={() => setTab("questions")}
-            label="문항 미리보기"
-            hint={`${questions.length}문항 · ${sets.length}세트`}
+            onClick={() => envPassed && setTab("questions")}
+            label="2. 문항 미리보기"
+            hint={
+              envPassed
+                ? `${questions.length}문항 · ${sets.length}세트`
+                : "환경 체크 통과 후 이용 가능"
+            }
+            disabled={!envPassed}
           />
         </div>
       </div>
 
       {tab === "env" && (
         <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
-          <EnvCheck />
+          <EnvCheck
+            onEnterExam={() => {
+              setEnvPassed(true);
+              setTab("questions");
+            }}
+          />
         </div>
       )}
 
@@ -168,24 +180,44 @@ function TabButton({
   onClick,
   label,
   hint,
+  done,
+  disabled,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   hint: string;
+  done?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         "px-5 py-3 border-b-2 transition text-left",
-        active
-          ? "border-primary text-primary"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+        active && !disabled && "border-primary text-primary",
+        !active &&
+          !disabled &&
+          "border-transparent text-muted-foreground hover:text-foreground",
+        disabled && "border-transparent text-muted cursor-not-allowed opacity-50"
       )}
     >
-      <div className={cn("text-sm font-bold", active && "text-primary")}>
-        {label}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "text-sm font-bold",
+            active && !disabled && "text-primary",
+            disabled && "text-muted"
+          )}
+        >
+          {label}
+        </div>
+        {done && (
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-success text-white text-[9px] font-bold">
+            ✓
+          </span>
+        )}
       </div>
       <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
     </button>

@@ -16,8 +16,10 @@ type CheckResult = {
  * - 화면공유: getDisplayMedia · 사용자 클릭 필요
  * - 브라우저: navigator + fullscreen 지원 여부
  * - 네트워크: fetch로 응답 시간 측정
+ *
+ * onEnterExam 콜백이 있으면 통과 시 CTA 버튼 표시
  */
-export function EnvCheck() {
+export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [browserInfo, setBrowserInfo] = useState<CheckResult>({
     status: "pending",
@@ -168,10 +170,20 @@ export function EnvCheck() {
     }
   };
 
-  const allGood =
+  const requiredOk =
     webcam.status === "ok" &&
+    screen.status === "ok" &&
     fullscreen.status === "ok" &&
     browserInfo.status === "ok";
+  const networkOk = network.status !== "error";
+  const allGood = requiredOk && networkOk;
+
+  const blockers: string[] = [];
+  if (webcam.status !== "ok") blockers.push("웹캠");
+  if (screen.status !== "ok") blockers.push("화면 공유");
+  if (browserInfo.status !== "ok") blockers.push("브라우저");
+  if (fullscreen.status !== "ok") blockers.push("Fullscreen API");
+  if (network.status === "error") blockers.push("네트워크");
 
   return (
     <div className="space-y-6">
@@ -273,7 +285,7 @@ export function EnvCheck() {
         </div>
       </div>
 
-      {/* 종합 결과 */}
+      {/* 종합 결과 + 진입 CTA */}
       <div
         className={cn(
           "rounded-md p-5 border-2",
@@ -282,7 +294,7 @@ export function EnvCheck() {
             : "border-warning bg-warning-soft"
         )}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <div
             className={cn(
               "w-10 h-10 rounded-sm flex items-center justify-center font-bold text-lg",
@@ -292,16 +304,38 @@ export function EnvCheck() {
             {allGood ? "✓" : "!"}
           </div>
           <div className="flex-1">
-            <div className={cn("font-bold text-sm", allGood ? "text-success" : "text-warning")}>
-              {allGood ? "모든 항목 정상" : "일부 항목 확인 필요"}
+            <div
+              className={cn(
+                "font-bold text-sm",
+                allGood ? "text-success" : "text-warning"
+              )}
+            >
+              {allGood ? "환경 체크 통과" : "환경 체크 미완료"}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {allGood
-                ? "이 환경에서 시험을 정상적으로 응시할 수 있습니다."
-                : "위의 항목 중 실패·경고가 있으면 조치 후 재시도해주세요."}
+                ? "모든 항목이 정상입니다. 아래 버튼으로 시험창으로 이동하세요."
+                : `아직 통과하지 못한 항목: ${blockers.join(", ")}`}
             </div>
           </div>
         </div>
+
+        {onEnterExam && (
+          <button
+            onClick={onEnterExam}
+            disabled={!allGood}
+            className={cn(
+              "w-full h-14 rounded-md font-bold text-base transition",
+              allGood
+                ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
+                : "bg-subtle text-muted cursor-not-allowed"
+            )}
+          >
+            {allGood
+              ? "시험창으로 진입 →"
+              : "위 항목을 모두 통과해야 진입 가능"}
+          </button>
+        )}
       </div>
     </div>
   );
