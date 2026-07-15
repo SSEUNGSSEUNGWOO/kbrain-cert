@@ -7,6 +7,7 @@ import { EnvCheck, type EnvResultSnapshot } from "@/components/env-check";
 import { SecurityPledge } from "@/components/security-pledge";
 import { WaitingRoom } from "@/components/waiting-room";
 import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
+import { useAutoSaveAnswer } from "@/lib/hooks/use-auto-save-answer";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -79,6 +80,42 @@ export function PracticeRunner({
 
   const currentQ = questions[currentIdx];
   const currentSet = sets.find((s) => s.id === currentQ?.set_id);
+  const currentAnswer = currentQ ? answers[currentQ.id] ?? {} : {};
+
+  // 답안 auto-save · sessionId 없으면 no-op (Practice)
+  const { status: saveStatus, lastSavedAt } = useAutoSaveAnswer(
+    sessionId,
+    currentQ?.id,
+    currentAnswer
+  );
+
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const isRealExam = sessionId != null;
+  const answeredCount = Object.keys(answers).filter(
+    (qId) => Object.values(answers[qId] ?? {}).some((v) => v !== "" && v != null)
+  ).length;
+
+  async function doSubmit(auto = false) {
+    if (!sessionId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/exam/session/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, auto }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "제출 실패");
+      window.location.href = `/exam/session/${sessionId}/done`;
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "제출 실패");
+      setSubmitting(false);
+    }
+  }
   const questionsBySet = useMemo(() => {
     const map: Record<string, Question[]> = {};
     for (const q of questions) {
@@ -224,6 +261,10 @@ export function PracticeRunner({
             />
           )}
 
+          {isRealExam && (
+            <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
@@ -235,19 +276,136 @@ export function PracticeRunner({
             <div className="text-xs text-muted-foreground font-tabular">
               {currentIdx + 1} / {questions.length}
             </div>
-            <button
-              onClick={() =>
-                setCurrentIdx((i) => Math.min(questions.length - 1, i + 1))
-              }
-              disabled={currentIdx === questions.length - 1}
-              className="h-11 px-5 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              다음 문항 →
-            </button>
+            {currentIdx === questions.length - 1 && isRealExam ? (
+              <button
+                onClick={() => setConfirmSubmit(true)}
+                disabled={submitting}
+                className="h-11 px-5 rounded-md bg-success hover:opacity-90 text-white text-sm font-bold disabled:opacity-40 transition"
+              >
+                시험 제출하기 →
+              </button>
+            ) : (
+              <button
+                onClick={() =>
+                  setCurrentIdx((i) => Math.min(questions.length - 1, i + 1))
+                }
+                disabled={currentIdx === questions.length - 1}
+                className="h-11 px-5 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                다음 문항 →
+              </button>
+            )}
           </div>
         </main>
       </div>
       )}
+
+      {confirmSubmit && isRealExam && (
+        <SubmitConfirmDialog
+          answeredCount={answeredCount}
+          totalCount={questions.length}
+          submitting={submitting}
+          error={submitError}
+          onCancel={() => {
+            setConfirmSubmit(false);
+            setSubmitError(null);
+          }}
+          onConfirm={() => doSubmit(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SaveIndicator({
+  status,
+  lastSavedAt,
+}: {
+  status: "idle" | "pending" | "saved" | "error";
+  lastSavedAt: Date | null;
+}) {
+  const style = {
+    idle: { color: "text-muted-foreground", label: "저장 대기" },
+    pending: { color: "text-info", label: "저장 중…" },
+    saved: {
+      color: "text-success",
+      label: lastSavedAt
+        ? `저장됨 · ${lastSavedAt.toLocaleTimeString("ko-KR", {
+            hour12: false,
+          })}`
+        : "저장됨",
+    },
+    error: { color: "text-danger", label: "저장 실패 · 네트워크 확인" },
+  }[status];
+  return (
+    <div className={cn("text-[11px] font-bold text-right", style.color)}>
+      · {style.label}
+    </div>
+  );
+}
+
+function SubmitConfirmDialog({
+  answeredCount,
+  totalCount,
+  submitting,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  answeredCount: number;
+  totalCount: number;
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const unanswered = totalCount - answeredCount;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="rounded-md bg-white border border-border w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h3 className="font-bold text-base">시험을 제출하시겠습니까?</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="rounded-md bg-surface-soft p-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">답변 완료</span>
+              <span className="font-bold font-tabular">
+                {answeredCount} / {totalCount}
+              </span>
+            </div>
+            {unanswered > 0 && (
+              <div className="text-xs text-warning font-bold">
+                ⚠ {unanswered}개 문항이 미답변 상태입니다
+              </div>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            제출 후에는 답안을 수정할 수 없습니다. 시험이 종료되며 응시가 완료됩니다.
+          </div>
+          {error && (
+            <div className="rounded-md bg-danger-soft border border-danger text-danger text-xs p-3">
+              {error}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onCancel}
+              disabled={submitting}
+              className="flex-1 h-11 rounded-md bg-white border border-border text-sm font-bold hover:border-primary disabled:opacity-50 transition"
+            >
+              계속 응시
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={submitting}
+              className="flex-1 h-11 rounded-md bg-success hover:opacity-90 text-white text-sm font-bold disabled:opacity-50 transition"
+            >
+              {submitting ? "제출 중…" : "제출하기"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
