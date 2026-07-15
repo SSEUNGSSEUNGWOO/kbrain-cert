@@ -21,7 +21,7 @@ export default async function PracticePage({
 
   const { data: exam } = await supabase
     .from("exams")
-    .select("id, title, duration_minutes, pass_score, grade_id")
+    .select("id, title, duration_minutes, pass_score, grade_id, exam_date")
     .eq("practice_slug", slug)
     .maybeSingle();
   if (!exam) notFound();
@@ -105,6 +105,7 @@ export default async function PracticePage({
         durationMinutes: exam.duration_minutes,
         passScore: exam.pass_score,
         grade: gradeName ?? "",
+        examDate: null, // Practice는 절대 시각 무시
       }}
       sets={sets}
       questions={questions}

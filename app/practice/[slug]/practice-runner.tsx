@@ -54,6 +54,8 @@ export function PracticeRunner({
     durationMinutes: number;
     passScore: number;
     grade: string;
+    /** 실 시험 예약 시각 · 실 시험이면 이 시각을 기준으로 카운트다운·자동 제출 */
+    examDate?: string | null;
   };
   sets: Set[];
   questions: Question[];
@@ -120,7 +122,14 @@ export function PracticeRunner({
     }
   }, [tab, isRealExam, practiceStartTime]);
 
-  const effectiveStartTime = isRealExam ? serverStartTime : practiceStartTime;
+  // 타이머 기준 시각
+  // - 실 시험 + exam_date 있음 → exam_date 기준 (모든 응시자 동시 종료)
+  // - 실 시험 + exam_date 없음 → 개인 진입 시각 폴백 (start_time)
+  // - Practice → 개인 로컬 진입 시각
+  const effectiveStartTime =
+    isRealExam
+      ? exam.examDate ?? serverStartTime
+      : practiceStartTime;
   const timer = useExamTimer(effectiveStartTime, exam.durationMinutes);
 
   // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
@@ -260,6 +269,9 @@ export function PracticeRunner({
           <WaitingRoom
             exam={exam}
             isPractice={sessionId == null}
+            scheduledAt={
+              isRealExam && exam.examDate ? new Date(exam.examDate) : undefined
+            }
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);
