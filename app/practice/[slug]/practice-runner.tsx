@@ -172,9 +172,6 @@ function TopBar({
           <span className="hidden md:inline-flex text-[10px] font-bold text-muted-foreground bg-surface-soft px-2 py-1 rounded-sm">
             {exam.durationMinutes}분
           </span>
-          <span className="hidden md:inline-flex text-[10px] font-bold text-success bg-success-soft px-2 py-1 rounded-sm">
-            합격 {exam.passScore}/100
-          </span>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-info bg-info-soft px-2.5 py-1 rounded-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-info" />
             답안 저장 X
@@ -323,9 +320,9 @@ function QuestionCard({
 }) {
   return (
     <div className="rounded-md bg-white border border-border overflow-hidden">
-      <div className="px-8 py-4 border-b border-border bg-surface-soft flex items-center gap-3">
-        <div className="font-tabular text-xs font-bold text-primary bg-primary-soft px-2 py-1 rounded-sm">
-          {question.code}
+      <div className="px-8 py-4 border-b border-border bg-surface-soft flex items-center justify-between">
+        <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
+          문항 {question.set_order}
         </div>
         <div className="text-xs font-bold text-muted-foreground">
           배점 {question.max_score}점
