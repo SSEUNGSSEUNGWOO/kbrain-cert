@@ -56,9 +56,11 @@ function buildTree(attachments: Attachment[]): TreeNode {
 export function AttachmentViewer({
   attachments,
   block = false,
+  practiceSlug,
 }: {
   attachments: Attachment[];
   block?: boolean; // true면 CBT 보안 (우클릭·복사·저장 차단)
+  practiceSlug?: string; // 있으면 파일 URL에 ?practice=slug 붙여 인증 우회
 }) {
   const tree = useMemo(() => buildTree(attachments), [attachments]);
   const [selected, setSelected] = useState<Attachment | null>(
@@ -126,7 +128,11 @@ export function AttachmentViewer({
         {/* 우측 뷰어 */}
         <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
           {selected ? (
-            <FileViewer key={selected.path} attachment={selected} />
+            <FileViewer
+              key={selected.path}
+              attachment={selected}
+              practiceSlug={practiceSlug}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
               좌측에서 파일을 선택하세요
@@ -203,8 +209,15 @@ function FileIcon({ mime }: { mime: string }) {
 
 /* ─────────── 파일 렌더러 ─────────── */
 
-function FileViewer({ attachment }: { attachment: Attachment }) {
-  const src = `/api/attachments/${attachment.path}`;
+function FileViewer({
+  attachment,
+  practiceSlug,
+}: {
+  attachment: Attachment;
+  practiceSlug?: string;
+}) {
+  const qs = practiceSlug ? `?practice=${practiceSlug}` : "";
+  const src = `/api/attachments/${attachment.path}${qs}`;
   const isImage = attachment.mime.startsWith("image/");
   const isCsv = attachment.mime === "text/csv";
   const isJson = attachment.mime === "application/json";

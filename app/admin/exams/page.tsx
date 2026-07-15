@@ -33,6 +33,7 @@ type ExamRow = {
   setCount: number;
   questionCount: number;
   passScore: number;
+  practiceSlug: string | null;
 };
 
 export default async function ExamsPage() {
@@ -41,7 +42,7 @@ export default async function ExamsPage() {
   const { data: exams } = await supabase
     .from("exams")
     .select(
-      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id"
+      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, practice_slug"
     )
     .order("created_at", { ascending: false });
 
@@ -77,6 +78,7 @@ export default async function ExamsPage() {
     setCount: setCount[e.id] ?? 0,
     questionCount: qCount[e.id] ?? 0,
     passScore: e.pass_score,
+    practiceSlug: (e as { practice_slug: string | null }).practice_slug ?? null,
   }));
 
   const stats = {
