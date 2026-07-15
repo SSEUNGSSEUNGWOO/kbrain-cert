@@ -1,12 +1,12 @@
 import {
   AdminShell,
   PageHeader,
-  SecondaryButton,
   StatBox,
 } from "@/components/admin-shell";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { InvitationsTable } from "./invitations-table";
 import { CreateInvitationForm } from "./create-form";
+import { CsvUploadButton } from "./csv-upload-form";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +98,7 @@ export default async function InvitationsPage() {
         description={`전체 ${stats.total}명 · 명단 CSV 업로드 → 초대코드 생성 → 이메일 발송 → OTP 검증 (M3 진입 시 실동작)`}
         action={
           <>
-            <SecondaryButton>CSV 다운로드</SecondaryButton>
+            <CsvUploadButton exams={exams ?? []} />
             <CreateInvitationForm exams={exams ?? []} />
           </>
         }
