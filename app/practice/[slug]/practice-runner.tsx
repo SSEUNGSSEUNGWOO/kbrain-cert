@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
-import { EnvCheck } from "@/components/env-check";
+import { EnvCheck, type EnvResultSnapshot } from "@/components/env-check";
 import { SecurityPledge } from "@/components/security-pledge";
 import { WaitingRoom } from "@/components/waiting-room";
+import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -42,6 +43,7 @@ export function PracticeRunner({
   exam,
   sets,
   questions,
+  sessionId,
 }: {
   slug: string;
   exam: {
@@ -53,7 +55,10 @@ export function PracticeRunner({
   };
   sets: Set[];
   questions: Question[];
+  /** 실 시험 세션 id · Practice에서는 null · 있으면 precheck 결과 서버 저장 */
+  sessionId?: string | null;
 }) {
+  const savePrecheck = useSavePrecheck(sessionId);
   const [tab, setTab] = useState<Tab>("env");
   const [envPassed, setEnvPassed] = useState(false);
   const [pledgePassed, setPledgePassed] = useState(false);
@@ -138,7 +143,12 @@ export function PracticeRunner({
             setWebcamStream={setWebcamStream}
             screenStream={screenStream}
             setScreenStream={setScreenStream}
-            onEnterExam={() => {
+            onEnterExam={(snapshot: EnvResultSnapshot) => {
+              void savePrecheck("env", {
+                envResult: snapshot,
+                userAgent:
+                  typeof navigator !== "undefined" ? navigator.userAgent : "",
+              });
               setEnvPassed(true);
               setTab("pledge");
             }}
@@ -150,6 +160,7 @@ export function PracticeRunner({
         <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
           <SecurityPledge
             onProceed={() => {
+              void savePrecheck("pledge");
               setPledgePassed(true);
               setTab("waiting");
             }}
@@ -161,8 +172,9 @@ export function PracticeRunner({
         <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
           <WaitingRoom
             exam={exam}
-            isPractice={true}
+            isPractice={sessionId == null}
             onEnter={() => {
+              void savePrecheck("waiting");
               setWaitingReady(true);
               setTab("exam");
             }}

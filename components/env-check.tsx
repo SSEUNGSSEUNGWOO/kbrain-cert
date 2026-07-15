@@ -10,6 +10,15 @@ type CheckResult = {
   detail: string;
 };
 
+export type EnvResultSnapshot = {
+  monitor: { status: CheckStatus; detail: string };
+  webcam: { status: CheckStatus; detail: string };
+  screen: { status: CheckStatus; detail: string };
+  network: { status: CheckStatus; detail: string };
+  cpu: { status: CheckStatus; detail: string };
+  browser: { status: CheckStatus; detail: string };
+};
+
 /**
  * 응시 환경 체크 · Practice 페이지에서 실전 전 확인용
  * - 웹캠: getUserMedia · 프리뷰
@@ -18,7 +27,7 @@ type CheckResult = {
  * - 네트워크: fetch로 응답 시간 측정
  *
  * 스트림 (webcam, screen)은 상위 컴포넌트가 관리 · 환경 체크 → 시험 종료까지 유지
- * onEnterExam 콜백이 있으면 통과 시 CTA 버튼 표시
+ * onEnterExam 콜백이 있으면 통과 시 CTA 버튼 표시 · 실 시험이면 snapshot을 서버에 저장
  */
 export function EnvCheck({
   onEnterExam,
@@ -27,7 +36,7 @@ export function EnvCheck({
   screenStream,
   setScreenStream,
 }: {
-  onEnterExam?: () => void;
+  onEnterExam?: (snapshot: EnvResultSnapshot) => void;
   webcamStream: MediaStream | null;
   setWebcamStream: (s: MediaStream | null) => void;
   screenStream: MediaStream | null;
@@ -508,7 +517,19 @@ export function EnvCheck({
 
         {onEnterExam && (
           <button
-            onClick={onEnterExam}
+            onClick={() =>
+              onEnterExam?.({
+                monitor: { status: monitor.status, detail: monitor.detail },
+                webcam: { status: webcam.status, detail: webcam.detail },
+                screen: { status: screen.status, detail: screen.detail },
+                network: { status: network.status, detail: network.detail },
+                cpu: { status: cpu.status, detail: cpu.detail },
+                browser: {
+                  status: browserInfo.status,
+                  detail: browserInfo.detail,
+                },
+              })
+            }
             disabled={!allGood}
             className={cn(
               "w-full h-14 rounded-md font-bold text-base transition",
