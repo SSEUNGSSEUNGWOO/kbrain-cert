@@ -9,6 +9,8 @@ import { WaitingRoom } from "@/components/waiting-room";
 import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
 import { useAutoSaveAnswer } from "@/lib/hooks/use-auto-save-answer";
 import { useExamTimer, formatHms } from "@/lib/hooks/use-exam-timer";
+import { useMonitorEvents } from "@/lib/hooks/use-monitor-events";
+import { ProctorGuard } from "@/components/proctor-guard";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -132,6 +134,9 @@ export function PracticeRunner({
       : practiceStartTime;
   const timer = useExamTimer(effectiveStartTime, exam.durationMinutes);
 
+  // 감독 이벤트 batch 저장 (실 시험만 · Practice는 no-op)
+  const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
+
   // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
   const autoSubmittedRef = useRef(false);
   useEffect(() => {
@@ -183,9 +188,20 @@ export function PracticeRunner({
     -1;
 
   const showTimer = tab === "exam";
+  const proctorActive = tab === "exam" && isRealExam;
 
   return (
     <div className="min-h-screen flex flex-col">
+      <ProctorGuard
+        active={proctorActive}
+        onEvent={fireMonitorEvent}
+        onForceSubmit={() => {
+          if (!autoSubmittedRef.current) {
+            autoSubmittedRef.current = true;
+            void doSubmit(true);
+          }
+        }}
+      />
       <TopBar
         exam={exam}
         slug={slug}
