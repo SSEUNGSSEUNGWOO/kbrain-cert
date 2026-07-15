@@ -216,8 +216,16 @@ function FileViewer({
   attachment: Attachment;
   practiceSlug?: string;
 }) {
-  const qs = practiceSlug ? `?practice=${practiceSlug}` : "";
-  const src = `/api/attachments/${attachment.path}${qs}`;
+  const baseQs = practiceSlug ? `?practice=${practiceSlug}` : "";
+  const src = `/api/attachments/${attachment.path}${baseQs}`;
+
+  // 다운로드 URL (원본 파일명은 name의 마지막 세그먼트만 · 폴더 경로 제거)
+  const filename = attachment.name.split("/").pop() ?? attachment.name;
+  const dlQs = new URLSearchParams();
+  if (practiceSlug) dlQs.set("practice", practiceSlug);
+  dlQs.set("download", filename);
+  const downloadHref = `/api/attachments/${attachment.path}?${dlQs.toString()}`;
+
   const isImage = attachment.mime.startsWith("image/");
   const isCsv = attachment.mime === "text/csv";
   const isJson = attachment.mime === "application/json";
@@ -226,16 +234,21 @@ function FileViewer({
 
   return (
     <>
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface-soft">
-        <div className="min-w-0">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface-soft gap-3">
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-bold truncate">{attachment.name}</div>
           <div className="text-[10px] text-muted-foreground font-tabular">
             {attachment.mime} · {formatSize(attachment.size)}
           </div>
         </div>
-        <div className="text-[10px] font-bold tracking-widest text-danger bg-danger-soft px-2 py-0.5 rounded-sm">
-          NO DOWNLOAD
-        </div>
+        <a
+          href={downloadHref}
+          download={filename}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-[11px] font-bold transition"
+        >
+          <span>↓</span>
+          다운로드
+        </a>
       </div>
 
       <div className="flex-1 overflow-auto p-5 max-h-[520px]">
@@ -247,6 +260,15 @@ function FileViewer({
         {!isImage && !isCsv && !isText && (
           <div className="text-sm text-muted-foreground text-center py-10">
             이 형식은 브라우저에서 미리보기가 지원되지 않습니다. ({attachment.mime})
+            <div className="mt-3">
+              <a
+                href={downloadHref}
+                download={filename}
+                className="text-primary font-bold hover:underline"
+              >
+                다운로드해서 열어보세요 →
+              </a>
+            </div>
           </div>
         )}
       </div>
@@ -268,9 +290,7 @@ function ImageView({ src }: { src: string }) {
       <img
         src={src}
         alt=""
-        className="max-w-full max-h-[480px] object-contain pointer-events-none select-none"
-        draggable={false}
-        onContextMenu={(e) => e.preventDefault()}
+        className="max-w-full max-h-[480px] object-contain"
       />
     </div>
   );
