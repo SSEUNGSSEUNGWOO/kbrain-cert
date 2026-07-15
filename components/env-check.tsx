@@ -42,6 +42,10 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     status: "pending",
     detail: "확인 중…",
   });
+  const [monitor, setMonitor] = useState<CheckResult>({
+    status: "pending",
+    detail: "감지 시작 버튼 클릭",
+  });
 
   // 브라우저 정보 · Fullscreen 지원
   useEffect(() => {
@@ -144,6 +148,72 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 듀얼 모니터 감지 (Window Management API · Chrome 100+)
+  const requestMonitorCheck = async () => {
+    setMonitor({ status: "pending", detail: "감지 중…" });
+    try {
+      // isExtended 우선 시도 (권한 불필요 · Chrome 100+)
+      const anyScreen = window.screen as unknown as { isExtended?: boolean };
+      if (typeof anyScreen.isExtended === "boolean") {
+        if (anyScreen.isExtended) {
+          // 여러 모니터 · 정확한 개수는 권한 요청
+          try {
+            const anyWin = window as unknown as {
+              getScreenDetails?: () => Promise<{ screens: unknown[] }>;
+            };
+            if (anyWin.getScreenDetails) {
+              const details = await anyWin.getScreenDetails();
+              setMonitor({
+                status: "error",
+                detail: `듀얼 모니터 감지 · ${details.screens.length}개 연결 · 하나만 사용하도록 나머지 분리 필요`,
+              });
+              return;
+            }
+          } catch {
+            /* fallthrough */
+          }
+          setMonitor({
+            status: "error",
+            detail:
+              "듀얼 모니터 감지 (isExtended=true) · 시험 중 단일 모니터만 사용 가능",
+          });
+          return;
+        }
+        setMonitor({
+          status: "ok",
+          detail: "단일 모니터 · 정상",
+        });
+        return;
+      }
+      // API 미지원 fallback
+      setMonitor({
+        status: "warn",
+        detail:
+          "브라우저에서 모니터 감지 불가 (Chrome 100+ 권장) · 시험 중 반드시 단일 모니터만 사용",
+      });
+    } catch (err) {
+      setMonitor({
+        status: "error",
+        detail: err instanceof Error ? err.message : "감지 실패",
+      });
+    }
+  };
+
+  // 자동 시도 · 실패해도 사용자 재시도 가능
+  useEffect(() => {
+    void requestMonitorCheck();
+    // 스크린 연결 변경 감지
+    const anyScreen = window.screen as unknown as {
+      addEventListener?: (t: string, l: () => void) => void;
+      removeEventListener?: (t: string, l: () => void) => void;
+    };
+    const onChange = () => void requestMonitorCheck();
+    anyScreen.addEventListener?.("change", onChange);
+    return () => {
+      anyScreen.removeEventListener?.("change", onChange);
+    };
+  }, []);
+
   // 화면 공유 · 사용자 클릭 필요
   const requestScreen = async () => {
     setScreen({ status: "pending", detail: "권한 요청 중…" });
@@ -174,7 +244,8 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     webcam.status === "ok" &&
     screen.status === "ok" &&
     fullscreen.status === "ok" &&
-    browserInfo.status === "ok";
+    browserInfo.status === "ok" &&
+    monitor.status !== "error";
   const networkOk = network.status !== "error";
   const allGood = requiredOk && networkOk;
 
@@ -183,6 +254,7 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
   if (screen.status !== "ok") blockers.push("화면 공유");
   if (browserInfo.status !== "ok") blockers.push("브라우저");
   if (fullscreen.status !== "ok") blockers.push("Fullscreen API");
+  if (monitor.status === "error") blockers.push("듀얼 모니터");
   if (network.status === "error") blockers.push("네트워크");
 
   return (
@@ -268,6 +340,24 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
           <div className="text-xs text-muted-foreground">
             {fullscreen.detail}
           </div>
+        </div>
+      </div>
+
+      {/* 듀얼 모니터 */}
+      <div className="rounded-md bg-white border border-border p-5">
+        <div className="flex items-center gap-3 mb-2">
+          <StatusDot status={monitor.status} />
+          <div className="text-sm font-bold flex-1">듀얼 모니터 감지</div>
+          <button
+            onClick={requestMonitorCheck}
+            className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-xs font-bold transition"
+          >
+            재감지
+          </button>
+        </div>
+        <div className="text-xs text-muted-foreground">{monitor.detail}</div>
+        <div className="text-[11px] text-muted mt-2 leading-relaxed">
+          시험 중 두 개 이상의 모니터를 사용하면 자동 감지되어 응시가 중단됩니다. 노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요.
         </div>
       </div>
 
