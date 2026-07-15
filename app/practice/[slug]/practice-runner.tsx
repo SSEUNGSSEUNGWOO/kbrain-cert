@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
+import { EnvCheck } from "@/components/env-check";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -32,6 +33,8 @@ type Set = {
   attachments: Attachment[];
 };
 
+type Tab = "env" | "questions";
+
 export function PracticeRunner({
   slug,
   exam,
@@ -49,6 +52,7 @@ export function PracticeRunner({
   sets: Set[];
   questions: Question[];
 }) {
+  const [tab, setTab] = useState<Tab>("env");
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
 
@@ -72,6 +76,30 @@ export function PracticeRunner({
     <div className="min-h-screen flex flex-col">
       <TopBar exam={exam} slug={slug} />
 
+      <div className="border-b border-border bg-white">
+        <div className="mx-auto max-w-7xl px-6 flex gap-1">
+          <TabButton
+            active={tab === "env"}
+            onClick={() => setTab("env")}
+            label="환경 체크"
+            hint="웹캠·화면공유·브라우저·네트워크"
+          />
+          <TabButton
+            active={tab === "questions"}
+            onClick={() => setTab("questions")}
+            label="문항 미리보기"
+            hint={`${questions.length}문항 · ${sets.length}세트`}
+          />
+        </div>
+      </div>
+
+      {tab === "env" && (
+        <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
+          <EnvCheck />
+        </div>
+      )}
+
+      {tab === "questions" && (
       <div className="flex-1 mx-auto max-w-7xl w-full px-6 py-6 flex gap-6">
         {/* 좌측 문항 그리드 */}
         <QuestionRail
@@ -130,7 +158,37 @@ export function PracticeRunner({
           </div>
         </main>
       </div>
+      )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "px-5 py-3 border-b-2 transition text-left",
+        active
+          ? "border-primary text-primary"
+          : "border-transparent text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <div className={cn("text-sm font-bold", active && "text-primary")}>
+        {label}
+      </div>
+      <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
+    </button>
   );
 }
 
