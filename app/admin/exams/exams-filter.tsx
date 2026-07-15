@@ -145,10 +145,10 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
 
       <div className="flex items-center gap-2">
         <Link
-          href="/examiner/monitor"
+          href={`/admin/exams/${exam.id}/preview`}
           className="flex-1 h-9 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center justify-center transition"
         >
-          {exam.status === "open" ? "모니터링" : "상세 보기"}
+          첨부 미리보기
         </Link>
         <Link
           href="/admin/invitations"
