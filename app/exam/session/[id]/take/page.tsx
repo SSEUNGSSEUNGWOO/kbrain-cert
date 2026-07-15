@@ -120,7 +120,7 @@ export default async function ExamSessionTakePage({
 
   return (
     <PracticeRunner
-      slug="" // 실 시험은 slug 사용 X · 첨부 API는 sessionId 기반 인증으로 후속 개선
+      slug="" // 실 시험은 slug 사용 X · 첨부 API는 세션 쿠키 인증
       exam={{
         id: exam.id,
         title: exam.title,

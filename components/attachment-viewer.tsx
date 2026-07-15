@@ -12,6 +12,8 @@ export type Attachment = {
  * 첨부 자료 다운로드 카드
  * - 세트별 자료묶음 zip 하나만 표시
  * - 응시자는 로컬에 unzip 후 폴더 구조 그대로 시나리오와 매칭
+ * - Practice: ?practice=<slug>로 인증
+ * - 실 시험: 세션 쿠키(kbrain_exam_session)로 서버 인증 (query 없음)
  */
 export function AttachmentViewer({
   attachments,
