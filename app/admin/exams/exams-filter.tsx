@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ScheduleEditor } from "./schedule-editor";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -128,6 +129,11 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
             {examDate} · {exam.durationMinutes}분 · 합격 {exam.passScore}/100
           </div>
         </div>
+        <ScheduleEditor
+          examId={exam.id}
+          examDate={exam.examDate}
+          durationMinutes={exam.durationMinutes}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-4 py-4 border-t border-b border-border mb-4">
