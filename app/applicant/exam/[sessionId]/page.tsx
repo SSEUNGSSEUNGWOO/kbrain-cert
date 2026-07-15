@@ -223,7 +223,6 @@ function ProctorStrip({
           Proctoring
         </div>
         <ProctorPill label="FACE" ok={proctoring.face === "ok"} />
-        <ProctorPill label="MIC" ok={proctoring.voice === "ok"} />
         <ProctorPill label="FULLSCREEN" ok={proctoring.fullscreen === "ok"} />
         <ProctorPill
           label="REC"

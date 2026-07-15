@@ -505,7 +505,6 @@ function ApplicantCard({
 const EVENT_LABEL: Record<ProctoringEvent["type"], string> = {
   face_missing: "얼굴 미검출",
   multiple_faces: "복수 인원 감지",
-  voice_detected: "음성 감지",
   fullscreen_exit: "전체화면 이탈",
   tab_switch: "탭 전환",
   recording_error: "녹화 오류",
@@ -513,7 +512,6 @@ const EVENT_LABEL: Record<ProctoringEvent["type"], string> = {
 const EVENT_CODE: Record<ProctoringEvent["type"], string> = {
   face_missing: "FM",
   multiple_faces: "MF",
-  voice_detected: "VD",
   fullscreen_exit: "FE",
   tab_switch: "TS",
   recording_error: "RE",

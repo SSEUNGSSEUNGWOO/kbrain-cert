@@ -88,7 +88,7 @@
 - **검증**: 초대 발송→링크 진입→OTP 검증→응시 세션 생성 end-to-end
 
 ### M4 — 응시 & 감독 & 녹화 (7~10일, 가장 무거움)
-- **대기실**: 환경 체크(웹캠·마이크·화면공유·CPU 벤치마크), 보안 서약, **신분증 이미지 업로드**(Rekognition 없음), 입실 타이밍
+- **대기실**: 환경 체크(웹캠·화면공유·CPU 벤치마크 · 마이크 미사용), 보안 서약, **신분증 이미지 업로드**(Rekognition 없음), 입실 타이밍
 - **응시 페이지**:
   - 타이머 (⚠️ `start_time` 재시도 로직)
   - 문제 렌더러 — Markdown + **슬롯형 답안 컴포넌트 하나** (5유형 분기 없음)
@@ -97,7 +97,6 @@
   - 답안 자동 저장 (debounce 3s + IndexedDB 로컬 백업)
 - **로컬 감독**:
   - face-api.js (얼굴·다인원)
-  - WebAudio (음성)
   - FullscreenGuard + Page Visibility
   - EventBatcher (5s 배치) → `/api/proctoring/events`
   - ⚠️ 세트 `proctoring_disabled` 시 감독 unmount + 배너

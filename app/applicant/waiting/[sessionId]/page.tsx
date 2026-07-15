@@ -7,7 +7,7 @@ import { formatTime } from "@/lib/utils";
 
 type StepKey = "check" | "identity" | "pledge" | "waiting";
 const steps: { key: StepKey; num: number; label: string; description: string }[] = [
-  { key: "check", num: 1, label: "환경 체크", description: "웹캠·마이크·화면공유·CPU·네트워크" },
+  { key: "check", num: 1, label: "환경 체크", description: "웹캠·화면공유·CPU·네트워크" },
   { key: "identity", num: 2, label: "신분증 촬영", description: "본인 확인용 이미지 업로드" },
   { key: "pledge", num: 3, label: "보안 서약", description: "부정행위 금지·감독 동의" },
   { key: "waiting", num: 4, label: "입실 대기", description: "시험 시작 카운트다운" },
@@ -226,23 +226,13 @@ function CheckStep({ onContinue }: { onContinue: () => void }) {
         <div className="space-y-3">
           <div className="rounded-md bg-surface-soft border border-border p-4">
             <div className="text-[10px] font-bold tracking-[0.2em] text-muted mb-2">
-              MIC LEVEL
+              WEBCAM FPS
             </div>
-            <div className="flex gap-0.5 h-4">
-              {Array.from({ length: 24 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex-1 rounded-sm ${
-                    i < 12
-                      ? i < 8
-                        ? "bg-success"
-                        : i < 15
-                        ? "bg-warning"
-                        : "bg-danger"
-                      : "bg-subtle"
-                  }`}
-                />
-              ))}
+            <div className="flex items-baseline gap-2">
+              <span className="font-tabular text-3xl font-bold text-success">
+                30
+              </span>
+              <span className="text-xs font-bold text-muted">fps · 720p 안정</span>
             </div>
           </div>
           <div className="rounded-md bg-surface-soft border border-border p-4">
@@ -396,12 +386,12 @@ function PledgeStep({
         <PledgeItem
           num="01"
           title="감독 방식"
-          body="응시 중 웹캠·마이크·화면공유 스트림이 감독관에게 실시간 송출되며, 세션 종료 시까지 Cloudflare R2에 녹화 저장됩니다. 얼굴·음성·전체화면 이탈 등은 브라우저에서 자동 감지됩니다."
+          body="응시 중 웹캠·화면공유 스트림이 감독관에게 실시간 송출되며, 세션 종료 시까지 Cloudflare R2에 녹화 저장됩니다. 얼굴 검출·전체화면 이탈 등은 브라우저에서 자동 감지됩니다. (마이크 미사용)"
         />
         <PledgeItem
           num="02"
           title="부정행위 금지"
-          body="타인 대리 응시·대화·통신·메모 참고 금지. 웹캠·마이크·화면공유 임의 종료 금지. 전체화면 5회 이상 이탈 시 자동 제출됩니다."
+          body="타인 대리 응시·대화·통신·메모 참고 금지. 웹캠·화면공유 임의 종료 금지. 전체화면 5회 이상 이탈 시 자동 제출됩니다."
         />
         <PledgeItem
           num="03"

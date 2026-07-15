@@ -140,7 +140,6 @@
 | face-api.js | 0.22.2 (원본과 동일) | 얼굴 감지 로컬 추론 | **CPU < 15% 지속** · 2.5s 간격 감지 |
 | **agora-rtc-sdk-ng** | 최신 | WebRTC 스트림 (Daily.co 대체) | 스트림 초기화 < 3s · Seoul 리전 |
 | MediaRecorder API | native | R2 녹화 청크 생성 | 5초 청크당 <5MB webm |
-| WebAudio API | native | 마이크 볼륨 감지 | 20fps RMS 계산 · CPU < 2% |
 
 ### 2.2 백엔드 · 인프라
 
@@ -229,7 +228,7 @@
   - 서버는 락 없이 upsert (한 번만 처리되도록 응답 상태 확인)
 - **검증**: 100 세션 종료 시각을 초 단위로 동시 발동 시뮬
 
-### 3.7 브라우저 부하 (WebRTC + MediaRecorder + face-api + WebAudio 동시)
+### 3.7 브라우저 부하 (WebRTC + MediaRecorder + face-api 동시 · WebAudio 제거)
 
 - **원인**: 응시자 노트북에서 4개 스트림 처리 동시
 - **대응**:

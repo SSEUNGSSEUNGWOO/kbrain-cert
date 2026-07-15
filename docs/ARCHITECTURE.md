@@ -16,7 +16,6 @@
 | **응시 녹화 스토리지** | **Cloudflare R2** + WebAssembly MediaRecorder + AWS SigV4 | 원본과 동일 (S3보다 저렴, egress 무료) |
 | **이메일 발송** | **Resend** (or Supabase Auth 내장, 최종결정 대기) | 초대 · OTP 이메일 |
 | 감독 (얼굴) | **face-api.js (TinyFaceDetector, v0.22.2)** | 브라우저 로컬 추론 (원본 유지) |
-| 감독 (음성) | **WebAudio API (native, RMS)** | native |
 | 감독 (화면) | **Fullscreen API + Page Visibility API** | native |
 | 문제 렌더링 | **remark-gfm (Markdown)** | 원본과 동일 |
 | E2E 테스트 | **Playwright** | WebRTC 부분은 실기기 리허설 필요 |
@@ -79,7 +78,7 @@ kbrain-cert/
 │       └── export/answers/             # 답안 CSV/JSON export
 ├── components/
 │   ├── ui/                             # shadcn
-│   ├── proctoring/                     # FaceMonitor, VoiceMonitor, FullscreenGuard, EventBatcher
+│   ├── proctoring/                     # FaceMonitor, FullscreenGuard, EventBatcher (마이크 미사용)
 │   ├── exam/                           # QuestionRenderer, Timer, SlotAnswerPanel, MarkdownView, PolicyBanner
 │   ├── daily/                          # DailyProctor, DailyMonitorGrid
 │   ├── recording/                      # RecordingStatusBadge, RecordingChunker
@@ -219,7 +218,7 @@ answers (
 monitoring_events (
   id bigserial pk,
   session_id uuid fk,
-  event_type text,                        -- face_missing, multiple_faces, voice_detected, fullscreen_exit, tab_switch, screen_share_off, recording_error
+  event_type text,                        -- face_missing, multiple_faces, fullscreen_exit, tab_switch, screen_share_off, recording_error
   detected_at timestamptz,
   screenshot_url text,
   question_index int,
@@ -346,7 +345,6 @@ async function recomputeTimeLeft(session) {
 ```
 [Browser]
   ├─ FaceMonitor (face-api.js, 2.5s interval)
-  ├─ VoiceMonitor (WebAudio RMS, 20fps)
   ├─ FullscreenGuard + Page Visibility
   ├─ DailyProctor (Daily SDK: 웹캠·화면공유 send)
   ├─ RecordingChunker (MediaRecorder 500ms → R2 presigned upload)
@@ -362,7 +360,7 @@ async function recomputeTimeLeft(session) {
 ```
 
 **세트별 비활성화** (`proctoring_disabled=true`):
-- FaceMonitor · VoiceMonitor · FullscreenGuard 컴포넌트 unmount
+- FaceMonitor · FullscreenGuard 컴포넌트 unmount
 - EventBatcher 정지 (이벤트 발생 자체를 안 함)
 - Daily·녹화는 **유지** (감독관 관찰·사후 검토 목적, 응시자에겐 배너로 명시)
 - 다른 세트 이동 시 자동 재활성화 (remount)
@@ -448,7 +446,7 @@ OTP_SECRET=              # OTP HMAC
 |---|---|
 | Agora 100 동시 SFU 요금 | SD simulcast + Free 10,000분/월 활용. 회당 약 1.7만원 예상 (CAPACITY.md §1.2) |
 | R2 저장 무제한 → 비용 지속 증가 | 녹화 보관 정책 (기본 30일 후 자동 삭제 · 필요 시 archive 티어로 이동) |
-| 브라우저 부하 (Daily·MediaRecorder·face-api·WebAudio 동시) | 대기실 CPU 벤치마크 · 최소 사양 표시 · 저사양 응시자는 관리자 예외 승인 |
+| 브라우저 부하 (Agora·MediaRecorder·face-api 동시) | 대기실 CPU 벤치마크 · 최소 사양 표시 · 저사양 응시자는 관리자 예외 승인 |
 | face-api 모델 첫 로드 지연(~10MB) | self-host + Service Worker precache + 대기실에서 warmup |
 | WebRTC (Daily) Playwright 미지원 → 자동화 어려움 | M6에 실기기 다중 노트북 리허설 |
 | Fullscreen API 브라우저 우회 가능 | 다층 이벤트(Page Visibility·pointerlock loss) 조합 + 녹화로 사후 증거 확보 |

@@ -116,7 +116,7 @@
 
 ### 응시 대기실 [핵심]
 - 시험 안내 · 준비 체크리스트
-- 환경 체크: 웹캠 · 마이크 · 화면공유 · 브라우저 · **CPU 벤치마크** (Daily+녹화+face-api 동시 실행 대비)
+- 환경 체크: 웹캠 · 화면공유 · 브라우저 · **CPU 벤치마크** (Agora+녹화+face-api 동시 실행 대비) · 마이크 미사용
 - 웹캠 디바이스 선택
 - **신분증 이미지 촬영·업로드** (Rekognition 미사용, 관리자 사후 검토)
 - 보안 서약 (부정행위 금지 동의)
@@ -143,7 +143,6 @@
 ### 감독 (Proctoring) [핵심]
 - **브라우저 로컬 추론**
   - 얼굴 감지: face-api.js (2.5s 간격, 7.5s 연속 미검출 시 경고, 다인원 즉시)
-  - 음성 감지: WebAudio RMS (임계값 0.15, 지속 15프레임)
   - 전체화면 이탈: Fullscreen API (최대 5회 후 강제 제출)
   - 탭 전환: Page Visibility API
 - **Agora Web SDK 웹캠·화면공유 실시간 스트림** — 감독관 관찰용 (Seoul 리전 · SD simulcast)
@@ -219,7 +218,6 @@
 |---|---|---|
 | `face_missing` | face-api.js | warn (7.5s 지속 시) |
 | `multiple_faces` | face-api.js | high |
-| `voice_detected` | WebAudio RMS | warn (15프레임 지속) |
 | `fullscreen_exit` / `tab_switch` | Fullscreen · Page Visibility API | high (5회 후 강제제출) |
 | `screen_share_off` | Agora 화면공유 트랙 종료 감지 | high |
 | `recording_error` | MediaRecorder 오류 | high |

@@ -77,7 +77,7 @@
 | 마크 | 기능 | 원본 라이브러리 | 부하 |
 |---|---|---|---|
 | ✅ | 얼굴 감지 (미검출/다인원) | face-api.js v0.22.2 (TinyFaceDetector) | 브라우저 로컬 (2.5s 간격) |
-| ✅ | 음성 감지 | Web Audio API (RMS) | 브라우저 로컬 |
+| ❌ | 음성 감지 | Web Audio API (RMS) | 승우님 결정 (2026-07-15): 마이크 미사용 · 웹캠만 감시 |
 | ✅ | 전체화면 이탈 | Fullscreen API | 이벤트 리스너 |
 | ✅ | 탭 전환 감지 | Page Visibility API | 이벤트 리스너 |
 | ✅ | 서약(부정행위 금지) | `SecurityPledge.tsx` | 텍스트 |

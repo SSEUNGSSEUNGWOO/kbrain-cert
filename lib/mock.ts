@@ -59,7 +59,6 @@ export type ProctoringEvent = {
   type:
     | "face_missing"
     | "multiple_faces"
-    | "voice_detected"
     | "fullscreen_exit"
     | "tab_switch"
     | "recording_error";
@@ -199,7 +198,6 @@ export const mockSession = {
   } as Record<string, unknown>,
   proctoring: {
     face: "ok" as "ok" | "missing" | "multiple",
-    voice: "ok" as "ok" | "detected",
     fullscreen: "ok" as "ok" | "exited",
     recording: "recording" as "recording" | "paused" | "error",
   },
@@ -224,7 +222,6 @@ export const mockMonitorApplicants: MonitorApplicant[] = koreanNames.map((name, 
   const hasEvent = warningCount > 0;
   const eventTypes: Array<ProctoringEvent["type"]> = [
     "face_missing",
-    "voice_detected",
     "fullscreen_exit",
     "multiple_faces",
     "tab_switch",
@@ -232,7 +229,6 @@ export const mockMonitorApplicants: MonitorApplicant[] = koreanNames.map((name, 
   const eventLabels: Record<ProctoringEvent["type"], string> = {
     face_missing: "얼굴 미검출 7.5초",
     multiple_faces: "복수 인원 감지",
-    voice_detected: "음성 감지",
     fullscreen_exit: "전체화면 이탈",
     tab_switch: "탭 전환",
     recording_error: "녹화 오류",
@@ -288,7 +284,7 @@ export const mockRecentEvents: ProctoringEvent[] = [
     id: "e-3",
     sessionId: "sess-018",
     applicantName: "유하준",
-    type: "voice_detected",
+    type: "multiple_faces",
     severity: "warn",
     occurredAt: "1분 12초 전",
     questionIndex: 4,
@@ -324,7 +320,7 @@ export const mockRecentEvents: ProctoringEvent[] = [
     id: "e-7",
     sessionId: "sess-008",
     applicantName: "장유나",
-    type: "voice_detected",
+    type: "tab_switch",
     severity: "info",
     occurredAt: "3분 09초 전",
     questionIndex: 2,
@@ -660,13 +656,6 @@ export const mockWaitingChecks = [
     description: "얼굴 인증 · 실시간 감독에 사용됩니다",
     status: "ok" as "ok" | "warn" | "error" | "pending",
     detail: "HD Webcam (720p) 감지",
-  },
-  {
-    id: "mic",
-    label: "마이크",
-    description: "음성 감지에 사용됩니다",
-    status: "ok" as const,
-    detail: "기본 마이크 · 볼륨 정상",
   },
   {
     id: "screen",

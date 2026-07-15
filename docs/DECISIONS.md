@@ -38,7 +38,7 @@
 
 - 페이지 21개 중 18개 (인증서·Face++ 테스트·`send-otp/verify-otp` 제외)
 - **문제 유형은 작업형(슬롯형) 한 종류만** — 나머지 4종(객관식·단답·서술형·실기)은 스코프에서 제거 (결정 I) + 시나리오형 세트
-- 감독 로컬 컴포넌트 (`FaceMonitor` · `VoiceMonitor` · `FullscreenGuard` · `SecurityPledge`) — `AntiOcrWatermark`는 제외 (프로토타입 리뷰 시 승우님 결정)
+- 감독 로컬 컴포넌트 (`FaceMonitor` · `FullscreenGuard` · `SecurityPledge`) — `AntiOcrWatermark` 제외 · `VoiceMonitor` 제외 (2026-07-15 승우님 결정: 마이크 미사용 · 웹캠만 감시)
 - 감독관 화상 관찰 (원본은 Daily.co 이었으나 **Agora로 재확정** · `AgoraProctor`, `AgoraMonitorGrid`, `agora-token` Edge Function). 채팅은 Agora RTM 대신 **Supabase Realtime 자체 구현**으로 비용 절감
 - R2 녹화 (`RecordingStatusBadge`, `RecordingReviewPage`, `r2-*` Edge Functions)
 - 초대전용 OTP (`send-guest-otp` · `verify-guest-otp` · `send-exam-invitation` · `exam_invitations` 테이블)
@@ -77,7 +77,7 @@
 |---|---|
 | **Agora 화상회의 비용** | 100명·120분·회당 약 1.7만원 (SD 그리드 · Free 10,000분/월 활용 시 첫 회 3천~5천원). Daily.co 대비 1/6. `docs/CAPACITY.md` §1.2 |
 | **R2 저장 비용 (시험당 100~300GB)** | 보관 정책 정해야 함 — 기본 30일 후 자동 삭제 or 저사양 저장 archive |
-| **브라우저 부하** (WebRTC + MediaRecorder + face-api + WebAudio 동시) | 대기실 사전 체크에 CPU 벤치마크 추가, 최소 사양 명시. 저사양 응시자는 관리자 승인 예외 |
+| **브라우저 부하** (WebRTC + MediaRecorder + face-api 동시 · WebAudio 제거로 다소 완화) | 대기실 사전 체크에 CPU 벤치마크 추가, 최소 사양 명시. 저사양 응시자는 관리자 승인 예외 |
 | **실기기 부하 테스트 불가** (Playwright는 WebRTC 미지원) | M6에 실제 다중 노트북 리허설 필수 |
 
 ---
