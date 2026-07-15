@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
 import { EnvCheck } from "@/components/env-check";
@@ -57,6 +57,17 @@ export function PracticeRunner({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
 
+  // 웹캠 · 화면 공유 스트림 · 환경 체크에서 획득 → 페이지 unmount까지 유지
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  useEffect(() => {
+    return () => {
+      webcamStream?.getTracks().forEach((t) => t.stop());
+      screenStream?.getTracks().forEach((t) => t.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const currentQ = questions[currentIdx];
   const currentSet = sets.find((s) => s.id === currentQ?.set_id);
   const questionsBySet = useMemo(() => {
@@ -103,6 +114,10 @@ export function PracticeRunner({
       {tab === "env" && (
         <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6">
           <EnvCheck
+            webcamStream={webcamStream}
+            setWebcamStream={setWebcamStream}
+            screenStream={screenStream}
+            setScreenStream={setScreenStream}
             onEnterExam={() => {
               setEnvPassed(true);
               setTab("questions");
@@ -113,6 +128,12 @@ export function PracticeRunner({
 
       {tab === "questions" && (
       <div className="flex-1 mx-auto max-w-7xl w-full px-6 py-6 flex gap-6">
+        {/* 감시 스트림 상시 표시 · 우측 하단 · 감독관 감시 중임을 시각화 */}
+        <MonitoringBadge
+          webcamStream={webcamStream}
+          screenActive={!!screenStream}
+        />
+
         {/* 좌측 문항 그리드 */}
         <QuestionRail
           sets={sets}
@@ -171,6 +192,60 @@ export function PracticeRunner({
         </main>
       </div>
       )}
+    </div>
+  );
+}
+
+/* ────── 감시 스트림 상시 표시 (시험창) ────── */
+
+function MonitoringBadge({
+  webcamStream,
+  screenActive,
+}: {
+  webcamStream: MediaStream | null;
+  screenActive: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && webcamStream) {
+      videoRef.current.srcObject = webcamStream;
+      void videoRef.current.play().catch(() => {});
+    }
+  }, [webcamStream]);
+  return (
+    <div className="fixed bottom-6 right-6 z-40 rounded-md bg-white border border-border shadow-lg overflow-hidden w-48">
+      <div className="px-3 py-2 border-b border-border bg-surface-soft flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
+        <span className="text-[10px] font-bold tracking-widest text-danger uppercase">
+          감시 중
+        </span>
+      </div>
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className="w-full aspect-video bg-black object-cover"
+      />
+      <div className="px-3 py-2 text-[10px] text-muted-foreground flex items-center justify-between">
+        <span className="flex items-center gap-1">
+          <span
+            className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              webcamStream ? "bg-success" : "bg-danger"
+            )}
+          />
+          웹캠
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              screenActive ? "bg-success" : "bg-danger"
+            )}
+          />
+          화면
+        </span>
+      </div>
     </div>
   );
 }

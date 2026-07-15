@@ -17,23 +17,37 @@ type CheckResult = {
  * - 브라우저: navigator + fullscreen 지원 여부
  * - 네트워크: fetch로 응답 시간 측정
  *
+ * 스트림 (webcam, screen)은 상위 컴포넌트가 관리 · 환경 체크 → 시험 종료까지 유지
  * onEnterExam 콜백이 있으면 통과 시 CTA 버튼 표시
  */
-export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
+export function EnvCheck({
+  onEnterExam,
+  webcamStream,
+  setWebcamStream,
+  screenStream,
+  setScreenStream,
+}: {
+  onEnterExam?: () => void;
+  webcamStream: MediaStream | null;
+  setWebcamStream: (s: MediaStream | null) => void;
+  screenStream: MediaStream | null;
+  setScreenStream: (s: MediaStream | null) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [browserInfo, setBrowserInfo] = useState<CheckResult>({
     status: "pending",
     detail: "확인 중…",
   });
-  const [webcam, setWebcam] = useState<CheckResult>({
-    status: "pending",
-    detail: "권한 요청 대기",
-  });
-  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
-  const [screen, setScreen] = useState<CheckResult>({
-    status: "pending",
-    detail: "테스트 버튼 클릭",
-  });
+  const [webcam, setWebcam] = useState<CheckResult>(
+    webcamStream
+      ? { status: "ok", detail: "웹캠 활성 · 시험까지 유지" }
+      : { status: "pending", detail: "권한 요청 대기" }
+  );
+  const [screen, setScreen] = useState<CheckResult>(
+    screenStream
+      ? { status: "ok", detail: "화면 공유 활성 · 시험까지 유지" }
+      : { status: "pending", detail: "테스트 버튼 클릭" }
+  );
   const [network, setNetwork] = useState<CheckResult>({
     status: "pending",
     detail: "측정 중…",
@@ -122,25 +136,31 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     void measureNetwork();
   }, []);
 
-  // 웹캠 자동 요청
+  // 웹캠 요청 · 스트림은 부모가 유지 (시험 종료까지)
   const requestWebcam = async () => {
     setWebcam({ status: "pending", detail: "권한 요청 중…" });
+    // 이전 스트림이 있으면 새로 요청하기 전에 정지 (재시도 시)
+    webcamStream?.getTracks().forEach((t) => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480 },
-        audio: false, // 마이크 미사용
+        audio: false,
       });
       setWebcamStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
-      }
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
       setWebcam({
         status: "ok",
-        detail: `${track.label || "웹캠"} · ${settings.width}×${settings.height}`,
+        detail: `${track.label || "웹캠"} · ${settings.width}×${settings.height} · 시험까지 유지`,
       });
+      // 트랙이 예상치 못하게 끝나면 (사용자가 OS에서 카메라 강제 해제) 상태 반영
+      track.onended = () => {
+        setWebcamStream(null);
+        setWebcam({
+          status: "error",
+          detail: "웹캠 연결이 끊어졌습니다. 재시도해주세요.",
+        });
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : "권한 거부";
       setWebcam({
@@ -150,14 +170,20 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     }
   };
 
-  // 자동 웹캠 요청 (한 번만)
+  // 최초 진입 시 웹캠 자동 요청 · 이미 활성이면 프리뷰만 연결
   useEffect(() => {
+    if (webcamStream) return;
     void requestWebcam();
-    return () => {
-      webcamStream?.getTracks().forEach((t) => t.stop());
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 프리뷰 재연결 (탭 재진입 시)
+  useEffect(() => {
+    if (videoRef.current && webcamStream) {
+      videoRef.current.srcObject = webcamStream;
+      void videoRef.current.play().catch(() => {});
+    }
+  }, [webcamStream]);
 
   // 듀얼 모니터 감지 (Window Management API · Chrome 100+)
   const requestMonitorCheck = async () => {
@@ -265,23 +291,31 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     return () => clearTimeout(id);
   }, []);
 
-  // 화면 공유 · 사용자 클릭 필요
+  // 화면 공유 · 사용자 클릭 필요 · 스트림은 시험 종료까지 유지
   const requestScreen = async () => {
     setScreen({ status: "pending", detail: "권한 요청 중…" });
+    screenStream?.getTracks().forEach((t) => t.stop());
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
       });
+      setScreenStream(stream);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
       setScreen({
         status: "ok",
         detail: `${track.label || "화면"} · ${settings.width ?? "?"}×${
           settings.height ?? "?"
-        }`,
+        } · 시험까지 유지`,
       });
-      // 즉시 정지 (테스트만)
-      stream.getTracks().forEach((t) => t.stop());
+      // 브라우저 상단 "공유 중지" 클릭 감지
+      track.onended = () => {
+        setScreenStream(null);
+        setScreen({
+          status: "error",
+          detail: "화면 공유가 중지되었습니다. 다시 시도해주세요.",
+        });
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : "권한 거부";
       setScreen({
