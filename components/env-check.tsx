@@ -46,6 +46,10 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     status: "pending",
     detail: "감지 시작 버튼 클릭",
   });
+  const [cpu, setCpu] = useState<CheckResult>({
+    status: "pending",
+    detail: "측정 대기",
+  });
 
   // 브라우저 정보 · Fullscreen 지원
   useEffect(() => {
@@ -225,6 +229,46 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     };
   }, []);
 
+  // CPU 벤치마크 · 웹캠+화면공유 인코딩 동시 처리 가능한지 대략 확인
+  const runCpuBenchmark = async () => {
+    setCpu({ status: "pending", detail: "측정 중…" });
+    // 다음 프레임에서 실행 · UI 블록 방지
+    await new Promise((r) => setTimeout(r, 50));
+    const cores = navigator.hardwareConcurrency || 0;
+    const N = 5_000_000;
+    const t0 = performance.now();
+    let sink = 0;
+    for (let i = 0; i < N; i++) {
+      sink += Math.sqrt(i * Math.PI) * Math.sin(i);
+    }
+    const elapsed = performance.now() - t0;
+    // sink 최적화 방지
+    if (!Number.isFinite(sink)) console.debug(sink);
+
+    let status: CheckStatus;
+    let verdict: string;
+    if (cores < 2 || elapsed > 800) {
+      status = "error";
+      verdict = "성능 부족 · 시험 중 지연 가능";
+    } else if (cores < 4 || elapsed > 400) {
+      status = "warn";
+      verdict = "권장 사양 미달 · 다른 앱 종료 필요";
+    } else {
+      status = "ok";
+      verdict = "인코딩 여유 있음";
+    }
+    setCpu({
+      status,
+      detail: `${cores}코어 · 벤치 ${Math.round(elapsed)}ms · ${verdict}`,
+    });
+  };
+
+  useEffect(() => {
+    // 첫 렌더 후 idle 시점에 실행
+    const id = setTimeout(() => void runCpuBenchmark(), 500);
+    return () => clearTimeout(id);
+  }, []);
+
   // 화면 공유 · 사용자 클릭 필요
   const requestScreen = async () => {
     setScreen({ status: "pending", detail: "권한 요청 중…" });
@@ -256,17 +300,19 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     screen.status === "ok" &&
     fullscreen.status === "ok" &&
     browserInfo.status === "ok" &&
-    monitor.status !== "error";
+    monitor.status !== "error" &&
+    cpu.status !== "error";
   const networkOk = network.status !== "error";
   const allGood = requiredOk && networkOk;
 
   const blockers: string[] = [];
+  if (monitor.status === "error") blockers.push("듀얼 모니터");
   if (webcam.status !== "ok") blockers.push("웹캠");
   if (screen.status !== "ok") blockers.push("화면 공유");
+  if (network.status === "error") blockers.push("네트워크");
+  if (cpu.status === "error") blockers.push("CPU");
   if (browserInfo.status !== "ok") blockers.push("브라우저");
   if (fullscreen.status !== "ok") blockers.push("Fullscreen API");
-  if (monitor.status === "error") blockers.push("듀얼 모니터");
-  if (network.status === "error") blockers.push("네트워크");
 
   const items: {
     n: number;
@@ -278,9 +324,10 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
   }[] = [
     {
       n: 1,
-      title: "브라우저",
-      result: browserInfo,
-      hint: "Chrome 또는 Edge 최신 버전 권장. Fullscreen API 지원 필요.",
+      title: "듀얼 모니터",
+      result: monitor,
+      hint: "노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요. 시험 중 감지되면 응시가 중단됩니다.",
+      action: { label: "재감지", onClick: requestMonitorCheck },
     },
     {
       n: 2,
@@ -312,20 +359,27 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
     },
     {
       n: 4,
-      title: "듀얼 모니터",
-      result: monitor,
-      hint: "노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요. 시험 중 감지되면 응시가 중단됩니다.",
-      action: { label: "재감지", onClick: requestMonitorCheck },
-    },
-    {
-      n: 5,
       title: "네트워크",
       result: network,
       hint: "서버 왕복 시간 3회 평균. 300ms 이하 권장 · 800ms 초과 시 지연 가능.",
     },
+    {
+      n: 5,
+      title: "CPU 성능",
+      result: cpu,
+      hint: "웹캠 인코딩 + 화면 공유 압축을 동시에 처리하려면 4코어 이상 권장. 저사양 노트북은 다른 앱을 모두 종료해주세요.",
+      action: { label: "재측정", onClick: runCpuBenchmark },
+    },
+    {
+      n: 6,
+      title: "브라우저",
+      result: browserInfo,
+      hint: "Chrome 또는 Edge 최신 버전 권장. Fullscreen API 지원 필요.",
+    },
   ];
 
   const okCount = items.filter((i) => i.result.status === "ok").length;
+  const total = items.length;
 
   return (
     <div className="space-y-5">
@@ -334,7 +388,7 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
         <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
           Step 1 · 응시 환경 체크
         </div>
-        <h2>시험 전 필수 확인 5가지</h2>
+        <h2>시험 전 필수 확인 {total}가지</h2>
         <div className="mt-3 flex items-center gap-2">
           <div className="flex-1 h-2 bg-subtle rounded-full overflow-hidden">
             <div
@@ -342,11 +396,11 @@ export function EnvCheck({ onEnterExam }: { onEnterExam?: () => void }) {
                 "h-full rounded-full transition-all",
                 allGood ? "bg-success" : "bg-primary"
               )}
-              style={{ width: `${(okCount / 5) * 100}%` }}
+              style={{ width: `${(okCount / total) * 100}%` }}
             />
           </div>
           <div className="text-xs font-bold font-tabular text-muted-foreground">
-            {okCount} / 5
+            {okCount} / {total}
           </div>
         </div>
       </div>
