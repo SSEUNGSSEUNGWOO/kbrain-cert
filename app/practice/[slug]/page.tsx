@@ -13,10 +13,14 @@ export const dynamic = "force-dynamic";
  */
 export default async function PracticePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ skip?: string }>;
 }) {
   const { slug } = await params;
+  const { skip } = await searchParams;
+  const skipToExam = skip === "1" || skip === "true";
   const supabase = createAdminSupabase();
 
   const { data: exam } = await supabase
@@ -109,6 +113,7 @@ export default async function PracticePage({
       }}
       sets={sets}
       questions={questions}
+      skipToExam={skipToExam}
     />
   );
 }

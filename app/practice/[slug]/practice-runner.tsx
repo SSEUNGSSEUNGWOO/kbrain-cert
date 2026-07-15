@@ -48,6 +48,7 @@ export function PracticeRunner({
   sets,
   questions,
   sessionId,
+  skipToExam = false,
 }: {
   slug: string;
   exam: {
@@ -63,12 +64,14 @@ export function PracticeRunner({
   questions: Question[];
   /** 실 시험 세션 id · Practice에서는 null · 있으면 precheck 결과 서버 저장 */
   sessionId?: string | null;
+  /** Practice ?skip=1 · 환경체크/서약/대기실 건너뛰고 시험창부터 (미리보기용) */
+  skipToExam?: boolean;
 }) {
   const savePrecheck = useSavePrecheck(sessionId);
-  const [tab, setTab] = useState<Tab>("env");
-  const [envPassed, setEnvPassed] = useState(false);
-  const [pledgePassed, setPledgePassed] = useState(false);
-  const [waitingReady, setWaitingReady] = useState(false);
+  const [tab, setTab] = useState<Tab>(skipToExam ? "exam" : "env");
+  const [envPassed, setEnvPassed] = useState(skipToExam);
+  const [pledgePassed, setPledgePassed] = useState(skipToExam);
+  const [waitingReady, setWaitingReady] = useState(skipToExam);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
 
