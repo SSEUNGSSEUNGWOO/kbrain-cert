@@ -60,10 +60,17 @@
 - 초대 상태 조회 (미사용/사용/만료)
 - **응시자별 준비 상태 뷰** (2026-07-15 구현) — 3개 dot 뱃지(환경·서약·대기) 클릭 시 상세 모달 · 5스텝 타임라인 + 환경 체크 6개 항목 스냅샷 + UA
 
-### 응시 모니터링 [핵심]
-- 실시간 응시 현황 (진행/제출/이탈 카운트)
-- 응시자별 감독 이벤트 로그 (이하 §감독 이벤트)
-- 개별 응시자 강제 종료 · 시간 연장
+### 응시 모니터링 [핵심] (2026-07-16 구현)
+- **실시간 그리드** `/examiner/monitor` — 3단 알림 우선 정렬(주목 3열 · 경고 5열 · 정상 10열) · Supabase Realtime 구독 즉시 반영
+- **개별 응시자 상세** `/examiner/session/[id]` — 5스텝 타임라인(환경/서약/대기실/시작/제출) · 환경체크 6항목 스냅샷 · 이벤트 타임라인(200개) · 답안 미리보기 · UA
+- **감독관 액션**:
+  - **강제 종료** — 사유 입력 · 즉시 status=submitted · `session_messages`에 system 안내
+  - **시간 연장** — 1~120분(5/10/15/30 프리셋) · `exam_sessions.time_extension_minutes` 누적 · 클라이언트 타이머와 서버 cron 모두 자동 반영
+- **실시간 채팅** (`session_messages` 테이블):
+  - 감독관↔응시자 양방향 · Realtime 구독
+  - **공지 모드** — 응시자 창 자동 open · 빨간 강조 · 📢 뱃지
+  - system 메시지 (강제 종료 · 시간 연장 자동 안내)
+- 감독 이벤트 필터/스트림 (이하 §감독 이벤트)
 
 ### 신분증 사후 검토 [핵심]
 - 응시자가 업로드한 신분증 사진 조회 (AWS Rekognition 미사용, 관리자 눈으로 확인)
@@ -174,17 +181,27 @@
 - 문제별 정책 배너 (외부 도구 허용 범위 안내)
 
 ### 감독 (Proctoring) [핵심]
-- **브라우저 로컬 추론**
-  - 얼굴 감지: face-api.js (2.5s 간격, 7.5s 연속 미검출 시 경고, 다인원 즉시)
-  - 전체화면 이탈: Fullscreen API (최대 5회 후 강제 제출)
-  - 탭 전환: Page Visibility API
-- **Agora Web SDK 웹캠·화면공유 실시간 스트림** — 감독관 관찰용 (Seoul 리전 · SD simulcast)
-- **R2 녹화** — MediaRecorder 500ms 청크, 웹캠+화면 이중 트랙
-- **이벤트 배치 전송** (5s window → POST bulk)
-- ⚠️ `proctoring_disabled=true` 세트 진입 시 감독 3개 unmount + 배너 표시 (이슈 #1)
+- **ProctorGuard 컴포넌트** (2026-07-16 구현) · 시험창(exam 탭)에서만 활성:
+  - **Fullscreen 강제** — 자동 요청 · 이탈 감지 · **5회 위반 시 자동 제출** · 검정 오버레이(클릭으로 복귀)
+  - **탭 이탈** — visibilitychange 즉시 감지 → tab_switch 이벤트 + 검정 오버레이
+  - **윈도우 blur 3초+** — 조용한 alt-tab 감지
+  - **복사/붙여넣기/잘라내기 차단** — copy_blocked (input/textarea/contenteditable 제외)
+  - **우클릭 · 드래그·드롭 차단** — context_menu_blocked
+  - **키보드 단축키 차단** — F12 · PrintScreen · Cmd+Shift+3/4/5 · Ctrl+Shift+I/C/P/S/J · Ctrl+P/S/U
+  - **인쇄 · beforeunload 트랩** — print_attempt · navigation_attempt
+  - **진입 30초 유예** — permission dialog 오탐 방지
+- **얼굴 감지: face-api.js** (M4 · 2.5s 간격, 7.5s 연속 미검출 시 경고, 다인원 즉시)
+- **Agora Web SDK 웹캠·화면공유 실시간 스트림** (M4) — 감독관 관찰용 (Seoul 리전 · SD simulcast)
+- **R2 녹화** (M4) — MediaRecorder 500ms 청크, 웹캠+화면 이중 트랙
+- **이벤트 배치 전송** (2026-07-16 구현) — 5s window / 50개 도달 시 flush / beforeunload sendBeacon · `monitoring_events` bulk insert · high severity면 세션 `is_flagged=true` 자동 마킹
+- ⚠️ `proctoring_disabled=true` 세트 진입 시 감독 unmount + 배너 표시 (이슈 #1)
 
-### 응시자 ↔ 감독관 채팅 [핵심]
-- **Supabase Realtime 채널 기반 실시간 채팅** (Agora RTM 대신 자체 구현 · 비용 절감 · 이벤트/채팅 통합 저장)
+### 응시자 ↔ 감독관 채팅 [핵심] (2026-07-16 구현)
+- **`session_messages` 테이블** (applicant · examiner · system 3종 sender_role · is_announcement 플래그)
+- 응시자 시험창 우측 하단 💬 팝업 · 안 읽음 배지(9+ 표시 · 깜빡)
+- **감독관 공지 도착 시 자동 open** + 빨간 말풍선
+- **시간 연장·강제 종료**는 자동으로 system 메시지 삽입 · 중앙 안내 뱃지
+- Supabase Realtime 구독 · 15초 fallback 폴링 (Agora RTM 대비 비용 절감)
 
 ### 제출 [핵심]
 - 명시적 제출 (미답 확인 dialog)
@@ -247,14 +264,23 @@
 
 ## 감독 이벤트 타입
 
-| 이벤트 | 소스 | 심각도 |
-|---|---|---|
-| `face_missing` | face-api.js | warn (7.5s 지속 시) |
-| `multiple_faces` | face-api.js | high |
-| `fullscreen_exit` / `tab_switch` | Fullscreen · Page Visibility API | high (5회 후 강제제출) |
-| `screen_share_off` | Agora 화면공유 트랙 종료 감지 | high |
-| `recording_error` | MediaRecorder 오류 | high |
-| `identity_mismatch` (수동) | 관리자 신분증 사후 검토 반려 | high |
+| 이벤트 | 소스 | 심각도 | 구현 시점 |
+|---|---|---|---|
+| `fullscreen_exit` | Fullscreen API | high (5회 후 강제 제출) | 2026-07-16 |
+| `tab_switch` | Page Visibility API | high | 2026-07-16 |
+| `window_blur` | window blur 3s+ | warn | 2026-07-16 |
+| `copy_blocked` | copy/cut event | warn | 2026-07-16 |
+| `context_menu_blocked` | contextmenu | info | 2026-07-16 |
+| `devtools_attempt` | F12 · Ctrl+Shift+I/C/P/S/J | warn | 2026-07-16 |
+| `screenshot_attempt` | PrintScreen · Cmd+Shift+3/4/5 | high | 2026-07-16 |
+| `shortcut_blocked` | Ctrl+P/S/U | warn | 2026-07-16 |
+| `print_attempt` | beforeprint | warn | 2026-07-16 |
+| `navigation_attempt` | beforeunload | warn | 2026-07-16 |
+| `face_missing` | face-api.js | warn (7.5s 지속 시) | M4 |
+| `multiple_faces` | face-api.js | high | M4 |
+| `screen_share_off` | Agora 화면공유 트랙 종료 감지 | high | M4 |
+| `recording_error` | MediaRecorder 오류 | high | M4 |
+| `identity_mismatch` (수동) | 관리자 신분증 사후 검토 반려 | high | M5 |
 
 이벤트별 임계치·감점 규칙은 시험 관리자 설정으로.
 

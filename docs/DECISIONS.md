@@ -1,6 +1,14 @@
 # kbrain-cert — 결정 사항 확정
 
-**최종 갱신**: 2026-07-15
+**최종 갱신**: 2026-07-16
+
+> **2026-07-16 추가 결정 (감독관 대시보드 · 액션)**:
+> - **감독관 액션 = 시간 연장 + 강제 종료** (2종) · 사유 텍스트 필드 · 확인 모달
+> - **시간 연장은 세션별 누적** — `exam_sessions.time_extension_minutes` 컬럼 · 클라이언트 타이머와 서버 pg_cron 모두 반영
+> - **강제 종료는 `auto_submitted=false`** (시간 만료 자동 제출과 구분) · `monitoring_notes`에 `[force_submit] 사유` 로그
+> - **실시간 채팅 = session_messages 테이블** — applicant/examiner/system 3종 sender_role · is_announcement 플래그 · Agora RTM 대신 Supabase Realtime 자체 구현
+> - **공지 메시지는 응시자 창 자동 open** · 빨간 강조로 시각 우선순위
+> - **감독관 시선 자동 유도** — 이벤트 발생 응시자가 3단 알림에서 자동 상위 티어로 승격 (주목/경고/정상)
 **목적**: `INVENTORY.md` 검토 후 승우님이 확정한 이식 방향. `FEATURES.md`·`MASTER_PLAN.md`·`ARCHITECTURE.md`는 모두 이 결정을 기반으로 작성됨.
 
 > **2026-07-15 추가 결정 (응시 core loop)**:
@@ -129,6 +137,15 @@
 - **선택**: HMAC 서명 쿠키 (`kbrain_exam_session` · 6h · HttpOnly · SameSite=Lax)
 - **왜**: 응시자마다 auth.users 생성하면 관리 복잡 · 대량 응시(100~300명) 시 계정 폭증 · `exam_sessions.invitation_id`로 추적 가능하므로 불필요
 - **보안**: `EXAM_SESSION_SECRET` 32bytes base64url · 서명 검증으로 위조 방지 · path별 exam 소속 확인 (첨부 API)
+
+### 7. 감독관 액션 · 채팅 스키마 (2026-07-16)
+- **`exam_sessions.time_extension_minutes` int** — 세션별 누적 연장 시간. 종료 시각 = `exam_date + duration_minutes + time_extension_minutes`
+- **`session_messages` 테이블** — sender_role(applicant/examiner/system) · content · is_announcement
+  - **왜 별도 테이블?** monitoring_events는 감독 이벤트 로그 · 채팅은 사후 검토 목적이라 분리 (append-only는 공통)
+  - Realtime publication에 추가 (즉시 반영)
+- **강제 종료 = `auto_submitted=false`** — 시간 만료 자동 제출과 구분. `monitoring_notes` 컬럼에 사유 저장
+- **`auto_submit_expired_sessions()` 함수 갱신** — `duration_minutes + time_extension_minutes` 기준으로 만료 판정
+- **감독관 액션은 admin/examiner role만** — 감독관 자격증 발급 필요 시 role 확장
 
 ### 6. Precheck 저장 A-a-i
 - **A (실 시험만)**: Practice는 응시자 불명 · 저장 노이즈. 실 시험 sessionId 있을 때만 저장. 훅 (`useSavePrecheck`)이 sessionId null이면 no-op

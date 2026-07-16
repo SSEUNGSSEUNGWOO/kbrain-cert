@@ -1,6 +1,6 @@
 # kbrain-cert — 마스터 플랜
 
-**최종 갱신**: 2026-07-15
+**최종 갱신**: 2026-07-16
 **소유자**: 승우님 (sseung@kbrainc.com)
 **한 줄 요약**: 100명 동시 응시(120분·회당) 공식 자격증급 CBT 플랫폼. 원본 "AI Champion Certification System"(Lovable · 남의 코드)에서 기능 방향을 가져와 Next.js로 새로 구축. 원본 대비 개선점 4개(감독 유연성·정답 격리·점수 통일·타이머).
 
@@ -106,6 +106,17 @@
 - **결과 페이지** `/exam/session/[id]/done` — 응시 완료 · 소요 시간 · 채점 안내
 - 응시자 개별 예외(듀얼 모니터 허용·웹캠 없음 허용) 설정 — 스키마만 있음 · UI 후속
 - **검증**: (수동) `.env.local`에 `EXAM_SESSION_SECRET` 세팅 → SQL Editor에서 `20260715000002_exam_session_precheck.sql`, `20260715000003_auto_submit_cron.sql` 실행 → 초대 → OTP → 4-step → 답안 저장 → 시간 만료 자동 제출까지 end-to-end
+
+### M3.5 — 감독관 대시보드 + 응시자 감독 (2026-07-16 대부분 완료)
+- [x] **ProctorGuard** — Fullscreen 강제(5회 위반 시 자동 제출) · 탭 이탈 · 윈도우 blur · 복붙/우클릭/드래그·드롭/F12/PrintScreen/DevTools 단축키 · 인쇄 · beforeunload 트랩
+- [x] `monitoring_events` 배치 저장 (5초 window + 50개 도달 시 flush + beforeunload sendBeacon)
+- [x] high severity 이벤트는 세션 `is_flagged=true` 자동 마킹
+- [x] **감독관 실시간 모니터** `/examiner/monitor` — 3단 알림 우선 정렬(주목/경고/정상) · Supabase Realtime 구독 (monitoring_events INSERT · exam_sessions UPDATE) · 30초 fallback 폴링
+- [x] **감독관 개별 응시자 상세** `/examiner/session/[id]` — 5스텝 타임라인 · 환경체크 6항목 스냅샷 · 이벤트 타임라인(200개) · 답안 미리보기(문항 그리드 · 슬롯별 500자) · UA
+- [x] **감독관 액션** — 시간 연장(1~120분 · 프리셋) · 강제 종료(사유 입력 · 즉시 auto_submit 없이 `auto_submitted=false`로 마킹)
+- [x] **실시간 채팅** — `session_messages` 테이블(applicant/examiner/system 3종) · 감독관↔응시자 양방향 · 공지 모드(응시자 창 자동 open · 빨간 강조) · Realtime 구독
+- [x] **시간 연장 반영** — 클라이언트 타이머(effectiveDurationMinutes) + 서버 pg_cron(`auto_submit_expired_sessions()`) 모두 `time_extension_minutes` 반영
+- [x] **강제 종료 감지** — 응시자 시험창에서 `session.submit_time` 감지 → `/done` 자동 이동
 
 ### M4 — 응시 & 감독 & 녹화 (7~10일, 가장 무거움)
 - **대기실**: 환경 체크(웹캠·화면공유·CPU 벤치마크 · 마이크 미사용), 보안 서약, **신분증 이미지 업로드**(Rekognition 없음), 입실 타이밍
