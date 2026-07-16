@@ -10,7 +10,9 @@ import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
 import { useAutoSaveAnswer } from "@/lib/hooks/use-auto-save-answer";
 import { useExamTimer, formatHms } from "@/lib/hooks/use-exam-timer";
 import { useMonitorEvents } from "@/lib/hooks/use-monitor-events";
+import { useExamSessionLive } from "@/lib/hooks/use-exam-session-live";
 import { ProctorGuard } from "@/components/proctor-guard";
+import { ExamChat } from "@/components/exam-chat";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -135,10 +137,23 @@ export function PracticeRunner({
     isRealExam
       ? exam.examDate ?? serverStartTime
       : practiceStartTime;
-  const timer = useExamTimer(effectiveStartTime, exam.durationMinutes);
+  const effectiveDurationMinutes =
+    exam.durationMinutes + (isRealExam ? sessionLive.timeExtensionMinutes : 0);
+  const timer = useExamTimer(effectiveStartTime, effectiveDurationMinutes);
 
   // 감독 이벤트 batch 저장 (실 시험만 · Practice는 no-op)
   const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
+
+  // 세션 라이브: 시간 연장 · 강제 종료 감지 · 채팅 메시지
+  const { live: sessionLive, markRead: markChatRead } =
+    useExamSessionLive(sessionId);
+
+  // 감독관이 강제 종료했으면 done 페이지로 이동
+  useEffect(() => {
+    if (sessionLive.isSubmitted && sessionId && tab === "exam") {
+      window.location.href = `/exam/session/${sessionId}/done`;
+    }
+  }, [sessionLive.isSubmitted, sessionId, tab]);
 
   // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
   const autoSubmittedRef = useRef(false);
@@ -307,6 +322,23 @@ export function PracticeRunner({
           webcamStream={webcamStream}
           screenActive={!!screenStream}
         />
+
+        {/* 실 시험: 감독관 채팅 · Practice에서는 표시 X */}
+        {isRealExam && (
+          <ExamChat
+            messages={sessionLive.messages}
+            unreadCount={sessionLive.unreadCount}
+            isSubmitted={sessionLive.isSubmitted}
+            onOpen={markChatRead}
+          />
+        )}
+
+        {/* 시간 연장 공지 */}
+        {isRealExam && sessionLive.timeExtensionMinutes > 0 && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 rounded-md bg-success text-white px-4 py-2 shadow-lg text-xs font-bold">
+            ⏱ 감독관이 시험 시간을 +{sessionLive.timeExtensionMinutes}분 연장했습니다
+          </div>
+        )}
 
         {/* 좌측 문항 그리드 */}
         <QuestionRail

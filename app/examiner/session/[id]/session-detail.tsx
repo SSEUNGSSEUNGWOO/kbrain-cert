@@ -70,6 +70,15 @@ type Counts = {
   infoEvents: number;
 };
 
+type Message = {
+  id: number;
+  sender_role: "applicant" | "examiner" | "system";
+  content: string;
+  is_announcement: boolean;
+  created_at: string;
+  read_at: string | null;
+};
+
 const EVENT_LABEL: Record<string, string> = {
   fullscreen_exit: "전체화면 이탈",
   tab_switch: "탭 전환",
@@ -112,6 +121,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,8 +151,26 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
         setError(err instanceof Error ? err.message : "네트워크 오류");
       }
     };
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(
+          `/api/examiner/session/${sessionId}/messages?t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) setMessages(data.messages ?? []);
+      } catch {
+        /* ignore */
+      }
+    };
+
     void fetchData();
-    const pollingId = setInterval(fetchData, 20_000);
+    void fetchMessages();
+    const pollingId = setInterval(() => {
+      void fetchData();
+      void fetchMessages();
+    }, 20_000);
 
     // Realtime 구독 · 이벤트/답안/세션 변경 시 refetch
     const supabase = createClientSupabase();
@@ -177,6 +205,16 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
           filter: `id=eq.${sessionId}`,
         },
         () => void fetchData()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "session_messages",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        () => void fetchMessages()
       )
       .subscribe();
 
@@ -314,7 +352,20 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
             tone="info"
           />
         </div>
+
+        {/* 감독관 액션 */}
+        <ExaminerActions
+          sessionId={sessionId}
+          isSubmitted={!!session.submitTime}
+        />
       </div>
+
+      {/* 채팅 */}
+      <ChatPanel
+        sessionId={sessionId}
+        messages={messages}
+        isSubmitted={!!session.submitTime}
+      />
 
       <div className="grid grid-cols-3 gap-5">
         {/* 좌: 이벤트 타임라인 */}
@@ -548,6 +599,339 @@ function TimingCell({
       </div>
       <div className={cn("text-xs font-bold font-tabular", color)}>
         {value ? new Date(value).toLocaleTimeString("ko-KR") : "-"}
+      </div>
+    </div>
+  );
+}
+
+function ExaminerActions({
+  sessionId,
+  isSubmitted,
+}: {
+  sessionId: string;
+  isSubmitted: boolean;
+}) {
+  const [confirmForceSubmit, setConfirmForceSubmit] = useState(false);
+  const [extendModal, setExtendModal] = useState(false);
+  const [reason, setReason] = useState("");
+  const [extendMinutes, setExtendMinutes] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function doAction(
+    action: "force_submit" | "extend_time",
+    payload: Record<string, unknown> = {}
+  ) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/examiner/session/${sessionId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "실패");
+      setConfirmForceSubmit(false);
+      setExtendModal(false);
+      setReason("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 pt-5 border-t border-border">
+      <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-2">
+        Examiner Actions · 감독관 액션
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setExtendModal(true)}
+          disabled={isSubmitted}
+          className="h-9 px-4 rounded-md bg-white border border-border hover:border-primary text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ⏱ 시간 연장
+        </button>
+        <button
+          onClick={() => setConfirmForceSubmit(true)}
+          disabled={isSubmitted}
+          className="h-9 px-4 rounded-md bg-danger hover:opacity-90 text-white text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ⏹ 강제 종료
+        </button>
+        {isSubmitted && (
+          <span className="text-[10px] text-muted-foreground">
+            이미 제출된 세션 · 액션 불가
+          </span>
+        )}
+        {error && (
+          <span className="text-[10px] font-bold text-danger">{error}</span>
+        )}
+      </div>
+
+      {confirmForceSubmit && (
+        <ConfirmModal
+          title="시험 강제 종료"
+          description="이 응시자의 시험을 즉시 제출 처리합니다. 이 작업은 되돌릴 수 없습니다."
+          onCancel={() => {
+            setConfirmForceSubmit(false);
+            setReason("");
+          }}
+          confirmLabel={busy ? "처리 중…" : "강제 종료"}
+          confirmDanger
+          busy={busy}
+          onConfirm={() => doAction("force_submit", { reason })}
+        >
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
+              사유 (선택)
+            </label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="예: 부정행위 확인 · 응시자 요청"
+              className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+        </ConfirmModal>
+      )}
+
+      {extendModal && (
+        <ConfirmModal
+          title="시험 시간 연장"
+          description="이 응시자에게 추가 시간을 부여합니다. 클라이언트 타이머와 서버 종료 시각 모두 자동 반영됩니다."
+          onCancel={() => setExtendModal(false)}
+          confirmLabel={busy ? "처리 중…" : `+${extendMinutes}분 연장`}
+          busy={busy}
+          onConfirm={() =>
+            doAction("extend_time", { minutes: extendMinutes })
+          }
+        >
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
+              연장 시간 (분 · 1~120)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={120}
+              value={extendMinutes}
+              onChange={(e) => setExtendMinutes(Number(e.target.value))}
+              className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm font-tabular focus:border-primary focus:outline-none"
+            />
+            <div className="flex gap-1 mt-2">
+              {[5, 10, 15, 30].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setExtendMinutes(m)}
+                  className="h-7 px-2 rounded-sm bg-surface-soft hover:bg-subtle text-xs font-bold text-muted-foreground"
+                >
+                  +{m}
+                </button>
+              ))}
+            </div>
+          </div>
+        </ConfirmModal>
+      )}
+    </div>
+  );
+}
+
+function ChatPanel({
+  sessionId,
+  messages,
+  isSubmitted,
+}: {
+  sessionId: string;
+  messages: Message[];
+  isSubmitted: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const [isAnnouncement, setIsAnnouncement] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/examiner/session/${sessionId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: trimmed, isAnnouncement }),
+        }
+      );
+      if (res.ok) setInput("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md bg-white border border-border overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
+            Chat · 응시자와 실시간 대화
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {messages.length}개 메시지
+          </div>
+        </div>
+      </div>
+      <div className="max-h-64 overflow-y-auto p-4 space-y-2 bg-surface-soft/40">
+        {messages.length === 0 && (
+          <div className="text-center text-xs text-muted-foreground py-6">
+            아직 메시지가 없습니다
+          </div>
+        )}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+      </div>
+      <form
+        onSubmit={send}
+        className="p-3 border-t border-border flex items-center gap-2"
+      >
+        <label className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isAnnouncement}
+            onChange={(e) => setIsAnnouncement(e.target.checked)}
+            className="w-3.5 h-3.5 accent-primary"
+          />
+          공지
+        </label>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={busy || isSubmitted}
+          placeholder={
+            isSubmitted
+              ? "제출된 세션 · 채팅 불가"
+              : isAnnouncement
+              ? "공지 메시지 (강조 표시)"
+              : "메시지 입력…"
+          }
+          maxLength={500}
+          className="flex-1 h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={busy || isSubmitted || !input.trim()}
+          className="h-10 px-4 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold disabled:opacity-40 transition"
+        >
+          전송
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  if (message.sender_role === "system") {
+    return (
+      <div className="text-center">
+        <span className="inline-block text-[10px] text-muted-foreground bg-white border border-border rounded-sm px-2 py-1 font-tabular">
+          {message.content} · {new Date(message.created_at).toLocaleTimeString("ko-KR")}
+        </span>
+      </div>
+    );
+  }
+  const isExaminer = message.sender_role === "examiner";
+  return (
+    <div className={cn("flex", isExaminer ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[75%] rounded-md px-3 py-2",
+          isExaminer
+            ? message.is_announcement
+              ? "bg-danger text-white"
+              : "bg-primary text-white"
+            : "bg-white border border-border"
+        )}
+      >
+        {message.is_announcement && isExaminer && (
+          <div className="text-[9px] font-bold tracking-widest uppercase mb-0.5 opacity-80">
+            📢 Announcement
+          </div>
+        )}
+        <div className="text-sm break-words">{message.content}</div>
+        <div
+          className={cn(
+            "text-[9px] font-tabular mt-1",
+            isExaminer ? "text-white/70" : "text-muted"
+          )}
+        >
+          {isExaminer ? "감독관" : "응시자"} ·{" "}
+          {new Date(message.created_at).toLocaleTimeString("ko-KR")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  description,
+  onCancel,
+  onConfirm,
+  confirmLabel,
+  confirmDanger,
+  busy,
+  children,
+}: {
+  title: string;
+  description: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  confirmLabel: string;
+  confirmDanger?: boolean;
+  busy: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="rounded-md bg-white border border-border w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h3 className="font-bold text-base">{title}</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            {description}
+          </div>
+          {children}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              onClick={onCancel}
+              disabled={busy}
+              className="flex-1 h-11 rounded-md bg-white border border-border text-sm font-bold hover:border-primary disabled:opacity-50 transition"
+            >
+              취소
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={busy}
+              className={cn(
+                "flex-1 h-11 rounded-md text-white text-sm font-bold disabled:opacity-50 transition",
+                confirmDanger
+                  ? "bg-danger hover:opacity-90"
+                  : "bg-primary hover:bg-primary-hover"
+              )}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
