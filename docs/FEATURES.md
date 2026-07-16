@@ -54,7 +54,7 @@
 
 ### 초대전용 응시자 관리 [핵심]
 - **+ 초대 만들기 모달** (2026-07-15 구현) — 시험 · 이메일 · 이름 · 소속 · 발송 여부 · 12자 hex invite_code 발급 후 진입 URL 즉시 표시
-- **명단 CSV 업로드** (100명 일괄) — 후속
+- **명단 CSV 업로드** (2026-07-16 구현) — `email,name,organization` 헤더 · 최대 1000행 · UTF-8 · 브라우저 파싱 · 미리보기 → `POST /api/admin/invitations/bulk` · 중복 이메일 스킵 · 템플릿 다운로드 제공
 - **초대 이메일 발송** — Resend stub (`lib/email/send-invitation.ts` · 콘솔 출력) · API 키만 넣으면 실 발송
 - 개별 예외 설정 (듀얼 모니터·웹캠 없음·화면공유 없음 허용) — 스키마만 있음
 - 초대 상태 조회 (미사용/사용/만료)
@@ -83,11 +83,24 @@
 - 슬롯별 부분점수 · 감점 규칙 편집 · 코멘트
 - **답안 Export** — CSV/JSON, 시험/응시자/문제 기준 (외부 채점 위임용) — 작업형만이라 export 활용도 높아짐 (첨부 파일 zip 묶음도 함께)
 
-### 결과 · 통계 [핵심]
-- 응시자별 결과 페이지 · CSV/xlsx export
-- ⚠️ CSV 헤더 · CrossTable 라벨 모두 `/100` 표기 (이슈 #3)
-- 합격/불합격 판정 (환산 기준)
-- 통계 대시보드
+### 결과 · 통계 [핵심] (2026-07-16 구현)
+- **`/admin/exams/{id}/results`** 시험별 결과·통계 페이지:
+  - 요약 통계 6개: 총 응시 · 제출 완료 · 진행 중 · 자동 제출 · Flagged · HIGH 이벤트
+  - 메트릭 3개: 응시 완료율 · 평균 소요 시간 · 전 문항 답변 응시자 수
+  - 응시자 목록 테이블 (이름 · 조직 · 상태 뱃지+🚩+AUTO+`+분` · 시작 · 소요 · 답변 진행바 · 이벤트 카운트 · 상세 링크)
+  - flagged 응시자 행 붉게 하이라이트
+- **답안 zip export** (`↓ 답안 zip 다운로드` 버튼):
+  - `{시험제목}_answers_{YYYYMMDD}.zip`
+  - `summary.csv` (15 컬럼 · UTF-8 BOM)
+  - `README.txt` (구조 안내)
+  - 응시자별 폴더 `{이름}_{초대코드}/`
+    - `_info.md` — 상태·소요·이벤트 통계·감독관 메모
+    - `Q{번호}_{슬롯순번}-{슬롯라벨}.txt` — text/long_text/url/number
+    - `Q{번호}_{슬롯순번}-{슬롯라벨}-{원본파일명}.{ext}` — file 슬롯 (원본 파일)
+  - `auto_submitted/{이름}_{초대코드}/` — 자동 제출 격리
+- ⚠️ 채점자 위임용 (작업형 전용 · 원본 파일 자체가 채점 대상)
+- ⚠️ CSV 헤더 · CrossTable 라벨 모두 `/100` 표기 (이슈 #3) — 채점 붙는 M5에서
+- 통계 대시보드 (M5 이후):
   - 등급별 합격률 (Bar)
   - 월별 응시 추이 (Line)
   - 기관별 등급 분포
@@ -171,11 +184,12 @@
 - 명시적 제출 (마지막 문항에 초록 CTA · 확인 다이얼로그 · 미답변 개수 경고)
 - **슬롯형 답안 UI만** (결정 I) — 슬롯 조합 렌더러 하나로 모든 문항 처리
   - `text` — 단일 input
-  - `long_text` — textarea + 글자수 카운트
+  - `long_text` — textarea
   - `url` — url validation input
-  - `file` — 드래그·드롭 업로드 + accept 필터 + 파일 목록
+  - **`file`** (2026-07-16 구현) — 드래그·드롭 업로드 + accept 필터 + 업로드 완료 후 다운로드/삭제 · 슬롯당 1개 · 최대 50MB
   - `number` — numeric input
-- **파일 업로드는 R2 presigned URL로 직접** (섹션당 다수 파일 · 확장자별 자동 분류 힌트)
+- **파일 업로드는 Supabase Storage `answer-files` bucket** (2026-07-16 구현) — 서버 프록시 (`/api/exam/answers/upload`) · 세션 쿠키 인증 · path = `{sessionId}/{questionId}/{slotId}/{hash}{salt}{ext}` · slot_values에 `{ path, name, size, mime }` 저장
+- **파일 다운로드** — `/api/exam/answer-files/[...path]` · admin/examiner OR 응시자 세션 쿠키 (path의 sessionId 매칭)
 - 문항별 제출 체크리스트 (kbrain-ems 방식 참고) — 슬롯 채워짐 상태 자동 체크
 - Markdown 문제 내용 렌더 (remark-gfm)
 - 문제별 정책 배너 (외부 도구 허용 범위 안내)

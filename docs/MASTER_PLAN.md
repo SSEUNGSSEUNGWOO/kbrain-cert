@@ -118,6 +118,14 @@
 - [x] **시간 연장 반영** — 클라이언트 타이머(effectiveDurationMinutes) + 서버 pg_cron(`auto_submit_expired_sessions()`) 모두 `time_extension_minutes` 반영
 - [x] **강제 종료 감지** — 응시자 시험창에서 `session.submit_time` 감지 → `/done` 자동 이동
 
+### M3.7 — 결과·통계·Export·파일 슬롯 (2026-07-16 완료)
+- [x] **관리자 결과·통계 페이지** `/admin/exams/{id}/results` — 요약 통계(총 응시 · 제출 완료 · 진행 중 · 자동 제출 · Flagged · HIGH 이벤트) + 메트릭(응시 완료율 · 평균 소요 시간 · 전 문항 답변) + 응시자 목록 테이블 · 상세 드릴다운
+- [x] **답안 zip export** `GET /api/admin/exams/{id}/export-answers` — `summary.csv` + 응시자별 폴더 `{name}_{code}/` + auto_submitted 격리 폴더 + `_info.md`
+- [x] **파일 슬롯 업로드** — Storage bucket `answer-files` (private · 50MB) · `POST /api/exam/answers/upload` FormData · 세션 쿠키 인증 · path = `{sessionId}/{questionId}/{slotId}/{hash}{salt}{ext}`
+- [x] **파일 다운로드/미리보기** `GET /api/exam/answer-files/[...path]` — admin/examiner OR 응시자 세션 쿠키(path의 sessionId 매칭)
+- [x] **FileSlot UI** — SlotEditor에 `file` 타입 실 업로드 (드래그·드롭 · accept 필터 · 업로드 완료 후 다운로드/삭제 · Practice에서는 저장 X 안내)
+- [x] **zip export에 파일 포함** — `file` 슬롯이면 Storage에서 다운받아 zip에 원본 파일명 유지
+
 ### M4 — 응시 & 감독 & 녹화 (7~10일, 가장 무거움)
 - **대기실**: 환경 체크(웹캠·화면공유·CPU 벤치마크 · 마이크 미사용), 보안 서약, **신분증 이미지 업로드**(Rekognition 없음), 입실 타이밍
 - **응시 페이지**:

@@ -138,6 +138,26 @@
 - **왜**: 응시자마다 auth.users 생성하면 관리 복잡 · 대량 응시(100~300명) 시 계정 폭증 · `exam_sessions.invitation_id`로 추적 가능하므로 불필요
 - **보안**: `EXAM_SESSION_SECRET` 32bytes base64url · 서명 검증으로 위조 방지 · path별 exam 소속 확인 (첨부 API)
 
+### 8. 답안 zip export 형식 (2026-07-16)
+- **작업형 전용이라 CSV 하나로 부족** — 파일 슬롯 · 긴 long_text 등 이유
+- **선택: 시험 전체 zip 하나** (승우님 결정 2026-07-16)
+  - 응시자별 폴더 · 문항×슬롯별 파일 · 원본 파일명 유지
+  - `summary.csv` (BOM) — 요약 · Excel 바로 열림
+  - `auto_submitted/` 격리 — 채점자가 자동 제출자 별도 검토
+  - `_info.md` — 응시자 상태·이벤트 요약 (채점자가 첫 파일로 참고)
+- **파일 슬롯 원본 유지** — 확장자·인코딩 그대로 (zip 내에서만 관리 편의)
+- **채점 위임 흐름**: 관리자가 zip 다운 → 채점자에게 전달 → 채점자가 파일별 점수 · CSV로 반영 후 되보내기 (import는 M5)
+
+### 9. 파일 슬롯 저장 (2026-07-16)
+- **Supabase Storage `answer-files` bucket** (private · service_role만 · 50MB 제한)
+- **경로**: `{sessionId}/{questionId}/{slotId}/{md5hash 12}{salt 8}.{ext}`
+  - md5 hash → 파일 무결성 검증 자연 획득
+  - salt → 동일 파일 재업로드도 unique path (버전 관리)
+- **slot_values 스키마**: `{ path, name, size, mime, uploadedAt }` (원본 파일명 유지)
+- **왜 별도 Storage bucket?** — 시험 첨부(`exam-attachments`) vs 응시자 답안(`answer-files`) 완전 분리. 각기 다른 접근 제어
+- **다운로드 인증 2방식**: admin/examiner 로그인 · 응시자 세션 쿠키(path의 sessionId 매칭)
+- **여러 파일 슬롯 하나에?** — 지금은 1개만 · UI 단순화. 실 사용 후 필요하면 배열로 확장
+
 ### 7. 감독관 액션 · 채팅 스키마 (2026-07-16)
 - **`exam_sessions.time_extension_minutes` int** — 세션별 누적 연장 시간. 종료 시각 = `exam_date + duration_minutes + time_extension_minutes`
 - **`session_messages` 테이블** — sender_role(applicant/examiner/system) · content · is_announcement
