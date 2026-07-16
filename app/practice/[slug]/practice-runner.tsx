@@ -306,6 +306,8 @@ export function PracticeRunner({
             scheduledAt={
               isRealExam && exam.examDate ? new Date(exam.examDate) : undefined
             }
+            sessionId={sessionId ?? null}
+            initialIdentityPath={null}
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);

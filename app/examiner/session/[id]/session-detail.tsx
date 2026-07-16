@@ -17,6 +17,9 @@ type SessionInfo = {
   pledgeAcceptedAt: string | null;
   waitingEnteredAt: string | null;
   userAgent: string | null;
+  identityImageUrl: string | null;
+  identityReviewStatus: "pending" | "approved" | "rejected" | null;
+  identityReviewNote: string | null;
 };
 type ExamInfo = {
   id: string;
@@ -504,6 +507,54 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
               </div>
             )}
           </div>
+
+          {/* 신분증 */}
+          {session.identityImageUrl && (
+            <div className="rounded-md bg-white border border-border overflow-hidden">
+              <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-warning uppercase">
+                    Identity · 신분증
+                  </div>
+                  <div className="text-sm font-bold">
+                    사후 검토 · 상태:{" "}
+                    <span
+                      className={cn(
+                        "font-tabular",
+                        session.identityReviewStatus === "approved"
+                          ? "text-success"
+                          : session.identityReviewStatus === "rejected"
+                          ? "text-danger"
+                          : "text-info"
+                      )}
+                    >
+                      {session.identityReviewStatus ?? "pending"}
+                    </span>
+                  </div>
+                </div>
+                <a
+                  href={`/api/exam/identity/image/${session.identityImageUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-xs font-bold transition"
+                >
+                  원본 새 탭
+                </a>
+              </div>
+              <div className="p-4 bg-black flex items-center justify-center">
+                <img
+                  src={`/api/exam/identity/image/${session.identityImageUrl}`}
+                  alt="신분증"
+                  className="max-h-72 w-auto object-contain"
+                />
+              </div>
+              {session.identityReviewNote && (
+                <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground">
+                  검토 메모: {session.identityReviewNote}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Precheck 요약 */}
           {session.envResult && (

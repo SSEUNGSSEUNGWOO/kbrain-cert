@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IdentityUpload } from "@/components/identity-upload";
 import { cn } from "@/lib/utils";
 
 /**
  * 대기실 · 환경 체크 + 보안 서약 완료 후 진입
  * - 실 시험: scheduledAt까지 카운트다운 · 시간되면 자동 입장
  * - 테스트 링크(isPractice): 즉시 "입장하기" 버튼 · 시간 무관
+ * - 신분증 이미지 업로드 필수 (실 시험만) · 미업로드 시 진입 차단
  */
 export function WaitingRoom({
   exam,
   isPractice,
   scheduledAt,
+  sessionId,
+  initialIdentityPath,
   onEnter,
 }: {
   exam: {
@@ -22,8 +26,14 @@ export function WaitingRoom({
   };
   isPractice: boolean;
   scheduledAt?: Date;
+  sessionId: string | null;
+  initialIdentityPath: string | null;
   onEnter: () => void;
 }) {
+  const [identityPath, setIdentityPath] = useState<string | null>(
+    initialIdentityPath
+  );
+  const identityReady = isPractice || !!identityPath;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     if (isPractice || !scheduledAt) return;
@@ -35,7 +45,7 @@ export function WaitingRoom({
     ? Math.max(0, scheduledAt.getTime() - now.getTime())
     : 0;
   const shouldAutoEnter =
-    !isPractice && scheduledAt != null && remainingMs === 0;
+    !isPractice && scheduledAt != null && remainingMs === 0 && identityReady;
 
   useEffect(() => {
     if (shouldAutoEnter) onEnter();
@@ -89,6 +99,13 @@ export function WaitingRoom({
         </div>
       </div>
 
+      {/* 신분증 이미지 업로드 · 실 시험이면 필수 */}
+      <IdentityUpload
+        sessionId={sessionId}
+        initialPath={initialIdentityPath}
+        onUploaded={(p) => setIdentityPath(p)}
+      />
+
       {/* 입장 CTA · Practice면 즉시 · 실 시험이면 카운트다운 */}
       {isPractice ? (
         <div className="rounded-md bg-gradient-to-br from-primary to-primary-hover text-white p-6">
@@ -107,10 +124,17 @@ export function WaitingRoom({
           </button>
         </div>
       ) : (
-        <ScheduledCountdown
-          remainingMs={remainingMs}
-          scheduledAt={scheduledAt}
-        />
+        <>
+          <ScheduledCountdown
+            remainingMs={remainingMs}
+            scheduledAt={scheduledAt}
+          />
+          {!identityReady && (
+            <div className="rounded-md bg-warning-soft border border-warning p-4 text-xs text-warning font-bold text-center">
+              ⚠ 신분증 이미지를 먼저 업로드해야 시험이 시작됩니다
+            </div>
+          )}
+        </>
       )}
     </div>
   );

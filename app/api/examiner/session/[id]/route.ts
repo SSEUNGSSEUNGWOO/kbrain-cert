@@ -32,7 +32,7 @@ export async function GET(
   const { data: session } = await admin
     .from("exam_sessions")
     .select(
-      "id, exam_id, status, start_time, submit_time, auto_submitted, is_flagged, invitation_id, precheck_env_result, precheck_pledge_accepted_at, precheck_waiting_entered_at, precheck_user_agent, updated_at"
+      "id, exam_id, status, start_time, submit_time, auto_submitted, is_flagged, invitation_id, precheck_env_result, precheck_pledge_accepted_at, precheck_waiting_entered_at, precheck_user_agent, updated_at, identity_image_url, identity_review_status, identity_review_note"
     )
     .eq("id", id)
     .maybeSingle();
@@ -121,6 +121,9 @@ export async function GET(
       pledgeAcceptedAt: session.precheck_pledge_accepted_at,
       waitingEnteredAt: session.precheck_waiting_entered_at,
       userAgent: session.precheck_user_agent,
+      identityImageUrl: session.identity_image_url,
+      identityReviewStatus: session.identity_review_status,
+      identityReviewNote: session.identity_review_note,
     },
     exam: exam
       ? {
