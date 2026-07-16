@@ -155,15 +155,21 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
       <div className="flex items-center gap-2 mt-3">
         <Link
           href={`/admin/exams/${exam.id}/preview`}
-          className="flex-1 h-9 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center justify-center transition"
+          className="flex-1 h-9 rounded-md bg-white border border-border hover:border-primary text-xs font-bold flex items-center justify-center transition"
         >
-          첨부 미리보기 (관리자)
+          첨부 미리보기
         </Link>
         <Link
           href="/admin/invitations"
           className="flex-1 h-9 rounded-md bg-white border border-border hover:border-primary text-xs font-bold flex items-center justify-center transition"
         >
           응시자 관리
+        </Link>
+        <Link
+          href={`/admin/exams/${exam.id}/results`}
+          className="flex-1 h-9 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center justify-center transition"
+        >
+          결과 · 통계
         </Link>
       </div>
     </div>
