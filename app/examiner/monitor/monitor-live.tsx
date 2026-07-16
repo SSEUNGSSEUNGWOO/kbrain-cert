@@ -542,10 +542,11 @@ function ApplicantCard({
     : null;
 
   return (
-    <button
+    <Link
+      href={`/examiner/session/${app.sessionId}`}
       onClick={onSelect}
       className={cn(
-        "text-left rounded-md bg-white border overflow-hidden transition hover:shadow-card-hover",
+        "block text-left rounded-md bg-white border overflow-hidden transition hover:shadow-card-hover",
         borderClass
       )}
     >
@@ -637,7 +638,7 @@ function ApplicantCard({
           </div>
         </div>
       )}
-    </button>
+    </Link>
   );
 }
 
