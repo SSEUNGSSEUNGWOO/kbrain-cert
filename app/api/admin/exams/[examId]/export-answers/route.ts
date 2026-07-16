@@ -320,12 +320,54 @@ export async function GET(
         if (!slotValues) continue;
         const qNum = q.set_order.toString().padStart(2, "0");
         const set = setMap.get(q.set_id);
-        q.submission_slots.forEach((slot, idx) => {
+        for (let i = 0; i < q.submission_slots.length; i++) {
+          const slot = q.submission_slots[i];
           const value = slotValues[slot.id];
-          if (value == null || value === "") return;
-          const slotNum = (idx + 1).toString().padStart(1, "0");
+          if (value == null || value === "") continue;
+          const slotNum = (i + 1).toString().padStart(1, "0");
           const labelSlug = slugify(slot.label);
           const setPrefix = set ? `[${set.title}] ` : "";
+
+          // file 타입: Storage에서 다운받아 zip에 포함
+          if (slot.type === "file" && typeof value === "object" && value !== null) {
+            const fileInfo = value as {
+              path?: string;
+              name?: string;
+              size?: number;
+              mime?: string;
+            };
+            if (fileInfo.path) {
+              try {
+                const { data: fileBlob } = await admin.storage
+                  .from("answer-files")
+                  .download(fileInfo.path);
+                if (fileBlob) {
+                  const buffer = Buffer.from(await fileBlob.arrayBuffer());
+                  const originalName = fileInfo.name ?? "file";
+                  const ext = originalName.match(/(\.[a-zA-Z0-9]{1,10})$/)?.[1] ?? "";
+                  const safeName = slugify(
+                    originalName.replace(/\.[^.]+$/, "")
+                  );
+                  zip.addFile(
+                    `${basePath}/Q${qNum}_${slotNum}-${labelSlug}-${safeName}${ext}`,
+                    buffer
+                  );
+                  continue;
+                }
+              } catch {
+                /* fallthrough to text */
+              }
+            }
+            zip.addFile(
+              `${basePath}/Q${qNum}_${slotNum}-${labelSlug}.txt`,
+              Buffer.from(
+                `[파일 슬롯 · 다운로드 실패 or 미업로드]\n${JSON.stringify(value, null, 2)}`,
+                "utf-8"
+              )
+            );
+            continue;
+          }
+
           const header =
             `# 문항 ${q.set_order} · ${slot.label} (${slot.type} · 배점 ${slot.max_score}점)\n\n` +
             `${setPrefix}${q.content}\n\n---\n\n답안:\n\n`;
@@ -337,7 +379,7 @@ export async function GET(
             `${basePath}/Q${qNum}_${slotNum}-${labelSlug}.txt`,
             Buffer.from(header + body, "utf-8")
           );
-        });
+        }
       }
     }
   }

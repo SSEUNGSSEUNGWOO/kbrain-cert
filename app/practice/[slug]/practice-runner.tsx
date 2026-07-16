@@ -371,6 +371,7 @@ export function PracticeRunner({
               onChange={(v) =>
                 setAnswers((prev) => ({ ...prev, [currentQ.id]: v }))
               }
+              sessionId={sessionId ?? null}
             />
           )}
 
@@ -867,10 +868,12 @@ function QuestionCard({
   question,
   answer,
   onChange,
+  sessionId,
 }: {
   question: Question;
   answer: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
+  sessionId: string | null;
 }) {
   return (
     <div className="rounded-md bg-white border border-border overflow-hidden">
@@ -924,6 +927,8 @@ function QuestionCard({
           slots={question.submission_slots}
           values={answer}
           onChange={onChange}
+          sessionId={sessionId}
+          questionId={question.id}
         />
       </div>
     </div>
@@ -977,14 +982,26 @@ function QuestionBody({ content }: { content: string }) {
   );
 }
 
+type AnswerFile = {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+  uploadedAt?: string;
+};
+
 function SlotEditor({
   slots,
   values,
   onChange,
+  sessionId,
+  questionId,
 }: {
   slots: Slot[];
   values: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
+  sessionId: string | null;
+  questionId: string;
 }) {
   const setValue = (id: string, v: unknown) => {
     onChange({ ...values, [id]: v });
@@ -992,9 +1009,11 @@ function SlotEditor({
 
   return (
     <div className="space-y-5">
-      <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
-        답안 (테스트 · 저장되지 않음)
-      </div>
+      {!sessionId && (
+        <div className="text-[10px] font-bold tracking-widest text-primary uppercase">
+          답안 (테스트 · 저장되지 않음)
+        </div>
+      )}
       {slots.map((slot, idx) => {
         const v = values[slot.id];
         return (
@@ -1047,16 +1066,136 @@ function SlotEditor({
               />
             )}
             {slot.type === "file" && (
-              <div className="rounded-md border-2 border-dashed border-border-strong bg-surface-soft py-6 text-center text-xs text-muted-foreground">
-                파일 업로드 (테스트 링크에서는 저장되지 않음)
-                {slot.accept && (
-                  <div className="text-[10px] mt-1">허용: {slot.accept}</div>
-                )}
-              </div>
+              <FileSlot
+                slot={slot}
+                value={v as AnswerFile | null}
+                onChange={(next) => setValue(slot.id, next)}
+                sessionId={sessionId}
+                questionId={questionId}
+              />
             )}
           </div>
         );
       })}
     </div>
   );
+}
+
+function FileSlot({
+  slot,
+  value,
+  onChange,
+  sessionId,
+  questionId,
+}: {
+  slot: Slot;
+  value: AnswerFile | null;
+  onChange: (v: AnswerFile | null) => void;
+  sessionId: string | null;
+  questionId: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!sessionId) {
+      setError("Practice에서는 파일 업로드가 저장되지 않습니다");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("sessionId", sessionId);
+      form.append("questionId", questionId);
+      form.append("slotId", slot.id);
+      form.append("file", file);
+      const res = await fetch("/api/exam/answers/upload", {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "업로드 실패");
+      onChange(data.file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (value?.path) {
+    const downloadUrl = `/api/exam/answer-files/${value.path}?download=${encodeURIComponent(value.name)}`;
+    return (
+      <div className="rounded-md border border-success bg-success-soft/30 p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-md bg-success text-white flex items-center justify-center text-lg font-bold shrink-0">
+          ✓
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm truncate">{value.name}</div>
+          <div className="text-[11px] text-muted-foreground font-tabular">
+            {formatSize(value.size)} · 업로드 완료
+          </div>
+        </div>
+        <a
+          href={downloadUrl}
+          className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-[11px] font-bold transition"
+        >
+          다운로드
+        </a>
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="h-8 px-3 rounded-sm bg-white border border-danger text-danger hover:bg-danger-soft text-[11px] font-bold transition"
+        >
+          삭제
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label
+        className={cn(
+          "rounded-md border-2 border-dashed py-6 px-4 text-center text-xs flex flex-col items-center justify-center gap-2 cursor-pointer transition",
+          busy
+            ? "border-border bg-surface-soft text-muted"
+            : "border-border-strong bg-surface-soft text-muted-foreground hover:border-primary hover:text-primary"
+        )}
+      >
+        <input
+          type="file"
+          accept={slot.accept}
+          onChange={(e) => void handleFiles(e.target.files)}
+          disabled={busy || !sessionId}
+          className="hidden"
+        />
+        <div className="text-2xl">📎</div>
+        <div className="font-bold">
+          {busy ? "업로드 중…" : "파일 선택 or 드래그"}
+        </div>
+        {slot.accept && (
+          <div className="text-[10px]">허용: {slot.accept}</div>
+        )}
+        <div className="text-[10px]">최대 50MB · 슬롯당 1개</div>
+        {!sessionId && (
+          <div className="text-[10px] text-warning font-bold">
+            Practice 링크에서는 저장되지 않습니다
+          </div>
+        )}
+      </label>
+      {error && (
+        <div className="mt-2 text-[11px] text-danger font-bold">{error}</div>
+      )}
+    </div>
+  );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
