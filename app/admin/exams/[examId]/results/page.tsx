@@ -186,11 +186,19 @@ export default async function ExamResultsPage({
             : "예약 시각 미정"
         }`}
         action={
-          <Link href="/admin/exams">
-            <button className="h-9 px-4 rounded-md bg-white border border-border hover:border-primary text-xs font-bold transition">
-              ← 목록
-            </button>
-          </Link>
+          <>
+            <a
+              href={`/api/admin/exams/${examId}/export-answers`}
+              className="h-9 px-4 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center transition"
+            >
+              ↓ 답안 zip 다운로드
+            </a>
+            <Link href="/admin/exams">
+              <button className="h-9 px-4 rounded-md bg-white border border-border hover:border-primary text-xs font-bold transition">
+                ← 목록
+              </button>
+            </Link>
+          </>
         }
       />
 
