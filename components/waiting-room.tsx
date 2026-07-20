@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IdentityUpload } from "@/components/identity-upload";
+import { useServerClock } from "@/lib/hooks/use-server-clock";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,18 +35,19 @@ export function WaitingRoom({
     initialIdentityPath
   );
   const identityReady = isPractice || !!identityPath;
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    if (isPractice || !scheduledAt) return;
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, [isPractice, scheduledAt]);
-
-  const remainingMs = scheduledAt
-    ? Math.max(0, scheduledAt.getTime() - now.getTime())
-    : 0;
+  const { nowMs, synchronized } = useServerClock(
+    !isPractice && scheduledAt != null
+  );
+  const remainingMs =
+    scheduledAt && nowMs != null
+      ? Math.max(0, scheduledAt.getTime() - nowMs)
+      : null;
   const shouldAutoEnter =
-    !isPractice && scheduledAt != null && remainingMs === 0 && identityReady;
+    !isPractice &&
+    scheduledAt != null &&
+    synchronized &&
+    remainingMs === 0 &&
+    identityReady;
 
   useEffect(() => {
     if (shouldAutoEnter) onEnter();
@@ -179,10 +181,10 @@ function ScheduledCountdown({
   remainingMs,
   scheduledAt,
 }: {
-  remainingMs: number;
+  remainingMs: number | null;
   scheduledAt?: Date;
 }) {
-  const totalSec = Math.floor(remainingMs / 1000);
+  const totalSec = Math.floor((remainingMs ?? 0) / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
@@ -201,7 +203,7 @@ function ScheduledCountdown({
         {scheduledAt ? "시험 시작까지" : "시작 시간 정보 없음"}
       </div>
       <div className="text-5xl font-bold font-tabular tabular-nums mb-2">
-        {pad(h)}:{pad(m)}:{pad(s)}
+        {remainingMs == null ? "동기화 중…" : `${pad(h)}:${pad(m)}:${pad(s)}`}
       </div>
       <div className="text-xs opacity-80">
         시간이 되면 자동으로 시험창으로 이동됩니다. 이 창을 닫지 마세요.

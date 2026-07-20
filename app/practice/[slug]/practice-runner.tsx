@@ -102,7 +102,7 @@ export function PracticeRunner({
     status: saveStatus,
     lastSavedAt,
     flushCurrent,
-    saveAll,
+    prepareSubmit,
   } = useAutoSaveAnswer(
     sessionId,
     currentQ?.id,
@@ -189,16 +189,17 @@ export function PracticeRunner({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const saved = await saveAll(answers);
-      if (!saved) {
-        throw new Error(
-          "답안을 서버에 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 제출해 주세요."
-        );
-      }
+      await prepareSubmit();
       const res = await fetch("/api/exam/session/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, auto }),
+        body: JSON.stringify({
+          sessionId,
+          auto,
+          answers: Object.entries(answers).map(
+            ([questionId, slotValues]) => ({ questionId, slotValues })
+          ),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "제출 실패");

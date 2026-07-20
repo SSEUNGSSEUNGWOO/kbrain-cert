@@ -8,6 +8,8 @@ type Fixture = {
   invitationId: string;
   originalSlug: string | null;
   originalIsTestMode: boolean;
+  originalExamDate: string | null;
+  durationMinutes: number;
   slug: string;
   name: string;
   phoneLast4: string;
@@ -27,7 +29,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test.beforeAll(async () => {
     const { data: exam, error: examError } = await supabase
       .from("exams")
-      .select("id, slug, is_test_mode")
+      .select("id, slug, is_test_mode, exam_date, duration_minutes")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -66,6 +68,8 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       invitationId: invitation.id,
       originalSlug: exam.slug,
       originalIsTestMode: exam.is_test_mode,
+      originalExamDate: exam.exam_date,
+      durationMinutes: exam.duration_minutes,
       slug,
       name,
       phoneLast4,
@@ -87,6 +91,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .update({
         slug: fixture.originalSlug,
         is_test_mode: fixture.originalIsTestMode,
+        exam_date: fixture.originalExamDate,
       })
       .eq("id", fixture.examId);
   });
@@ -94,6 +99,25 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test("공용 slug 페이지가 열린다", async ({ page }) => {
     await page.goto(`/exam/${fixture.slug}`);
     await expect(page.getByText("응시자 진입", { exact: true })).toBeVisible();
+  });
+
+  test("응시자 PC 시간이 틀려도 서버 시각은 영향을 받지 않는다", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const realNow = Date.now.bind(Date);
+      Date.now = () => realNow() + 24 * 60 * 60 * 1000;
+    });
+    await page.goto(`/exam/${fixture.slug}`);
+    const result = await page.evaluate(async () => {
+      const response = await fetch("/api/time", { cache: "no-store" });
+      return (await response.json()) as { nowMs: number };
+    });
+    expect(Math.abs(result.nowMs - Date.now())).toBeLessThan(10_000);
+    const skewedBrowserNow = await page.evaluate(() => Date.now());
+    expect(skewedBrowserNow - result.nowMs).toBeGreaterThan(
+      23 * 60 * 60 * 1000
+    );
   });
 
   test("틀린 전화번호 뒷자리는 차단한다", async ({ request }) => {
@@ -158,6 +182,40 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       sessionId: fixture.sessionId,
       reconnect: true,
     });
+  });
+
+  test("예약 시각 전 시험 시작을 서버에서 차단한다", async ({ request }) => {
+    expect(fixture.sessionId).toBeTruthy();
+    const startsAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const { error } = await supabase
+      .from("exams")
+      .update({ exam_date: startsAt })
+      .eq("id", fixture.examId);
+    if (error) throw error;
+
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const start = await request.post("/api/exam/session/start", {
+      data: { sessionId: fixture.sessionId },
+    });
+    expect(start.status()).toBe(409);
+    const startBody = await start.json();
+    expect(startBody.error).toBe("exam not started");
+    expect(new Date(startBody.startsAt).getTime()).toBe(
+      new Date(startsAt).getTime()
+    );
+
+    const { error: restoreError } = await supabase
+      .from("exams")
+      .update({ exam_date: fixture.originalExamDate })
+      .eq("id", fixture.examId);
+    if (restoreError) throw restoreError;
   });
 
   test("전체 답안을 확정 저장하고 재접속 데이터로 복원한다", async ({
@@ -246,7 +304,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const submit = await request.post("/api/exam/session/submit", {
       data: { sessionId: fixture.sessionId, auto: false },
     });
-    expect(submit.status()).toBe(200);
+    expect(submit.status(), await submit.text()).toBe(200);
 
     const { data: submittedAnswer, error } = await supabase
       .from("answers")
@@ -310,6 +368,51 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .eq("invitation_id", fixture.invitationId);
     if (countError) throw countError;
     expect(count).toBe(2);
+  });
+
+  test("서버 마감 시각 이후 답안 저장을 차단하고 세션을 종료한다", async ({
+    request,
+  }) => {
+    const expiredAt = new Date(
+      Date.now() - (fixture.durationMinutes + 1) * 60 * 1000
+    ).toISOString();
+    const { error } = await supabase
+      .from("exams")
+      .update({ exam_date: expiredAt })
+      .eq("id", fixture.examId);
+    if (error) throw error;
+
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const body = await enter.json();
+
+    const save = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: body.sessionId,
+        questionId: fixture.answerQuestionId,
+        slotValues: { too_late: true },
+      },
+    });
+    expect(save.status()).toBe(409);
+    await expect(save.json()).resolves.toEqual({
+      error: "exam time expired",
+    });
+
+    const { data: session, error: sessionError } = await supabase
+      .from("exam_sessions")
+      .select("status, submit_time, auto_submitted")
+      .eq("id", body.sessionId)
+      .single();
+    if (sessionError) throw sessionError;
+    expect(session.status).toBe("submitted");
+    expect(session.submit_time).not.toBeNull();
+    expect(session.auto_submitted).toBe(true);
   });
 });
 

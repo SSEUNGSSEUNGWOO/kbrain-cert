@@ -43,14 +43,25 @@ export async function POST(request: Request) {
 
   const { data: exam } = await admin
     .from("exams")
-    .select("duration_minutes")
+    .select("duration_minutes, exam_date")
     .eq("id", session.exam_id)
     .single();
   const durationMinutes = exam?.duration_minutes ?? 120;
+  const serverNowMs = Date.now();
+  if (exam?.exam_date && new Date(exam.exam_date).getTime() > serverNowMs) {
+    return NextResponse.json(
+      {
+        error: "exam not started",
+        startsAt: exam.exam_date,
+        serverNow: new Date(serverNowMs).toISOString(),
+      },
+      { status: 409 }
+    );
+  }
 
   let startTime = session.start_time;
   if (!startTime) {
-    const nowIso = new Date().toISOString();
+    const nowIso = new Date(serverNowMs).toISOString();
     const { error: updateErr } = await admin
       .from("exam_sessions")
       .update({ start_time: nowIso, status: "in_progress" })
@@ -61,5 +72,9 @@ export async function POST(request: Request) {
     startTime = nowIso;
   }
 
-  return NextResponse.json({ startTime, durationMinutes });
+  return NextResponse.json({
+    startTime,
+    durationMinutes,
+    serverNow: new Date(serverNowMs).toISOString(),
+  });
 }

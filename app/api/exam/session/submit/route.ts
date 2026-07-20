@@ -8,10 +8,8 @@ import {
 
 /**
  * 시험 최종 제출
- * Body: { sessionId, auto?: boolean }
- * - exam_sessions.status → 'submitted', submit_time = NOW
- * - 모든 answers.submitted_at = NOW
- * - auto=true면 타이머 만료 자동 제출로 표시 (auto_submitted=true)
+ * Body: { sessionId, auto?: boolean, answers?: [{ questionId, slotValues }] }
+ * 최종 답안 upsert와 세션 제출을 DB 트랜잭션 한 번으로 처리한다.
  */
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -23,9 +21,13 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { sessionId, auto } = (body ?? {}) as {
+  const { sessionId, auto, answers } = (body ?? {}) as {
     sessionId?: string;
     auto?: boolean;
+    answers?: Array<{
+      questionId?: string;
+      slotValues?: Record<string, unknown>;
+    }>;
   };
   if (!sessionId) {
     return NextResponse.json({ error: "sessionId required" }, { status: 400 });
@@ -33,38 +35,38 @@ export async function POST(request: Request) {
   if (cookieSessionId !== sessionId) {
     return NextResponse.json({ error: "session mismatch" }, { status: 403 });
   }
+  if (
+    answers != null &&
+    (!Array.isArray(answers) ||
+      answers.length > 500 ||
+      answers.some((answer) => !answer.questionId))
+  ) {
+    return NextResponse.json({ error: "invalid answers" }, { status: 400 });
+  }
 
   const admin = createAdminSupabase();
-  const { data: session } = await admin
-    .from("exam_sessions")
-    .select("id, status, submit_time")
-    .eq("id", sessionId)
-    .maybeSingle();
-  if (!session) {
-    return NextResponse.json({ error: "session not found" }, { status: 404 });
-  }
-  if (session.submit_time || session.status === "submitted") {
-    return NextResponse.json({ ok: true, alreadySubmitted: true });
-  }
-
-  const nowIso = new Date().toISOString();
-  const { error: sessionErr } = await admin
-    .from("exam_sessions")
-    .update({
-      status: "submitted",
-      submit_time: nowIso,
-      auto_submitted: !!auto,
-    })
-    .eq("id", sessionId);
-  if (sessionErr) {
-    return NextResponse.json({ error: sessionErr.message }, { status: 500 });
+  const { data, error } = await admin.rpc("submit_exam_session", {
+    p_session_id: sessionId,
+    p_answers: (answers ?? []).map((answer) => ({
+      questionId: answer.questionId,
+      slotValues: answer.slotValues ?? {},
+    })),
+    p_auto: !!auto,
+  });
+  if (error) {
+    if (error.message.includes("session not found")) {
+      return NextResponse.json({ error: "session not found" }, { status: 404 });
+    }
+    if (error.message.includes("exam time expired")) {
+      return NextResponse.json({ error: "exam time expired" }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  await admin
-    .from("answers")
-    .update({ submitted_at: nowIso })
-    .eq("session_id", sessionId)
-    .is("submitted_at", null);
-
-  return NextResponse.json({ ok: true, submittedAt: nowIso });
+  const result = data?.[0];
+  return NextResponse.json({
+    ok: true,
+    submittedAt: result?.submitted_at ?? null,
+    alreadySubmitted: result?.already_submitted ?? false,
+  });
 }

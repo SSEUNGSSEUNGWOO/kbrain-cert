@@ -5,6 +5,7 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
+import { getSessionDeadlineMs } from "@/lib/exam/deadline";
 
 /**
  * 응시자 답안 auto-save
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
   // 세션이 이미 제출됐으면 저장 거부
   const { data: session } = await admin
     .from("exam_sessions")
-    .select("id, status, submit_time")
+    .select(
+      "id, exam_id, status, start_time, submit_time, time_extension_minutes"
+    )
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) {
@@ -64,7 +67,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "already submitted" }, { status: 400 });
   }
 
-  const nowIso = new Date().toISOString();
+  const { data: exam } = await admin
+    .from("exams")
+    .select("exam_date, duration_minutes")
+    .eq("id", session.exam_id)
+    .single();
+  if (!exam) {
+    return NextResponse.json({ error: "exam not found" }, { status: 404 });
+  }
+
+  const serverNowMs = Date.now();
+  const deadlineMs = getSessionDeadlineMs({
+    examDate: exam.exam_date,
+    startTime: session.start_time,
+    durationMinutes: exam.duration_minutes,
+    extensionMinutes: session.time_extension_minutes ?? 0,
+  });
+  if (deadlineMs != null && deadlineMs <= serverNowMs) {
+    const submittedAt = new Date(serverNowMs).toISOString();
+    await admin
+      .from("exam_sessions")
+      .update({
+        status: "submitted",
+        submit_time: submittedAt,
+        auto_submitted: true,
+        updated_at: submittedAt,
+      })
+      .eq("id", sessionId)
+      .is("submit_time", null);
+    await admin
+      .from("answers")
+      .update({ submitted_at: submittedAt })
+      .eq("session_id", sessionId)
+      .is("submitted_at", null);
+    return NextResponse.json({ error: "exam time expired" }, { status: 409 });
+  }
+
+  const nowIso = new Date(serverNowMs).toISOString();
   const rows = isBulkSave
     ? answers.map((answer) => ({
         session_id: sessionId,

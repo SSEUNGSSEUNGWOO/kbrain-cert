@@ -478,6 +478,17 @@ export type Database = {
         Args: Record<string, never>;
         Returns: undefined;
       };
+      submit_exam_session: {
+        Args: {
+          p_session_id: string;
+          p_answers: Json;
+          p_auto?: boolean;
+        };
+        Returns: Array<{
+          submitted_at: string;
+          already_submitted: boolean;
+        }>;
+      };
     };
     Enums: {
       app_role: AppRole;

@@ -6,8 +6,9 @@ import { NextResponse } from "next/server";
  * - 실전 응시 페이지에서 타이머 서버 시간 동기화 (NTP 스타일)
  */
 export function GET() {
+  const nowMs = Date.now();
   return NextResponse.json(
-    { now: new Date().toISOString() },
+    { now: new Date(nowMs).toISOString(), nowMs },
     {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate",

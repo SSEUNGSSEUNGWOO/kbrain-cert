@@ -8,13 +8,11 @@ const DEBOUNCE_MS = 1500;
 const RETRY_DELAYS_MS = [0, 500, 1500];
 
 type AnswerValues = Record<string, unknown>;
-type AnswersByQuestion = Record<string, AnswerValues>;
-
 /**
  * 답안 auto-save
  * - 입력 정지 1.5초 후 저장
  * - 문항 이동 시 대기 중 저장을 완료한 뒤 이동
- * - 최종 제출 전 전체 로컬 답안을 한 번의 요청으로 확정 저장
+ * - 최종 제출 전 진행 중인 auto-save가 끝날 때까지 대기
  * - 일시적 실패는 최대 3회 재시도
  */
 export function useAutoSaveAnswer(
@@ -108,40 +106,13 @@ export function useAutoSaveAnswer(
     return enqueueSave(latest.questionId, latest.slotValues);
   }, [enqueueSave, sessionId]);
 
-  const saveAll = useCallback(
-    async (answers: AnswersByQuestion): Promise<boolean> => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      if (!sessionId) return true;
-
-      await requestChainRef.current;
-
-      setStatus("pending");
-      const rows = Object.entries(answers).map(
-        ([targetQuestionId, targetValues]) => ({
-          questionId: targetQuestionId,
-          slotValues: targetValues,
-        })
-      );
-      const ok = await postWithRetry({ answers: rows });
-      if (ok) {
-        for (const [targetQuestionId, targetValues] of Object.entries(answers)) {
-          savedPayloadsRef.current.set(
-            targetQuestionId,
-            JSON.stringify(targetValues)
-          );
-        }
-        setStatus("saved");
-        setLastSavedAt(new Date());
-      } else {
-        setStatus("error");
-      }
-      return ok;
-    },
-    [postWithRetry, sessionId]
-  );
+  const prepareSubmit = useCallback(async (): Promise<void> => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    await requestChainRef.current;
+  }, []);
 
   useEffect(() => {
     if (!sessionId || !questionId) return;
@@ -181,5 +152,5 @@ export function useAutoSaveAnswer(
     };
   }, [flushCurrent, sessionId]);
 
-  return { status, lastSavedAt, flushCurrent, saveAll };
+  return { status, lastSavedAt, flushCurrent, prepareSubmit };
 }

@@ -1,53 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useServerClock } from "@/lib/hooks/use-server-clock";
 
 export type TimerState = {
   remainingMs: number;
   totalMs: number;
   expired: boolean;
+  synchronized: boolean;
 };
 
 /**
  * 시험 타이머 · startTime + durationMinutes로 종료 시각 계산
  *
  * 신뢰성:
- * - 1초 setInterval + visibilitychange/focus/online 리스너
- *   → 백그라운드 tab throttle에서 돌아오면 즉시 Date.now() 재계산
- * - Date.now() 기반이므로 tick 지연이 있어도 화면 회복 즉시 정확값 표시
+ * - 서버 시각을 3회 측정해 RTT가 가장 짧은 표본으로 동기화
+ * - 동기화 후 performance.now()로 경과 시간을 계산해 OS 시각 변경과 무관
  * - 서버 백업(pg_cron)이 있으면 페이지가 닫혀 있어도 만료 세션 자동 제출됨
  */
 export function useExamTimer(
   startTime: string | Date | null | undefined,
   durationMinutes: number
 ): TimerState {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    const id = setInterval(tick, 1000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    window.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", tick);
-    window.addEventListener("online", tick);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", tick);
-      window.removeEventListener("online", tick);
-    };
-  }, []);
-
   const totalMs = durationMinutes * 60 * 1000;
-  if (!startTime) {
-    return { remainingMs: totalMs, totalMs, expired: false };
+  const { nowMs, synchronized } = useServerClock(!!startTime);
+  if (!startTime || nowMs == null) {
+    return {
+      remainingMs: totalMs,
+      totalMs,
+      expired: false,
+      synchronized: !startTime,
+    };
   }
   const startMs = new Date(startTime).getTime();
   const endsAt = startMs + totalMs;
-  const remainingMs = Math.max(0, endsAt - now);
-  return { remainingMs, totalMs, expired: remainingMs === 0 };
+  const remainingMs = Math.max(0, endsAt - nowMs);
+  return { remainingMs, totalMs, expired: remainingMs === 0, synchronized };
 }
 
 export function formatHms(ms: number): string {
