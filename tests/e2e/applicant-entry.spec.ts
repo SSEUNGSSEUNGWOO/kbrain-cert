@@ -337,6 +337,17 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     );
 
     await page
+      .getByRole("button", { name: "웹캠 다시 연결" })
+      .click();
+    await expect
+      .poll(() =>
+        page.locator("video").first().evaluate((video) => {
+          const stream = (video as HTMLVideoElement).srcObject as MediaStream;
+          return stream?.getVideoTracks()[0]?.readyState;
+        })
+      )
+      .toBe("live");
+    await page
       .getByRole("button", { name: /화면 공유 테스트|다시 테스트/ })
       .click();
     await expect(

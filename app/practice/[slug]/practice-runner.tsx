@@ -330,8 +330,12 @@ export function PracticeRunner({
     setScreenRecoveryBusy(true);
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
+        video: { displaySurface: "monitor" },
+        audio: false,
+        preferCurrentTab: false,
+        selfBrowserSurface: "exclude",
+        surfaceSwitching: "exclude",
+      } as DisplayMediaStreamOptions);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings() as MediaTrackSettings & {
         displaySurface?: string;

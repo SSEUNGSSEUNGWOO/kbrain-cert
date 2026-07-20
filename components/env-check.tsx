@@ -133,8 +133,7 @@ export function EnvCheck({
   // 웹캠 요청 · 스트림은 부모가 유지 (시험 종료까지)
   const requestWebcam = async (deviceId?: string) => {
     setWebcam({ status: "pending", detail: "권한 요청 중…" });
-    // 이전 스트림이 있으면 새로 요청하기 전에 정지 (재시도 시)
-    webcamStream?.getTracks().forEach((t) => t.stop());
+    const previousStream = webcamStream;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -145,6 +144,10 @@ export function EnvCheck({
         },
         audio: false,
       });
+      previousStream?.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
       setWebcamStream(stream);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
@@ -154,17 +157,6 @@ export function EnvCheck({
       );
       setCameras(videoDevices);
       setSelectedCameraId(settings.deviceId ?? deviceId ?? "");
-      const displaySurface = (
-        settings as MediaTrackSettings & { displaySurface?: string }
-      ).displaySurface;
-      if (!allowNoScreenShare && displaySurface && displaySurface !== "monitor") {
-        stream.getTracks().forEach((streamTrack) => streamTrack.stop());
-        setScreen({
-          status: "error",
-          detail: "창이나 탭이 아닌 '전체 화면'을 선택해야 합니다.",
-        });
-        return;
-      }
       setWebcam({
         status: "ok",
         detail: `${track.label || "웹캠"} · ${settings.width}×${settings.height} · 시험까지 유지`,
@@ -178,6 +170,14 @@ export function EnvCheck({
         });
       };
     } catch (err) {
+      const previousTrack = previousStream?.getVideoTracks()[0];
+      if (previousTrack?.readyState === "live") {
+        setWebcam({
+          status: "ok",
+          detail: `${previousTrack.label || "기존 웹캠"} · 기존 연결 유지`,
+        });
+        return;
+      }
       const message = err instanceof Error ? err.message : "권한 거부";
       setWebcam({
         status: "error",
@@ -312,14 +312,41 @@ export function EnvCheck({
   // 화면 공유 · 사용자 클릭 필요 · 스트림은 시험 종료까지 유지
   const requestScreen = async () => {
     setScreen({ status: "pending", detail: "권한 요청 중…" });
-    screenStream?.getTracks().forEach((t) => t.stop());
+    const previousStream = screenStream;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
-      setScreenStream(stream);
+        video: { displaySurface: "monitor" },
+        audio: false,
+        preferCurrentTab: false,
+        selfBrowserSurface: "exclude",
+        surfaceSwitching: "exclude",
+      } as DisplayMediaStreamOptions);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
+      const displaySurface = (
+        settings as MediaTrackSettings & { displaySurface?: string }
+      ).displaySurface;
+      if (!allowNoScreenShare && displaySurface && displaySurface !== "monitor") {
+        stream.getTracks().forEach((streamTrack) => streamTrack.stop());
+        const previousTrack = previousStream?.getVideoTracks()[0];
+        setScreen(
+          previousTrack?.readyState === "live"
+            ? {
+                status: "ok",
+                detail: "창·탭 선택을 거부하고 기존 전체 화면 공유를 유지합니다.",
+              }
+            : {
+                status: "error",
+                detail: "창이나 탭이 아닌 '전체 화면'을 선택해야 합니다.",
+              }
+        );
+        return;
+      }
+      previousStream?.getTracks().forEach((previousTrack) => {
+        previousTrack.onended = null;
+        previousTrack.stop();
+      });
+      setScreenStream(stream);
       setScreen({
         status: "ok",
         detail: `${track.label || "화면"} · ${settings.width ?? "?"}×${
@@ -335,6 +362,14 @@ export function EnvCheck({
         });
       };
     } catch (err) {
+      const previousTrack = previousStream?.getVideoTracks()[0];
+      if (previousTrack?.readyState === "live") {
+        setScreen({
+          status: "ok",
+          detail: "새 요청이 취소되어 기존 전체 화면 공유를 유지합니다.",
+        });
+        return;
+      }
       const message = err instanceof Error ? err.message : "권한 거부";
       setScreen({
         status: "error",
@@ -380,7 +415,10 @@ export function EnvCheck({
       title: "웹캠",
       result: webcam,
       hint: "시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다.",
-      action: { label: "재시도", onClick: requestWebcam },
+      action: {
+        label: "웹캠 다시 연결",
+        onClick: () => void requestWebcam(),
+      },
       preview: (
         <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-black p-4">
           {cameras.length > 1 && (
