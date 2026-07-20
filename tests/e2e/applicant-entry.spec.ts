@@ -336,6 +336,9 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       timeout: 40_000,
     });
     await expect(page.getByText("Step 3 · 대기실")).not.toBeVisible();
+    expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(
+      true
+    );
     await page.evaluate(() => {
       (
         window as Window & { __e2eScreenStream?: MediaStream }

@@ -383,12 +383,6 @@ export function PracticeRunner({
       <ProctorGuard
         active={proctorActive}
         onEvent={fireMonitorEvent}
-        onForceSubmit={() => {
-          if (!autoSubmittedRef.current) {
-            autoSubmittedRef.current = true;
-            void doSubmit(true);
-          }
-        }}
       />
       <TopBar
         exam={exam}

@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { MonitorEvent } from "@/lib/hooks/use-monitor-events";
-import { cn } from "@/lib/utils";
 
-const FULLSCREEN_VIOLATION_LIMIT = 5;
 const WINDOW_BLUR_THRESHOLD_MS = 3000;
 const ENTRY_GRACE_MS = 30_000; // 진입 후 30초는 permission dialog로 인한 오탐 방지
 
 /**
  * 시험창 CBT 감독 가드
- * - Fullscreen 강제 (자동 요청 · 이탈 감지 · N회 위반 시 자동 제출)
- * - 탭 이탈 (visibilitychange) · 즉시 이벤트
- * - 윈도우 blur 3초+ (조용한 alt-tab 감지)
+ * - 탭 이탈·윈도우 blur 기록 (작업형 외부 도구 사용을 고려해 info)
  * - 복사·붙여넣기·잘라내기 차단 (input/textarea 제외)
  * - 우클릭 · 드래그·드롭 차단
  * - 키보드 단축키 차단 (F12, Ctrl+Shift+I/C/P/S, Ctrl+P/S/U, PrintScreen, Cmd+Shift+3/4/5)
@@ -24,59 +20,17 @@ const ENTRY_GRACE_MS = 30_000; // 진입 후 30초는 permission dialog로 인�
 export function ProctorGuard({
   active,
   onEvent,
-  onForceSubmit,
 }: {
   active: boolean;
   onEvent: (event: MonitorEvent) => void;
-  onForceSubmit: () => void;
 }) {
-  const [fullscreenExits, setFullscreenExits] = useState(0);
-  const [blackScreen, setBlackScreen] = useState(false);
   const enterAtRef = useRef<number>(0);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fullscreen 자동 요청 + 이탈 감지
   useEffect(() => {
     if (!active) return;
     enterAtRef.current = Date.now();
-    const requestFs = async () => {
-      try {
-        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {
-        // 사용자 제스처 필요 · 클릭으로 재시도
-      }
-    };
-    void requestFs();
-
-    const onFsChange = () => {
-      const inFs = !!document.fullscreenElement;
-      if (!inFs) {
-        const gracePeriod = Date.now() - enterAtRef.current < ENTRY_GRACE_MS;
-        if (gracePeriod) return;
-        setFullscreenExits((n) => {
-          const next = n + 1;
-          onEvent({
-            eventType: "fullscreen_exit",
-            severity: "high",
-            payload: { count: next },
-          });
-          if (next >= FULLSCREEN_VIOLATION_LIMIT) {
-            onForceSubmit();
-          }
-          return next;
-        });
-        setBlackScreen(true);
-      } else {
-        setBlackScreen(false);
-      }
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFsChange);
-    };
-  }, [active, onEvent, onForceSubmit]);
+  }, [active]);
 
   // 탭 이탈 · visibilitychange
   useEffect(() => {
@@ -85,10 +39,7 @@ export function ProctorGuard({
       const gracePeriod = Date.now() - enterAtRef.current < ENTRY_GRACE_MS;
       if (gracePeriod) return;
       if (document.hidden) {
-        onEvent({ eventType: "tab_switch", severity: "high" });
-        setBlackScreen(true);
-      } else {
-        setBlackScreen(false);
+        onEvent({ eventType: "tab_switch", severity: "info" });
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -105,7 +56,7 @@ export function ProctorGuard({
         if (gracePeriod) return;
         onEvent({
           eventType: "window_blur",
-          severity: "warn",
+          severity: "info",
           payload: { thresholdMs: WINDOW_BLUR_THRESHOLD_MS },
         });
       }, WINDOW_BLUR_THRESHOLD_MS);
@@ -239,53 +190,5 @@ export function ProctorGuard({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [active, onEvent]);
 
-  if (!active) return null;
-
-  return (
-    <>
-      {/* 위반 카운터 배너 */}
-      {fullscreenExits > 0 && (
-        <div className="fixed top-20 right-6 z-40 rounded-md bg-danger text-white px-4 py-2.5 shadow-lg animate-pulse">
-          <div className="text-[10px] font-bold tracking-widest uppercase mb-0.5">
-            전체화면 이탈
-          </div>
-          <div className="text-sm font-bold font-tabular">
-            {fullscreenExits} / {FULLSCREEN_VIOLATION_LIMIT} · 초과 시 강제 제출
-          </div>
-        </div>
-      )}
-
-      {/* 탭 이탈/Fullscreen 해제 시 검정 오버레이 */}
-      {blackScreen && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-          onClick={async () => {
-            try {
-              await document.documentElement.requestFullscreen();
-              setBlackScreen(false);
-            } catch {
-              /* ignore */
-            }
-          }}
-        >
-          <div className="max-w-md text-center p-8 rounded-md border-2 border-danger bg-black">
-            <div className="w-14 h-14 mx-auto rounded-full bg-danger text-white flex items-center justify-center text-2xl font-bold mb-4">
-              !
-            </div>
-            <div className="text-danger font-bold text-lg mb-2">
-              시험 화면 이탈 감지
-            </div>
-            <div className="text-sm text-white/80 leading-relaxed mb-4">
-              전체화면에서 벗어났거나 다른 앱으로 전환하셨습니다. 이 행위는 감독관에게 기록됩니다.
-            </div>
-            <button className={cn(
-              "h-11 px-6 rounded-md bg-white text-black font-bold text-sm hover:bg-white/90 transition"
-            )}>
-              화면 클릭 · 시험 창으로 복귀
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return null;
 }

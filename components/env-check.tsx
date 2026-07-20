@@ -23,7 +23,7 @@ export type EnvResultSnapshot = {
  * 응시 환경 체크 · Practice 페이지에서 실전 전 확인용
  * - 웹캠: getUserMedia · 프리뷰
  * - 화면공유: getDisplayMedia · 사용자 클릭 필요
- * - 브라우저: navigator + fullscreen 지원 여부
+ * - 브라우저: 지원 브라우저 여부
  * - 네트워크: fetch로 응답 시간 측정
  *
  * 스트림 (webcam, screen)은 상위 컴포넌트가 관리 · 환경 체크 → 시험 종료까지 유지
@@ -65,10 +65,6 @@ export function EnvCheck({
     status: "pending",
     detail: "측정 중…",
   });
-  const [fullscreen, setFullscreen] = useState<CheckResult>({
-    status: "pending",
-    detail: "확인 중…",
-  });
   const [monitor, setMonitor] = useState<CheckResult>({
     status: "pending",
     detail: "감지 시작 버튼 클릭",
@@ -92,23 +88,11 @@ export function EnvCheck({
         ? "Edge"
         : "Unknown";
       const supported = ["Chrome", "Edge", "Firefox"].includes(browser);
-      const fsSupported =
-        document.documentElement.requestFullscreen != null &&
-        document.exitFullscreen != null;
-      setFullscreen({
-        status: fsSupported ? "ok" : "error",
-        detail: fsSupported
-          ? "Fullscreen API 지원"
-          : "Fullscreen API 미지원 · 다른 브라우저 필요",
-      });
       setBrowserInfo({
-        status: supported && fsSupported ? "ok" : supported ? "error" : "warn",
-        detail:
-          supported && fsSupported
-            ? `${browser} · 지원 브라우저 · Fullscreen OK`
-            : supported
-            ? `${browser} · Fullscreen API 미지원 · 다른 브라우저 필요`
-            : `${browser} · 권장 X (Chrome/Edge 사용 권장)`,
+        status: supported ? "ok" : "warn",
+        detail: supported
+          ? `${browser} · 지원 브라우저`
+          : `${browser} · 권장 X (Chrome/Edge 사용 권장)`,
       });
     }, 0);
     return () => window.clearTimeout(timer);
@@ -362,7 +346,6 @@ export function EnvCheck({
   const requiredOk =
     webcam.status === "ok" &&
     (allowNoScreenShare || screen.status === "ok") &&
-    fullscreen.status === "ok" &&
     browserInfo.status === "ok" &&
     monitor.status !== "error" &&
     cpu.status !== "error";
@@ -376,7 +359,6 @@ export function EnvCheck({
   if (network.status === "error") blockers.push("네트워크");
   if (cpu.status === "error") blockers.push("CPU");
   if (browserInfo.status !== "ok") blockers.push("브라우저");
-  if (fullscreen.status !== "ok") blockers.push("Fullscreen API");
 
   const items: {
     n: number;
@@ -594,12 +576,6 @@ export function EnvCheck({
         )}
       </div>
 
-      {/* Fullscreen 상태 (숨김 처리 · 에러 시만 노출) */}
-      {fullscreen.status === "error" && (
-        <div className="text-xs text-danger">
-          Fullscreen API 미지원: {fullscreen.detail}
-        </div>
-      )}
     </div>
   );
 }
