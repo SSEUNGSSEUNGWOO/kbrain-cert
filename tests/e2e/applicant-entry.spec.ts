@@ -370,6 +370,10 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       timeout: 40_000,
     });
     await expect(page.getByText("Step 3 · 대기실")).not.toBeVisible();
+    await expect(page.getByText("시험 진행 중", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /3\. 대기실/ })
+    ).not.toBeVisible();
     expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(
       true
     );

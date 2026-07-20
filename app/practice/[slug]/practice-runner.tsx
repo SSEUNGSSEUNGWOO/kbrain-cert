@@ -408,41 +408,53 @@ export function PracticeRunner({
       />
 
       <div className="border-b border-border bg-white">
-        <div className="mx-auto max-w-7xl px-6 flex gap-1 overflow-x-auto">
-          <TabButton
-            active={tab === "env"}
-            onClick={() => setTab("env")}
-            label="1. 환경 체크"
-            hint="6개 항목 자동 검사"
-            done={envPassed}
-          />
-          <TabButton
-            active={tab === "pledge"}
-            onClick={() => envPassed && setTab("pledge")}
-            label="2. 보안 서약"
-            hint={envPassed ? "7개 유의사항 동의" : "환경 체크 후 이용"}
-            done={pledgePassed}
-            disabled={!envPassed}
-          />
-          <TabButton
-            active={tab === "waiting"}
-            onClick={() => pledgePassed && setTab("waiting")}
-            label="3. 대기실"
-            hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
-            done={waitingReady}
-            disabled={!pledgePassed}
-          />
-          <TabButton
-            active={tab === "exam"}
-            onClick={() => waitingReady && enterExam()}
-            label="4. 시험창"
-            hint={
-              waitingReady
-                ? `${questions.length}문항 · ${sets.length}세트`
-                : "대기실에서 입장"
-            }
-            disabled={!waitingReady}
-          />
+        <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-6">
+          {tab === "exam" ? (
+            <div className="flex h-14 w-full items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-primary">시험 진행 중</div>
+                <div className="text-[10px] text-muted-foreground">
+                  이전 단계로 돌아갈 수 없습니다
+                </div>
+              </div>
+              <div className="text-xs font-bold text-muted-foreground">
+                {questions.length}문항 · {sets.length}세트
+              </div>
+            </div>
+          ) : (
+            <>
+              <TabButton
+                active={tab === "env"}
+                onClick={() => setTab("env")}
+                label="1. 환경 체크"
+                hint="6개 항목 자동 검사"
+                done={envPassed}
+              />
+              <TabButton
+                active={tab === "pledge"}
+                onClick={() => envPassed && setTab("pledge")}
+                label="2. 보안 서약"
+                hint={envPassed ? "7개 유의사항 동의" : "환경 체크 후 이용"}
+                done={pledgePassed}
+                disabled={!envPassed}
+              />
+              <TabButton
+                active={tab === "waiting"}
+                onClick={() => pledgePassed && setTab("waiting")}
+                label="3. 대기실"
+                hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
+                done={waitingReady}
+                disabled={!pledgePassed}
+              />
+              <TabButton
+                active={false}
+                onClick={() => waitingReady && enterExam()}
+                label="4. 시험창"
+                hint={waitingReady ? "입장 준비 완료" : "대기실에서 입장"}
+                disabled={!waitingReady}
+              />
+            </>
+          )}
         </div>
       </div>
 
