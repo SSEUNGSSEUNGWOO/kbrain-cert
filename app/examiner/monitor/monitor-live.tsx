@@ -78,9 +78,50 @@ export function MonitorLive({
   const sessionIdsRef = useRef<Set<string>>(new Set());
   const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
+  const webcamUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
+  const desiredWebcamsRef = useRef<Set<string>>(new Set());
   const selectedSessionRef = useRef<string | null>(null);
   const subscribedWebcamsRef = useRef<Set<string>>(new Set());
   const subscribedScreenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const ordered = [...sessions].sort((a, b) => {
+      if (a.sessionId === selectedSession) return -1;
+      if (b.sessionId === selectedSession) return 1;
+      const aPriority = a.isFlagged || a.highCount > 0 ? 2 : a.warnCount > 0 ? 1 : 0;
+      const bPriority = b.isFlagged || b.highCount > 0 ? 2 : b.warnCount > 0 ? 1 : 0;
+      return bPriority - aPriority;
+    });
+    const desired = new Set(ordered.slice(0, 16).map((item) => item.sessionId));
+    desiredWebcamsRef.current = desired;
+    const client = agoraClientRef.current;
+    if (!client) return;
+    for (const [sessionId, user] of webcamUsersRef.current) {
+      if (desired.has(sessionId) && !subscribedWebcamsRef.current.has(sessionId)) {
+        subscribedWebcamsRef.current.add(sessionId);
+        void client.subscribe(user, "video").then(() => {
+          if (user.videoTrack) {
+            setVideoTracks((current) => ({
+              ...current,
+              [sessionId]: user.videoTrack!,
+            }));
+          }
+        }).catch(() => subscribedWebcamsRef.current.delete(sessionId));
+      } else if (
+        !desired.has(sessionId) &&
+        subscribedWebcamsRef.current.has(sessionId)
+      ) {
+        subscribedWebcamsRef.current.delete(sessionId);
+        void client.unsubscribe(user, "video").catch(() => {});
+        setVideoTracks((current) => {
+          const next = { ...current };
+          next[sessionId]?.stop();
+          delete next[sessionId];
+          return next;
+        });
+      }
+    }
+  }, [selectedSession, sessions]);
 
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
@@ -201,6 +242,7 @@ export function MonitorLive({
     let cancelled = false;
     let leave: (() => Promise<void>) | undefined;
     const screenUsers = screenUsersRef.current;
+    const webcamUsers = webcamUsersRef.current;
     const subscribedWebcams = subscribedWebcamsRef.current;
 
     void (async () => {
@@ -219,6 +261,22 @@ export function MonitorLive({
 
         const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         agoraClientRef.current = client;
+        const renewToken = () => {
+          void (async () => {
+            const response = await fetch("/api/agora/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mode: "examiner", examId: exam.id }),
+            });
+            const renewed = await response.json();
+            if (!response.ok) throw new Error("Agora token renewal failed");
+            await client.renewToken(renewed.token);
+          })().catch(() => {
+            if (!cancelled) setError("Agora 토큰 갱신 실패");
+          });
+        };
+        client.on("token-privilege-will-expire", renewToken);
+        client.on("token-privilege-did-expire", renewToken);
         const onPublished = async (
           user: IAgoraRTCRemoteUser,
           mediaType: "audio" | "video"
@@ -237,12 +295,8 @@ export function MonitorLive({
             if (selectedSessionRef.current !== sessionId) return;
             subscribedScreenRef.current = sessionId;
           } else {
-            if (
-              !subscribedWebcamsRef.current.has(sessionId) &&
-              subscribedWebcamsRef.current.size >= 16
-            ) {
-              return;
-            }
+            webcamUsersRef.current.set(sessionId, user);
+            if (!desiredWebcamsRef.current.has(sessionId)) return;
             subscribedWebcamsRef.current.add(sessionId);
           }
           await client.subscribe(user, "video");
@@ -261,7 +315,10 @@ export function MonitorLive({
             : null;
           if (!sessionId) return;
           if (isScreen) screenUsersRef.current.delete(sessionId);
-          else subscribedWebcamsRef.current.delete(sessionId);
+          else {
+            webcamUsersRef.current.delete(sessionId);
+            subscribedWebcamsRef.current.delete(sessionId);
+          }
           const setter = isScreen ? setScreenTracks : setVideoTracks;
           setter((current) => {
             const next = { ...current };
@@ -274,6 +331,8 @@ export function MonitorLive({
         client.on("user-unpublished", onUnpublished);
         await client.join(config.appId, config.channel, config.token, config.uid);
         leave = async () => {
+          client.off("token-privilege-will-expire", renewToken);
+          client.off("token-privilege-did-expire", renewToken);
           client.off("user-published", onPublished);
           client.off("user-unpublished", onUnpublished);
           await client.leave().catch(() => {});
@@ -293,6 +352,7 @@ export function MonitorLive({
       cancelled = true;
       agoraClientRef.current = null;
       screenUsers.clear();
+      webcamUsers.clear();
       subscribedWebcams.clear();
       subscribedScreenRef.current = null;
       setVideoTracks((current) => {

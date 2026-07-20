@@ -23,6 +23,7 @@ type ExamRow = {
   passScore: number;
   slug: string | null;
   isTestMode: boolean;
+  allowNoScreenShare: boolean;
 };
 
 export default async function ExamsPage() {
@@ -31,7 +32,7 @@ export default async function ExamsPage() {
   const { data: exams } = await supabase
     .from("exams")
     .select(
-      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, slug, is_test_mode"
+      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, slug, is_test_mode, allow_no_screen_share"
     )
     .order("created_at", { ascending: false });
 
@@ -69,6 +70,7 @@ export default async function ExamsPage() {
     passScore: e.pass_score,
     slug: e.slug,
     isTestMode: e.is_test_mode,
+    allowNoScreenShare: e.allow_no_screen_share,
   }));
 
   const stats = {

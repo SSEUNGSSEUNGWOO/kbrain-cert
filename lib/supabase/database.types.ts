@@ -504,6 +504,10 @@ export type Database = {
         };
         Returns: boolean;
       };
+      cleanup_exam_entry_attempts: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       validate_exam_answers: {
         Args: {
           p_exam_id: string;

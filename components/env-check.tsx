@@ -35,12 +35,14 @@ export function EnvCheck({
   setWebcamStream,
   screenStream,
   setScreenStream,
+  allowNoScreenShare = false,
 }: {
   onEnterExam?: (snapshot: EnvResultSnapshot) => void;
   webcamStream: MediaStream | null;
   setWebcamStream: (s: MediaStream | null) => void;
   screenStream: MediaStream | null;
   setScreenStream: (s: MediaStream | null) => void;
+  allowNoScreenShare?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [browserInfo, setBrowserInfo] = useState<CheckResult>({
@@ -155,6 +157,17 @@ export function EnvCheck({
       setWebcamStream(stream);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
+      const displaySurface = (
+        settings as MediaTrackSettings & { displaySurface?: string }
+      ).displaySurface;
+      if (!allowNoScreenShare && displaySurface && displaySurface !== "monitor") {
+        stream.getTracks().forEach((streamTrack) => streamTrack.stop());
+        setScreen({
+          status: "error",
+          detail: "창이나 탭이 아닌 '전체 화면'을 선택해야 합니다.",
+        });
+        return;
+      }
       setWebcam({
         status: "ok",
         detail: `${track.label || "웹캠"} · ${settings.width}×${settings.height} · 시험까지 유지`,
@@ -335,7 +348,7 @@ export function EnvCheck({
 
   const requiredOk =
     webcam.status === "ok" &&
-    screen.status === "ok" &&
+    (allowNoScreenShare || screen.status === "ok") &&
     fullscreen.status === "ok" &&
     browserInfo.status === "ok" &&
     monitor.status !== "error" &&
@@ -346,7 +359,7 @@ export function EnvCheck({
   const blockers: string[] = [];
   if (monitor.status === "error") blockers.push("듀얼 모니터");
   if (webcam.status !== "ok") blockers.push("웹캠");
-  if (screen.status !== "ok") blockers.push("화면 공유");
+  if (!allowNoScreenShare && screen.status !== "ok") blockers.push("화면 공유");
   if (network.status === "error") blockers.push("네트워크");
   if (cpu.status === "error") blockers.push("CPU");
   if (browserInfo.status !== "ok") blockers.push("브라우저");
@@ -388,7 +401,9 @@ export function EnvCheck({
       n: 3,
       title: "화면 공유",
       result: screen,
-      hint: "감독관이 응시자 화면을 실시간 관찰합니다. 팝업에서 반드시 '전체 화면'을 선택해주세요.",
+      hint: allowNoScreenShare
+        ? "이 시험은 화면 공유 없이 응시할 수 있습니다."
+        : "감독관이 응시자 화면을 실시간 관찰합니다. 팝업에서 반드시 '전체 화면'을 선택해주세요.",
       action: {
         label: screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트",
         onClick: requestScreen,

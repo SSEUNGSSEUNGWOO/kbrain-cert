@@ -77,6 +77,15 @@ export async function PATCH(
     }
     patch.is_test_mode = body.isTestMode;
   }
+  if ("allowNoScreenShare" in body) {
+    if (typeof body.allowNoScreenShare !== "boolean") {
+      return NextResponse.json(
+        { error: "allowNoScreenShare must be boolean" },
+        { status: 400 }
+      );
+    }
+    patch.allow_no_screen_share = body.allowNoScreenShare;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });

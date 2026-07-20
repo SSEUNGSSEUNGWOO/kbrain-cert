@@ -10,6 +10,7 @@ type Fixture = {
   originalIsTestMode: boolean;
   originalExamDate: string | null;
   originalStatus: string;
+  originalAllowNoScreenShare: boolean;
   durationMinutes: number;
   slug: string;
   name: string;
@@ -18,6 +19,8 @@ type Fixture = {
   answerQuestionId?: string;
   answerSlotId?: string;
   questionContent?: string;
+  fileQuestionId?: string;
+  fileSlotId?: string;
   identityPath?: string;
 };
 
@@ -33,7 +36,9 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test.beforeAll(async () => {
     const { data: exam, error: examError } = await supabase
       .from("exams")
-      .select("id, slug, is_test_mode, exam_date, duration_minutes, status")
+      .select(
+        "id, slug, is_test_mode, exam_date, duration_minutes, status, allow_no_screen_share"
+      )
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -45,7 +50,12 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const phoneLast4 = "1357";
     const { error: slugError } = await supabase
       .from("exams")
-      .update({ slug, is_test_mode: false, status: "open" })
+      .update({
+        slug,
+        is_test_mode: false,
+        status: "open",
+        allow_no_screen_share: false,
+      })
       .eq("id", exam.id);
     if (slugError) throw slugError;
 
@@ -67,6 +77,29 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       throw invitationError ?? new Error("검증용 명단 생성 실패");
     }
 
+    const { data: examQuestions, error: fileQuestionError } = await supabase
+      .from("exam_questions")
+      .select("question_id, questions(submission_slots)")
+      .eq("exam_id", exam.id);
+    if (fileQuestionError) throw fileQuestionError;
+    const fileQuestion = (examQuestions ?? []).find((item) => {
+      const slots = (
+        item as unknown as {
+          questions: { submission_slots: Array<{ id: string; type: string }> };
+        }
+      ).questions?.submission_slots;
+      return slots?.some((slot) => slot.type === "file");
+    });
+    const fileSlots = fileQuestion
+      ? (
+          fileQuestion as unknown as {
+            questions: {
+              submission_slots: Array<{ id: string; type: string }>;
+            };
+          }
+        ).questions.submission_slots
+      : [];
+
     fixture = {
       examId: exam.id,
       invitationId: invitation.id,
@@ -74,10 +107,13 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       originalIsTestMode: exam.is_test_mode,
       originalExamDate: exam.exam_date,
       originalStatus: exam.status,
+      originalAllowNoScreenShare: exam.allow_no_screen_share,
       durationMinutes: exam.duration_minutes,
       slug,
       name,
       phoneLast4,
+      fileQuestionId: fileQuestion?.question_id,
+      fileSlotId: fileSlots.find((slot) => slot.type === "file")?.id,
     };
   });
 
@@ -103,6 +139,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
         is_test_mode: fixture.originalIsTestMode,
         exam_date: fixture.originalExamDate,
         status: fixture.originalStatus,
+        allow_no_screen_share: fixture.originalAllowNoScreenShare,
       })
       .eq("id", fixture.examId);
   });
@@ -221,6 +258,18 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   }) => {
     test.setTimeout(75_000);
     expect(fixture.sessionId).toBeTruthy();
+    await page.addInitScript(() => {
+      const original = navigator.mediaDevices.getDisplayMedia.bind(
+        navigator.mediaDevices
+      );
+      navigator.mediaDevices.getDisplayMedia = async (options) => {
+        const stream = await original(options);
+        (
+          window as Window & { __e2eScreenStream?: MediaStream }
+        ).__e2eScreenStream = stream;
+        return stream;
+      };
+    });
     fixture.identityPath = `${fixture.sessionId}/e2e_identity.png`;
     const onePixelPng = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=",
@@ -255,7 +304,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     );
 
     await page
-      .getByRole("button", { name: "화면 공유 테스트" })
+      .getByRole("button", { name: /화면 공유 테스트|다시 테스트/ })
       .click();
     await expect(
       page.getByRole("button", { name: "보안 서약으로 이동 →" })
@@ -277,6 +326,20 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       timeout: 40_000,
     });
     await expect(page.getByText("Step 3 · 대기실")).not.toBeVisible();
+    await page.evaluate(() => {
+      (
+        window as Window & { __e2eScreenStream?: MediaStream }
+      ).__e2eScreenStream?.getTracks().forEach((track) => track.stop());
+    });
+    await expect(
+      page.getByRole("heading", { name: "화면 공유가 중단되었습니다" })
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "전체 화면 다시 공유" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "화면 공유가 중단되었습니다" })
+    ).not.toBeVisible();
 
     const { error: restoreError } = await supabase
       .from("exams")
@@ -406,6 +469,103 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     );
     expect(takePage.status()).toBe(200);
     expect(await takePage.text()).toContain(marker);
+  });
+
+  test("답안 파일을 서버 메모리 경유 없이 직접 업로드하고 삭제한다", async ({
+    request,
+  }) => {
+    expect(fixture.fileQuestionId).toBeTruthy();
+    expect(fixture.fileSlotId).toBeTruthy();
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const metadata = {
+      sessionId: fixture.sessionId,
+      questionId: fixture.fileQuestionId,
+      slotId: fixture.fileSlotId,
+      fileName: "e2e-direct-upload.txt",
+      fileSize: 17,
+      mime: "text/plain",
+    };
+    const prepare = await request.post("/api/exam/answers/upload", {
+      data: metadata,
+    });
+    expect(prepare.status(), await prepare.text()).toBe(200);
+    const prepared = await prepare.json();
+    const anon = createClient(
+      requiredEnv(env, "NEXT_PUBLIC_SUPABASE_URL"),
+      requiredEnv(env, "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+      { auth: { persistSession: false } }
+    );
+    const content = new TextEncoder().encode("direct-upload-e2e");
+    const { error: uploadError } = await anon.storage
+      .from("answer-files")
+      .uploadToSignedUrl(prepared.path, prepared.token, content, {
+        contentType: "text/plain",
+      });
+    if (uploadError) throw uploadError;
+
+    const complete = await request.patch("/api/exam/answers/upload", {
+      data: { ...metadata, path: prepared.path },
+    });
+    expect(complete.status(), await complete.text()).toBe(200);
+    const remove = await request.delete("/api/exam/answers/upload", {
+      data: { ...metadata, path: prepared.path },
+    });
+    expect(remove.status(), await remove.text()).toBe(200);
+
+    const folder = prepared.path.slice(0, prepared.path.lastIndexOf("/"));
+    const fileName = prepared.path.slice(prepared.path.lastIndexOf("/") + 1);
+    const { data: remaining, error: listError } = await supabase.storage
+      .from("answer-files")
+      .list(folder, { search: fileName });
+    if (listError) throw listError;
+    expect(remaining).toHaveLength(0);
+  });
+
+  test("답안 저장 요청 100개가 동시에 와도 유실 없이 처리한다", async ({
+    request,
+  }) => {
+    test.setTimeout(120_000);
+    expect(fixture.answerQuestionId).toBeTruthy();
+    expect(fixture.answerSlotId).toBeTruthy();
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const responses = await Promise.all(
+      Array.from({ length: 100 }, (_, index) =>
+        request.post("/api/exam/answers/save", {
+          data: {
+            sessionId: fixture.sessionId,
+            questionId: fixture.answerQuestionId,
+            slotValues: {
+              [fixture.answerSlotId!]: `동시저장_${index}`,
+            },
+          },
+        })
+      )
+    );
+    expect(responses.every((response) => response.status() === 200)).toBe(true);
+    const { data: saved, error } = await supabase
+      .from("answers")
+      .select("slot_values")
+      .eq("session_id", fixture.sessionId!)
+      .eq("question_id", fixture.answerQuestionId!)
+      .single();
+    if (error) throw error;
+    expect(
+      Object.values(saved.slot_values as Record<string, unknown>)[0]
+    ).toMatch(/^동시저장_\d+$/);
   });
 
   test("다른 시험 문항과 존재하지 않는 슬롯 주입을 차단한다", async ({

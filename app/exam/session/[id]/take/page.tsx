@@ -44,7 +44,9 @@ export default async function ExamSessionTakePage({
 
   const { data: exam } = await admin
     .from("exams")
-    .select("id, title, duration_minutes, pass_score, grade_id, exam_date")
+    .select(
+      "id, title, duration_minutes, pass_score, grade_id, exam_date, allow_no_screen_share"
+    )
     .eq("id", session.exam_id)
     .single();
   if (!exam) notFound();
@@ -72,6 +74,7 @@ export default async function ExamSessionTakePage({
         passScore: exam.pass_score,
         grade: gradeName ?? "",
         examDate: exam.exam_date,
+        allowNoScreenShare: exam.allow_no_screen_share ?? false,
       }}
       sets={[]}
       questions={[]}

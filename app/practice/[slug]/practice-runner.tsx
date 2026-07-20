@@ -16,6 +16,7 @@ import { ExamChat } from "@/components/exam-chat";
 import { cn } from "@/lib/utils";
 import { AgoraWebcamPublisher } from "@/components/agora-webcam-publisher";
 import { AgoraScreenPublisher } from "@/components/agora-screen-publisher";
+import { createClientSupabase } from "@/lib/supabase/client";
 
 type Slot = {
   id: string;
@@ -65,6 +66,7 @@ export function PracticeRunner({
     grade: string;
     /** 실 시험 예약 시각 · 실 시험이면 이 시각을 기준으로 카운트다운·자동 제출 */
     examDate?: string | null;
+    allowNoScreenShare?: boolean;
   };
   sets: Set[];
   questions: Question[];
@@ -283,6 +285,36 @@ export function PracticeRunner({
 
   const showTimer = tab === "exam";
   const proctorActive = tab === "exam" && isRealExam;
+  const screenRequired = isRealExam && !exam.allowNoScreenShare;
+  const [screenRecoveryBusy, setScreenRecoveryBusy] = useState(false);
+  const recoverScreenShare = useCallback(async () => {
+    setScreenRecoveryBusy(true);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+      });
+      const track = stream.getVideoTracks()[0];
+      const settings = track.getSettings() as MediaTrackSettings & {
+        displaySurface?: string;
+      };
+      if (settings.displaySurface && settings.displaySurface !== "monitor") {
+        stream.getTracks().forEach((streamTrack) => streamTrack.stop());
+        setSubmitError("반드시 '전체 화면'을 선택해 주세요.");
+        return;
+      }
+      track.onended = () => setScreenStream(null);
+      setScreenStream(stream);
+      setSubmitError(null);
+      fireMonitorEvent({
+        eventType: "screen_share_recovered",
+        severity: "info",
+      });
+    } catch {
+      setSubmitError("화면 공유를 다시 시작해야 시험을 계속할 수 있습니다.");
+    } finally {
+      setScreenRecoveryBusy(false);
+    }
+  }, [fireMonitorEvent]);
   const reportWebcamFailure = useCallback(
     () => fireMonitorEvent({ eventType: "webcam_publish_failed", severity: "high" }),
     [fireMonitorEvent]
@@ -384,6 +416,7 @@ export function PracticeRunner({
             setWebcamStream={setWebcamStream}
             screenStream={screenStream}
             setScreenStream={setScreenStream}
+            allowNoScreenShare={isRealExam && exam.allowNoScreenShare}
             onEnterExam={(snapshot: EnvResultSnapshot) => {
               void savePrecheck("env", {
                 envResult: snapshot,
@@ -531,6 +564,27 @@ export function PracticeRunner({
           </div>
         </main>
       </div>
+      )}
+
+      {proctorActive && screenRequired && !screenStream?.getVideoTracks()[0]?.readyState.includes("live") && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 p-6">
+          <div className="w-full max-w-md rounded-md bg-white p-8 text-center shadow-2xl">
+            <div className="mb-4 text-4xl">⚠</div>
+            <h2 className="mb-2">화면 공유가 중단되었습니다</h2>
+            <p className="mb-6 text-sm text-muted-foreground">
+              시험 시간은 계속 흐릅니다. 전체 화면 공유를 다시 시작해야 답안을
+              계속 작성할 수 있습니다.
+            </p>
+            <button
+              type="button"
+              disabled={screenRecoveryBusy}
+              onClick={() => void recoverScreenShare()}
+              className="h-12 w-full rounded-md bg-primary font-bold text-white disabled:opacity-50"
+            >
+              {screenRecoveryBusy ? "화면 공유 요청 중…" : "전체 화면 다시 공유"}
+            </button>
+          </div>
+        </div>
       )}
 
       {confirmSubmit && isRealExam && (
@@ -1234,20 +1288,57 @@ function FileSlot({
     setBusy(true);
     onUploadStateChange(true);
     setError(null);
+    let preparedPath: string | null = null;
     try {
-      const form = new FormData();
-      form.append("sessionId", sessionId);
-      form.append("questionId", questionId);
-      form.append("slotId", slot.id);
-      form.append("file", file);
-      const res = await fetch("/api/exam/answers/upload", {
+      const metadata = {
+        sessionId,
+        questionId,
+        slotId: slot.id,
+        fileName: file.name,
+        fileSize: file.size,
+        mime: file.type || "application/octet-stream",
+      };
+      const prepare = await fetch("/api/exam/answers/upload", {
         method: "POST",
-        body: form,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "업로드 실패");
-      onChange(data.file);
+      const prepared = await prepare.json();
+      if (!prepare.ok) throw new Error(prepared.error ?? "업로드 준비 실패");
+      preparedPath = prepared.path;
+      const supabase = createClientSupabase();
+      const { error: uploadError } = await supabase.storage
+        .from("answer-files")
+        .uploadToSignedUrl(prepared.path, prepared.token, file, {
+          contentType: metadata.mime,
+        });
+      if (uploadError) throw uploadError;
+      const complete = await fetch("/api/exam/answers/upload", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...metadata, path: prepared.path }),
+      });
+      const completed = await complete.json();
+      if (!complete.ok) {
+        throw new Error(completed.error ?? "업로드 확인 실패");
+      }
+      onChange(completed.file);
     } catch (err) {
+      if (preparedPath) {
+        void fetch("/api/exam/answers/upload", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            questionId,
+            slotId: slot.id,
+            fileName: file.name,
+            fileSize: file.size,
+            mime: file.type || "application/octet-stream",
+            path: preparedPath,
+          }),
+        });
+      }
       setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
       setBusy(false);
@@ -1276,7 +1367,40 @@ function FileSlot({
         </a>
         <button
           type="button"
-          onClick={() => onChange(null)}
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            onUploadStateChange(true);
+            void fetch("/api/exam/answers/upload", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId,
+                questionId,
+                slotId: slot.id,
+                fileName: value.name,
+                fileSize: value.size,
+                mime: value.mime,
+                path: value.path,
+              }),
+            })
+              .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error ?? "삭제 실패");
+                onChange(null);
+              })
+              .catch((deleteError) =>
+                setError(
+                  deleteError instanceof Error
+                    ? deleteError.message
+                    : "삭제 실패"
+                )
+              )
+              .finally(() => {
+                setBusy(false);
+                onUploadStateChange(false);
+              });
+          }}
           className="h-8 px-3 rounded-sm bg-white border border-danger text-danger hover:bg-danger-soft text-[11px] font-bold transition"
         >
           삭제

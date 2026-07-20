@@ -39,6 +39,25 @@ export function AgoraWebcamPublisher({
 
         const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         await client.join(config.appId, config.channel, config.token, config.uid);
+        const renewToken = () => {
+          void (async () => {
+            const tokenResponse = await fetch("/api/agora/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mode: "applicant", media: "webcam" }),
+            });
+            const renewed = await tokenResponse.json();
+            if (!tokenResponse.ok) throw new Error("Agora token renewal failed");
+            await client.renewToken(renewed.token);
+          })().catch(() => {
+            if (!cancelled) {
+              setStatus("error");
+              onFailure();
+            }
+          });
+        };
+        client.on("token-privilege-will-expire", renewToken);
+        client.on("token-privilege-did-expire", renewToken);
         const videoTrack = AgoraRTC.createCustomVideoTrack({
           mediaStreamTrack: mediaTrack,
           width: 320,
@@ -51,6 +70,8 @@ export function AgoraWebcamPublisher({
         if (!cancelled) setStatus("live");
 
         cleanup = async () => {
+          client.off("token-privilege-will-expire", renewToken);
+          client.off("token-privilege-did-expire", renewToken);
           await client.unpublish(videoTrack).catch(() => {});
           videoTrack.close();
           await client.leave().catch(() => {});

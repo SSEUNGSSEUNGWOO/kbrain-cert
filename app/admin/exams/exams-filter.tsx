@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ScheduleEditor } from "./schedule-editor";
 import { SlugEditor } from "./slug-editor";
 import { TestModeToggle } from "./test-mode-toggle";
+import { ScreenShareToggle } from "./screen-share-toggle";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -21,6 +22,7 @@ type ExamRow = {
   passScore: number;
   slug: string | null;
   isTestMode: boolean;
+  allowNoScreenShare: boolean;
 };
 
 const statusStyle = {
@@ -160,6 +162,10 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
 
       <SlugEditor examId={exam.id} slug={exam.slug} />
       <TestModeToggle examId={exam.id} isTestMode={exam.isTestMode} />
+      <ScreenShareToggle
+        examId={exam.id}
+        allowNoScreenShare={exam.allowNoScreenShare}
+      />
 
       <div className="flex items-center gap-2 mt-3">
         <Link
