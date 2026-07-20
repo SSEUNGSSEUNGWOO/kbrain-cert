@@ -286,7 +286,46 @@ export function PracticeRunner({
   const showTimer = tab === "exam";
   const proctorActive = tab === "exam" && isRealExam;
   const screenRequired = isRealExam && !exam.allowNoScreenShare;
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const [recoveryCameraId, setRecoveryCameraId] = useState("");
+  const [webcamRecoveryBusy, setWebcamRecoveryBusy] = useState(false);
   const [screenRecoveryBusy, setScreenRecoveryBusy] = useState(false);
+  useEffect(() => {
+    if (!proctorActive || webcamStream) return;
+    void navigator.mediaDevices.enumerateDevices().then((devices) => {
+      const cameras = devices.filter((device) => device.kind === "videoinput");
+      setCameraDevices(cameras);
+      setRecoveryCameraId((current) => current || cameras[0]?.deviceId || "");
+    });
+  }, [proctorActive, webcamStream]);
+  const recoverWebcam = useCallback(async () => {
+    setWebcamRecoveryBusy(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 320,
+          height: 240,
+          frameRate: 10,
+          ...(recoveryCameraId
+            ? { deviceId: { exact: recoveryCameraId } }
+            : {}),
+        },
+        audio: false,
+      });
+      const track = stream.getVideoTracks()[0];
+      track.onended = () => setWebcamStream(null);
+      setWebcamStream(stream);
+      setSubmitError(null);
+      fireMonitorEvent({
+        eventType: "webcam_recovered",
+        severity: "info",
+      });
+    } catch {
+      setSubmitError("웹캠을 다시 연결해야 시험을 계속할 수 있습니다.");
+    } finally {
+      setWebcamRecoveryBusy(false);
+    }
+  }, [fireMonitorEvent, recoveryCameraId]);
   const recoverScreenShare = useCallback(async () => {
     setScreenRecoveryBusy(true);
     try {
@@ -586,6 +625,44 @@ export function PracticeRunner({
           </div>
         </div>
       )}
+
+      {proctorActive &&
+        webcamStream?.getVideoTracks()[0]?.readyState !== "live" && (
+          <div className="fixed inset-0 z-[101] flex items-center justify-center bg-slate-950/95 p-6">
+            <div className="w-full max-w-md rounded-md bg-white p-8 text-center shadow-2xl">
+              <div className="mb-4 text-4xl">📷</div>
+              <h2 className="mb-2">웹캠 연결이 중단되었습니다</h2>
+              <p className="mb-5 text-sm text-muted-foreground">
+                시험 시간은 계속 흐릅니다. 사용할 웹캠을 선택하고 다시
+                연결해 주세요.
+              </p>
+              {cameraDevices.length > 0 && (
+                <select
+                  value={recoveryCameraId}
+                  onChange={(event) =>
+                    setRecoveryCameraId(event.target.value)
+                  }
+                  className="mb-3 h-11 w-full rounded-md border border-border bg-white px-3 text-sm"
+                  aria-label="복구할 웹캠"
+                >
+                  {cameraDevices.map((camera, index) => (
+                    <option key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label || `카메라 ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                disabled={webcamRecoveryBusy}
+                onClick={() => void recoverWebcam()}
+                className="h-12 w-full rounded-md bg-primary font-bold text-white disabled:opacity-50"
+              >
+                {webcamRecoveryBusy ? "웹캠 연결 중…" : "선택한 웹캠 다시 연결"}
+              </button>
+            </div>
+          </div>
+        )}
 
       {confirmSubmit && isRealExam && (
         <SubmitConfirmDialog

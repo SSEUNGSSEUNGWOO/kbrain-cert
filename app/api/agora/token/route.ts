@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { randomBytes } from "node:crypto";
 import { RtcRole, RtcTokenBuilder } from "agora-token";
 import { createAdminSupabase, createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     mode?: "applicant" | "examiner";
     media?: "webcam" | "screen";
+    uid?: string;
     examId?: string;
   } | null;
   const cookieStore = await cookies();
@@ -41,10 +43,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid session" }, { status: 403 });
     }
     examId = session.exam_id;
-    uid =
+    const uidPrefix =
       body.media === "screen"
-        ? `screen-${session.id}`
-        : `applicant-${session.id}`;
+        ? `screen-${session.id}-`
+        : `applicant-${session.id}-`;
+    uid =
+      typeof body.uid === "string" &&
+      body.uid.startsWith(uidPrefix) &&
+      /^[a-f0-9]{12}$/.test(body.uid.slice(uidPrefix.length))
+        ? body.uid
+        : `${uidPrefix}${randomBytes(6).toString("hex")}`;
     clientRole = "host";
   } else {
     const supabase = await createServerSupabase();

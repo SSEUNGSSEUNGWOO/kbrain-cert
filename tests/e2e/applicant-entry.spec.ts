@@ -259,6 +259,16 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     test.setTimeout(75_000);
     expect(fixture.sessionId).toBeTruthy();
     await page.addInitScript(() => {
+      const originalUserMedia = navigator.mediaDevices.getUserMedia.bind(
+        navigator.mediaDevices
+      );
+      navigator.mediaDevices.getUserMedia = async (options) => {
+        const stream = await originalUserMedia(options);
+        (
+          window as Window & { __e2eWebcamStream?: MediaStream }
+        ).__e2eWebcamStream = stream;
+        return stream;
+      };
       const original = navigator.mediaDevices.getDisplayMedia.bind(
         navigator.mediaDevices
       );
@@ -339,6 +349,20 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .click();
     await expect(
       page.getByRole("heading", { name: "화면 공유가 중단되었습니다" })
+    ).not.toBeVisible();
+    await page.evaluate(() => {
+      (
+        window as Window & { __e2eWebcamStream?: MediaStream }
+      ).__e2eWebcamStream?.getTracks().forEach((track) => track.stop());
+    });
+    await expect(
+      page.getByRole("heading", { name: "웹캠 연결이 중단되었습니다" })
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "선택한 웹캠 다시 연결" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "웹캠 연결이 중단되었습니다" })
     ).not.toBeVisible();
 
     const { error: restoreError } = await supabase

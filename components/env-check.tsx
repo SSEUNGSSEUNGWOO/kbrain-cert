@@ -45,6 +45,8 @@ export function EnvCheck({
   allowNoScreenShare?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
   const [browserInfo, setBrowserInfo] = useState<CheckResult>({
     status: "pending",
     detail: "확인 중…",
@@ -145,18 +147,29 @@ export function EnvCheck({
   }, []);
 
   // 웹캠 요청 · 스트림은 부모가 유지 (시험 종료까지)
-  const requestWebcam = async () => {
+  const requestWebcam = async (deviceId?: string) => {
     setWebcam({ status: "pending", detail: "권한 요청 중…" });
     // 이전 스트림이 있으면 새로 요청하기 전에 정지 (재시도 시)
     webcamStream?.getTracks().forEach((t) => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240, frameRate: 10 },
+        video: {
+          width: 320,
+          height: 240,
+          frameRate: 10,
+          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        },
         audio: false,
       });
       setWebcamStream(stream);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(
+        (device) => device.kind === "videoinput"
+      );
+      setCameras(videoDevices);
+      setSelectedCameraId(settings.deviceId ?? deviceId ?? "");
       const displaySurface = (
         settings as MediaTrackSettings & { displaySurface?: string }
       ).displaySurface;
@@ -387,13 +400,35 @@ export function EnvCheck({
       hint: "시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다.",
       action: { label: "재시도", onClick: requestWebcam },
       preview: (
-        <div className="p-4 bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center">
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="w-full max-w-md aspect-video rounded-md bg-black object-cover"
-          />
+        <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-black p-4">
+          {cameras.length > 1 && (
+            <label className="mx-auto mb-3 block max-w-md text-xs font-bold text-white">
+              사용할 웹캠
+              <select
+                value={selectedCameraId}
+                onChange={(event) => {
+                  const deviceId = event.target.value;
+                  setSelectedCameraId(deviceId);
+                  void requestWebcam(deviceId);
+                }}
+                className="mt-1 h-10 w-full rounded-md border border-white/20 bg-slate-800 px-3 text-sm text-white"
+              >
+                {cameras.map((camera, index) => (
+                  <option key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label || `카메라 ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <div className="flex items-center justify-center">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="aspect-video w-full max-w-md rounded-md bg-black object-cover"
+            />
+          </div>
         </div>
       ),
     },

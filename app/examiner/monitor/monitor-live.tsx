@@ -79,6 +79,8 @@ export function MonitorLive({
   const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
   const webcamUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
+  const webcamUidRef = useRef<Map<string, string>>(new Map());
+  const screenUidRef = useRef<Map<string, string>>(new Map());
   const desiredWebcamsRef = useRef<Set<string>>(new Set());
   const selectedSessionRef = useRef<string | null>(null);
   const subscribedWebcamsRef = useRef<Set<string>>(new Set());
@@ -243,6 +245,8 @@ export function MonitorLive({
     let leave: (() => Promise<void>) | undefined;
     const screenUsers = screenUsersRef.current;
     const webcamUsers = webcamUsersRef.current;
+    const webcamUids = webcamUidRef.current;
+    const screenUids = screenUidRef.current;
     const subscribedWebcams = subscribedWebcamsRef.current;
 
     void (async () => {
@@ -285,17 +289,19 @@ export function MonitorLive({
           const uid = String(user.uid);
           const isScreen = uid.startsWith("screen-");
           const sessionId = isScreen
-            ? uid.slice("screen-".length)
+            ? uid.slice("screen-".length, "screen-".length + 36)
             : uid.startsWith("applicant-")
-            ? uid.slice("applicant-".length)
+            ? uid.slice("applicant-".length, "applicant-".length + 36)
             : null;
           if (!sessionId) return;
           if (isScreen) {
             screenUsersRef.current.set(sessionId, user);
+            screenUidRef.current.set(sessionId, uid);
             if (selectedSessionRef.current !== sessionId) return;
             subscribedScreenRef.current = sessionId;
           } else {
             webcamUsersRef.current.set(sessionId, user);
+            webcamUidRef.current.set(sessionId, uid);
             if (!desiredWebcamsRef.current.has(sessionId)) return;
             subscribedWebcamsRef.current.add(sessionId);
           }
@@ -309,14 +315,22 @@ export function MonitorLive({
           const uid = String(user.uid);
           const isScreen = uid.startsWith("screen-");
           const sessionId = isScreen
-            ? uid.slice("screen-".length)
+            ? uid.slice("screen-".length, "screen-".length + 36)
             : uid.startsWith("applicant-")
-            ? uid.slice("applicant-".length)
+            ? uid.slice("applicant-".length, "applicant-".length + 36)
             : null;
           if (!sessionId) return;
-          if (isScreen) screenUsersRef.current.delete(sessionId);
+          const activeUid = isScreen
+            ? screenUidRef.current.get(sessionId)
+            : webcamUidRef.current.get(sessionId);
+          if (activeUid !== uid) return;
+          if (isScreen) {
+            screenUsersRef.current.delete(sessionId);
+            screenUidRef.current.delete(sessionId);
+          }
           else {
             webcamUsersRef.current.delete(sessionId);
+            webcamUidRef.current.delete(sessionId);
             subscribedWebcamsRef.current.delete(sessionId);
           }
           const setter = isScreen ? setScreenTracks : setVideoTracks;
@@ -353,6 +367,8 @@ export function MonitorLive({
       agoraClientRef.current = null;
       screenUsers.clear();
       webcamUsers.clear();
+      webcamUids.clear();
+      screenUids.clear();
       subscribedWebcams.clear();
       subscribedScreenRef.current = null;
       setVideoTracks((current) => {
