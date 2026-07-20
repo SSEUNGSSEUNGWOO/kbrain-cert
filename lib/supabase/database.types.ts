@@ -374,6 +374,7 @@ export type Database = {
           severity: EventSeverity;
           payload: Json | null;
           is_reviewed: boolean;
+          reviewer_note: string | null;
         };
         Insert: {
           id?: number;
@@ -385,6 +386,7 @@ export type Database = {
           severity?: EventSeverity;
           payload?: Json | null;
           is_reviewed?: boolean;
+          reviewer_note?: string | null;
         };
         Update: Partial<
           Database["public"]["Tables"]["monitoring_events"]["Insert"]

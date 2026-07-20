@@ -817,6 +817,12 @@ function TopBar({
           </div>
         </Link>
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-tabular">
+          <Link
+            href="/examiner/events"
+            className="rounded-md border border-border bg-white px-3 py-1.5 font-bold text-primary"
+          >
+            이벤트 검토
+          </Link>
           {examDate && (
             <span>시험 {new Date(examDate).toLocaleString("ko-KR")}</span>
           )}
