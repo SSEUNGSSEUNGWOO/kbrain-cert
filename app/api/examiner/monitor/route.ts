@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const { data: role } = await supabase
+  const admin = createAdminSupabase();
+  const { data: role } = await admin
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -29,8 +30,6 @@ export async function GET(request: Request) {
   if (!examId) {
     return NextResponse.json({ error: "examId required" }, { status: 400 });
   }
-
-  const admin = createAdminSupabase();
 
   // 진행 중 or 대기 중 세션 (제출 안 된 것들)
   const { data: sessions } = await admin

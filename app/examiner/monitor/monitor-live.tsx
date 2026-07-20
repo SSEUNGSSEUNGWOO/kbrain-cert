@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type {
+  IAgoraRTCRemoteUser,
+  IRemoteVideoTrack,
+} from "agora-rtc-sdk-ng";
 
 type Session = {
   sessionId: string;
@@ -64,6 +68,9 @@ export function MonitorLive({
     "connecting" | "live" | "polling"
   >("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [videoTracks, setVideoTracks] = useState<
+    Record<string, IRemoteVideoTrack>
+  >({});
   const sessionIdsRef = useRef<Set<string>>(new Set());
 
   // 데이터 fetch (refetch)
@@ -156,6 +163,84 @@ export function MonitorLive({
       cancelled = true;
       if (pollingId) clearInterval(pollingId);
       void supabase.removeChannel(channel);
+    };
+  }, [exam.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let leave: (() => Promise<void>) | undefined;
+
+    void (async () => {
+      try {
+        const [AgoraRTC, response] = await Promise.all([
+          import("agora-rtc-sdk-ng").then((module) => module.default),
+          fetch("/api/agora/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: "examiner", examId: exam.id }),
+          }),
+        ]);
+        const config = await response.json();
+        if (!response.ok) throw new Error(config.error ?? "Agora token failed");
+        if (cancelled) return;
+
+        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        const onPublished = async (
+          user: IAgoraRTCRemoteUser,
+          mediaType: "audio" | "video"
+        ) => {
+          if (mediaType !== "video") return;
+          await client.subscribe(user, "video");
+          const uid = String(user.uid);
+          const sessionId = uid.startsWith("applicant-")
+            ? uid.slice("applicant-".length)
+            : null;
+          if (sessionId && user.videoTrack) {
+            setVideoTracks((current) => ({
+              ...current,
+              [sessionId]: user.videoTrack!,
+            }));
+          }
+        };
+        const onUnpublished = (user: IAgoraRTCRemoteUser) => {
+          const uid = String(user.uid);
+          const sessionId = uid.startsWith("applicant-")
+            ? uid.slice("applicant-".length)
+            : null;
+          if (!sessionId) return;
+          setVideoTracks((current) => {
+            const next = { ...current };
+            next[sessionId]?.stop();
+            delete next[sessionId];
+            return next;
+          });
+        };
+        client.on("user-published", onPublished);
+        client.on("user-unpublished", onUnpublished);
+        await client.join(config.appId, config.channel, config.token, config.uid);
+        leave = async () => {
+          client.off("user-published", onPublished);
+          client.off("user-unpublished", onUnpublished);
+          await client.leave().catch(() => {});
+        };
+      } catch (joinError) {
+        if (!cancelled) {
+          setError(
+            joinError instanceof Error
+              ? `Agora: ${joinError.message}`
+              : "Agora 연결 실패"
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setVideoTracks((current) => {
+        Object.values(current).forEach((track) => track.stop());
+        return {};
+      });
+      if (leave) void leave();
     };
   }, [exam.id]);
 
@@ -266,6 +351,7 @@ export function MonitorLive({
                     size="lg"
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
+                    videoTrack={videoTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -291,6 +377,7 @@ export function MonitorLive({
                     size="md"
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
+                    videoTrack={videoTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -316,6 +403,7 @@ export function MonitorLive({
                     size="sm"
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
+                    videoTrack={videoTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -519,11 +607,13 @@ function ApplicantCard({
   size,
   selected,
   onSelect,
+  videoTrack,
 }: {
   app: Session;
   size: "sm" | "md" | "lg";
   selected: boolean;
   onSelect: () => void;
+  videoTrack?: IRemoteVideoTrack;
 }) {
   const hasHigh = app.highCount > 0 || app.isFlagged;
   const hasWarn = !hasHigh && app.warnCount > 0;
@@ -556,6 +646,7 @@ function ApplicantCard({
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square"
         )}
       >
+        {videoTrack && <RemoteVideo track={videoTrack} />}
         <div className="absolute inset-0 flex items-center justify-center">
           <div
             className={cn(
@@ -563,7 +654,7 @@ function ApplicantCard({
               size === "lg" ? "text-4xl" : size === "md" ? "text-2xl" : "text-sm"
             )}
           >
-            {initial}
+            {!videoTrack && initial}
           </div>
         </div>
         {(app.highCount + app.warnCount) > 0 && (
@@ -640,6 +731,16 @@ function ApplicantCard({
       )}
     </Link>
   );
+}
+
+function RemoteVideo({ track }: { track: IRemoteVideoTrack }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    track.play(containerRef.current, { fit: "cover", mirror: false });
+    return () => track.stop();
+  }, [track]);
+  return <div ref={containerRef} className="absolute inset-0" />;
 }
 
 const SEVERITY_STYLE: Record<string, string> = {

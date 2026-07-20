@@ -14,6 +14,7 @@ import { useExamSessionLive } from "@/lib/hooks/use-exam-session-live";
 import { ProctorGuard } from "@/components/proctor-guard";
 import { ExamChat } from "@/components/exam-chat";
 import { cn } from "@/lib/utils";
+import { AgoraWebcamPublisher } from "@/components/agora-webcam-publisher";
 
 type Slot = {
   id: string;
@@ -226,6 +227,10 @@ export function PracticeRunner({
         slug={slug}
         timer={showTimer ? timer : null}
         isRealExam={isRealExam}
+      />
+      <AgoraWebcamPublisher
+        sessionId={sessionId ?? null}
+        webcamStream={webcamStream}
       />
 
       <div className="border-b border-border bg-white">

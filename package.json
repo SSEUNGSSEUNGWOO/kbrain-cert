@@ -13,6 +13,8 @@
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.110.4",
     "adm-zip": "^0.6.0",
+    "agora-rtc-sdk-ng": "^4.24.6",
+    "agora-token": "^2.0.5",
     "mime-types": "^3.0.2",
     "next": "16.2.10",
     "pg": "^8.22.0",
