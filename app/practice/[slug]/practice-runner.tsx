@@ -223,9 +223,16 @@ export function PracticeRunner({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer.expired, isRealExam, submitting]);
-  const answeredCount = Object.keys(answers).filter(
-    (qId) => Object.values(answers[qId] ?? {}).some((v) => v !== "" && v != null)
-  ).length;
+  const answeredQuestionIds = useMemo(
+    () =>
+      new Set(
+        Object.entries(answers)
+          .filter(([, values]) => Object.values(values).some(hasAnswerValue))
+          .map(([questionId]) => questionId)
+      ),
+    [answers]
+  );
+  const answeredCount = answeredQuestionIds.size;
 
   async function doSubmit(auto = false) {
     if (!sessionId) return;
@@ -546,6 +553,7 @@ export function PracticeRunner({
           questionsBySet={questionsBySet}
           questions={questions}
           currentQuestionId={currentQ?.id}
+          answeredQuestionIds={answeredQuestionIds}
           onSelect={(qId) => {
             const i = questions.findIndex((q) => q.id === qId);
             if (i >= 0) void moveToQuestion(i);
@@ -991,12 +999,14 @@ function QuestionRail({
   questionsBySet,
   questions,
   currentQuestionId,
+  answeredQuestionIds,
   onSelect,
 }: {
   sets: Set[];
   questionsBySet: Record<string, Question[]>;
   questions: Question[];
   currentQuestionId: string | undefined;
+  answeredQuestionIds: globalThis.Set<string>;
   onSelect: (qId: string) => void;
 }) {
   return (
@@ -1024,16 +1034,23 @@ function QuestionRail({
                 <div className="grid grid-cols-6 gap-1.5">
                   {qs.map((q, qi) => {
                     const isCurrent = q.id === currentQuestionId;
+                    const isAnswered = answeredQuestionIds.has(q.id);
                     return (
                       <button
                         key={q.id}
                         onClick={() => onSelect(q.id)}
-                        title={q.code}
+                        title={`${q.code} · ${
+                          isAnswered ? "응답 완료" : "미응답"
+                        }`}
+                        aria-label={`${qi + 1}번 문항 · ${
+                          isAnswered ? "응답 완료" : "미응답"
+                        }`}
                         className={cn(
                           "aspect-square rounded-sm text-[11px] font-bold tabular-nums transition",
-                          isCurrent
-                            ? "bg-primary text-white ring-2 ring-primary-soft"
-                            : "bg-surface-soft text-muted-foreground hover:bg-subtle"
+                          isAnswered
+                            ? "bg-success text-white hover:brightness-95"
+                            : "bg-surface-soft text-muted-foreground hover:bg-subtle",
+                          isCurrent && "ring-2 ring-primary ring-offset-1"
                         )}
                       >
                         {qi + 1}
@@ -1053,6 +1070,13 @@ function QuestionRail({
       </div>
     </aside>
   );
+}
+
+function hasAnswerValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "number") return true;
+  if (!value || typeof value !== "object") return false;
+  return "path" in value && typeof value.path === "string" && value.path.length > 0;
 }
 
 /* ────── Set 헤더 (시나리오 + 첨부) ────── */

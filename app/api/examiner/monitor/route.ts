@@ -69,6 +69,9 @@ export async function GET(request: Request) {
             .from("monitoring_events")
             .select("session_id, severity")
             .in("session_id", sessionIds)
+            .in("severity", ["warn", "high"])
+            .order("detected_at", { ascending: false })
+            .limit(5000)
         : Promise.resolve({ data: [] as Array<{ session_id: string; severity: string }> }),
     ]);
 

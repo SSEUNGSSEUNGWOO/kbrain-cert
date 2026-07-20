@@ -54,6 +54,8 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 type SeverityFilter = "all" | "high" | "warn" | "info";
+const MAX_LIVE_WEBCAMS = 8;
+const REALTIME_REFRESH_DELAY_MS = 750;
 
 export function MonitorLive({
   exam,
@@ -94,7 +96,9 @@ export function MonitorLive({
       const bPriority = b.isFlagged || b.highCount > 0 ? 2 : b.warnCount > 0 ? 1 : 0;
       return bPriority - aPriority;
     });
-    const desired = new Set(ordered.slice(0, 16).map((item) => item.sessionId));
+    const desired = new Set(
+      ordered.slice(0, MAX_LIVE_WEBCAMS).map((item) => item.sessionId)
+    );
     desiredWebcamsRef.current = desired;
     const client = agoraClientRef.current;
     if (!client) return;
@@ -151,8 +155,16 @@ export function MonitorLive({
   useEffect(() => {
     let cancelled = false;
     let pollingId: ReturnType<typeof setInterval> | null = null;
+    let refreshId: ReturnType<typeof setTimeout> | null = null;
+    let requestInFlight = false;
+    let refreshQueued = false;
 
     const fetchData = async () => {
+      if (requestInFlight) {
+        refreshQueued = true;
+        return;
+      }
+      requestInFlight = true;
       try {
         const res = await fetch(
           `/api/examiner/monitor?examId=${exam.id}&t=${Date.now()}`,
@@ -174,7 +186,20 @@ export function MonitorLive({
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "네트워크 오류");
+      } finally {
+        requestInFlight = false;
+        if (refreshQueued && !cancelled) {
+          refreshQueued = false;
+          void fetchData();
+        }
       }
+    };
+    const scheduleFetch = () => {
+      if (refreshId) clearTimeout(refreshId);
+      refreshId = setTimeout(() => {
+        refreshId = null;
+        void fetchData();
+      }, REALTIME_REFRESH_DELAY_MS);
     };
 
     void fetchData();
@@ -196,7 +221,7 @@ export function MonitorLive({
           const sessionId = (payload.new as { session_id?: string })
             ?.session_id;
           if (sessionId && sessionIdsRef.current.has(sessionId)) {
-            void fetchData();
+            scheduleFetch();
           }
         }
       )
@@ -210,7 +235,7 @@ export function MonitorLive({
         (payload) => {
           const sessionId = (payload.new as { id?: string })?.id;
           if (sessionId && sessionIdsRef.current.has(sessionId)) {
-            void fetchData();
+            scheduleFetch();
           }
         }
       )
@@ -224,7 +249,7 @@ export function MonitorLive({
         (payload) => {
           // 새 세션 생성 (응시자 진입) → refetch
           const examId = (payload.new as { exam_id?: string })?.exam_id;
-          if (examId === exam.id) void fetchData();
+          if (examId === exam.id) scheduleFetch();
         }
       )
       .subscribe((status) => {
@@ -236,6 +261,7 @@ export function MonitorLive({
     return () => {
       cancelled = true;
       if (pollingId) clearInterval(pollingId);
+      if (refreshId) clearTimeout(refreshId);
       void supabase.removeChannel(channel);
     };
   }, [exam.id]);
