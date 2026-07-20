@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClientSupabase } from "@/lib/supabase/client";
 
 export type SessionMessage = {
@@ -29,6 +29,7 @@ export type SessionLive = {
 export function useExamSessionLive(sessionId: string | null | undefined): {
   live: SessionLive;
   markRead: () => void;
+  addMessage: (message: SessionMessage) => void;
 } {
   const [live, setLive] = useState<SessionLive>({
     timeExtensionMinutes: 0,
@@ -36,7 +37,23 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
     messages: [],
     unreadCount: 0,
   });
-  const [lastReadId, setLastReadId] = useState<number>(0);
+  const lastReadIdRef = useRef(0);
+
+  const addMessage = useCallback((message: SessionMessage) => {
+    setLive((current) => {
+      if (current.messages.some((item) => item.id === message.id)) return current;
+      return {
+        ...current,
+        messages: [...current.messages, message].sort((a, b) => a.id - b.id),
+        unreadCount:
+          current.unreadCount +
+          (message.sender_role !== "applicant" &&
+          message.id > lastReadIdRef.current
+            ? 1
+            : 0),
+      };
+    });
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -60,7 +77,7 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
         setLive((prev) => {
           const msgs: SessionMessage[] = msgData.messages ?? [];
           const unread = msgs.filter(
-            (m) => m.sender_role !== "applicant" && m.id > lastReadId
+            (m) => m.sender_role !== "applicant" && m.id > lastReadIdRef.current
           ).length;
           return {
             timeExtensionMinutes: sesData.timeExtensionMinutes ?? 0,
@@ -88,7 +105,7 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
           table: "session_messages",
           filter: `session_id=eq.${sessionId}`,
         },
-        () => void fetchAll()
+        (payload) => addMessage(payload.new as SessionMessage)
       )
       .on(
         "postgres_changes",
@@ -107,16 +124,15 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
       clearInterval(polling);
       void supabase.removeChannel(channel);
     };
-  }, [sessionId, lastReadId]);
+  }, [addMessage, sessionId]);
 
-  const markRead = () => {
-    setLastReadId(
+  const markRead = useCallback(() => {
+    lastReadIdRef.current =
       live.messages.length > 0
         ? Math.max(...live.messages.map((m) => m.id))
-        : 0
-    );
+        : 0;
     setLive((prev) => ({ ...prev, unreadCount: 0 }));
-  };
+  }, [live.messages]);
 
-  return { live, markRead };
+  return { live, markRead, addMessage };
 }

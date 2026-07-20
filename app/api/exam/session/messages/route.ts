@@ -36,15 +36,19 @@ export async function POST(request: Request) {
     );
   }
   const admin = createAdminSupabase();
-  const { error } = await admin.from("session_messages").insert({
-    session_id: auth.sessionId,
-    sender_role: "applicant",
-    content: trimmed,
-  });
+  const { data: message, error } = await admin
+    .from("session_messages")
+    .insert({
+      session_id: auth.sessionId,
+      sender_role: "applicant",
+      content: trimmed,
+    })
+    .select("id, sender_role, content, is_announcement, created_at, read_at")
+    .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ message });
 }
 
 export async function GET(_request: Request) {

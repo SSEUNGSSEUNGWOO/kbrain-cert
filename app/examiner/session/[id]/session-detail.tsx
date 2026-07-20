@@ -124,6 +124,13 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const addMessage = (message: Message) => {
+    setMessages((current) =>
+      current.some((item) => item.id === message.id)
+        ? current
+        : [...current, message].sort((a, b) => a.id - b.id)
+    );
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -216,7 +223,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
           table: "session_messages",
           filter: `session_id=eq.${sessionId}`,
         },
-        () => void fetchMessages()
+        (payload) => addMessage(payload.new as Message)
       )
       .subscribe();
 
@@ -364,6 +371,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
         sessionId={sessionId}
         messages={messages}
         isSubmitted={!!session.submitTime}
+        onMessageSent={addMessage}
       />
 
       <div className="grid grid-cols-3 gap-5">
@@ -793,10 +801,12 @@ function ChatPanel({
   sessionId,
   messages,
   isSubmitted,
+  onMessageSent,
 }: {
   sessionId: string;
   messages: Message[];
   isSubmitted: boolean;
+  onMessageSent: (message: Message) => void;
 }) {
   const [input, setInput] = useState("");
   const [isAnnouncement, setIsAnnouncement] = useState(false);
@@ -816,7 +826,11 @@ function ChatPanel({
           body: JSON.stringify({ content: trimmed, isAnnouncement }),
         }
       );
-      if (res.ok) setInput("");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.message) onMessageSent(data.message);
+        setInput("");
+      }
     } finally {
       setBusy(false);
     }

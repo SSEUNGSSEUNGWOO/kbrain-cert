@@ -187,8 +187,11 @@ export function PracticeRunner({
   const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
 
   // 세션 라이브: 시간 연장 · 강제 종료 감지 · 채팅 메시지 (타이머 전에 선언 · 아래에서 참조)
-  const { live: sessionLive, markRead: markChatRead } =
-    useExamSessionLive(sessionId);
+  const {
+    live: sessionLive,
+    markRead: markChatRead,
+    addMessage: addChatMessage,
+  } = useExamSessionLive(sessionId);
 
   // 감독관이 강제 종료했으면 done 페이지로 이동
   useEffect(() => {
@@ -537,6 +540,7 @@ export function PracticeRunner({
             unreadCount={sessionLive.unreadCount}
             isSubmitted={sessionLive.isSubmitted}
             onOpen={markChatRead}
+            onMessageSent={addChatMessage}
           />
         )}
 

@@ -50,18 +50,22 @@ export async function POST(
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
 
-  const { error } = await admin.from("session_messages").insert({
-    session_id: sessionId,
-    sender_role: "examiner",
-    sender_id: user.id,
-    content: trimmed,
-    is_announcement: !!isAnnouncement,
-  });
+  const { data: message, error } = await admin
+    .from("session_messages")
+    .insert({
+      session_id: sessionId,
+      sender_role: "examiner",
+      sender_id: user.id,
+      content: trimmed,
+      is_announcement: !!isAnnouncement,
+    })
+    .select("id, sender_role, content, is_announcement, created_at, read_at")
+    .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ message });
 }
 
 /**

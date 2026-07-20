@@ -9,11 +9,13 @@ export function ExamChat({
   unreadCount,
   isSubmitted,
   onOpen,
+  onMessageSent,
 }: {
   messages: SessionMessage[];
   unreadCount: number;
   isSubmitted: boolean;
   onOpen: () => void;
+  onMessageSent: (message: SessionMessage) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -51,7 +53,11 @@ export function ExamChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmed }),
       });
-      if (res.ok) setInput("");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.message) onMessageSent(data.message);
+        setInput("");
+      }
     } finally {
       setBusy(false);
     }

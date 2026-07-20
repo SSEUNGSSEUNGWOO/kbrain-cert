@@ -689,6 +689,29 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     expect(invalidSlot.status()).toBe(400);
   });
 
+  test("채팅 전송 응답으로 저장된 메시지를 즉시 반환한다", async ({ request }) => {
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const content = `채팅즉시반영_${randomUUID()}`;
+    const sent = await request.post("/api/exam/session/messages", {
+      data: { content },
+    });
+    expect(sent.status()).toBe(200);
+    await expect(sent.json()).resolves.toMatchObject({
+      message: {
+        sender_role: "applicant",
+        content,
+        is_announcement: false,
+      },
+    });
+  });
+
   test("최종 제출 직전 저장한 답안까지 제출 상태로 확정한다", async ({
     request,
   }) => {
