@@ -31,7 +31,9 @@ export default async function ExamSessionTakePage({
   const admin = createAdminSupabase();
   const { data: session } = await admin
     .from("exam_sessions")
-    .select("id, exam_id, status, invitation_id, submit_time")
+    .select(
+      "id, exam_id, status, invitation_id, submit_time, identity_image_url"
+    )
     .eq("id", id)
     .maybeSingle();
   if (!session) notFound();
@@ -141,6 +143,7 @@ export default async function ExamSessionTakePage({
       sets={sets}
       questions={questions}
       sessionId={session.id}
+      initialIdentityPath={session.identity_image_url}
       initialAnswers={Object.fromEntries(
         (savedAnswers ?? []).map((answer) => [
           answer.question_id,

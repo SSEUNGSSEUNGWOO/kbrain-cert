@@ -51,6 +51,7 @@ export function PracticeRunner({
   sets,
   questions,
   sessionId,
+  initialIdentityPath = null,
   initialAnswers = {},
   skipToExam = false,
 }: {
@@ -68,6 +69,8 @@ export function PracticeRunner({
   questions: Question[];
   /** 실 시험 세션 id · Practice에서는 null · 있으면 precheck 결과 서버 저장 */
   sessionId?: string | null;
+  /** 재접속 시 DB에서 복원한 신분증 이미지 경로 */
+  initialIdentityPath?: string | null;
   /** 재접속 시 DB에서 복원한 문항별 답안 */
   initialAnswers?: Record<string, Record<string, unknown>>;
   /** Practice ?skip=1 · 환경체크/서약/대기실 건너뛰고 시험창부터 (미리보기용) */
@@ -342,7 +345,7 @@ export function PracticeRunner({
               isRealExam && exam.examDate ? new Date(exam.examDate) : undefined
             }
             sessionId={sessionId ?? null}
-            initialIdentityPath={null}
+            initialIdentityPath={initialIdentityPath}
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);

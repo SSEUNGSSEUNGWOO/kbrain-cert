@@ -29,12 +29,10 @@ export function useSavePrecheck(sessionId: string | null | undefined) {
           body: JSON.stringify({ sessionId, step, data }),
         });
         if (!res.ok) {
-          console.warn("[precheck] save failed", step, await res.text());
           return { ok: false };
         }
         return { ok: true };
-      } catch (err) {
-        console.warn("[precheck] save error", step, err);
+      } catch {
         return { ok: false };
       }
     },

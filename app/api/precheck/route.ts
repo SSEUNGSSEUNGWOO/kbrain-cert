@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { createAdminSupabase } from "@/lib/supabase/server";
+import {
+  SESSION_COOKIE_NAME,
+  verifySessionCookieValue,
+} from "@/lib/exam/session-cookie";
 
 /**
  * 응시 전 사전 점검 결과 저장 · 스텝별로 호출
@@ -13,11 +18,11 @@ import { createServerSupabase } from "@/lib/supabase/server";
  * exam(시험 입장) 스텝은 별도 API(exam_sessions.start_time)로 처리
  */
 export async function POST(request: Request) {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const cookieStore = await cookies();
+  const cookieSessionId = verifySessionCookieValue(
+    cookieStore.get(SESSION_COOKIE_NAME)?.value
+  );
+  if (!cookieSessionId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -37,18 +42,21 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  if (sessionId !== cookieSessionId) {
+    return NextResponse.json({ error: "session mismatch" }, { status: 403 });
+  }
 
-  // 응시자 본인 세션인지 확인
-  const { data: session, error: findErr } = await supabase
+  const admin = createAdminSupabase();
+  const { data: session, error: findErr } = await admin
     .from("exam_sessions")
-    .select("id, applicant_id")
+    .select("id, submit_time")
     .eq("id", sessionId)
     .single();
   if (findErr || !session) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
-  if (session.applicant_id !== user.id) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (session.submit_time) {
+    return NextResponse.json({ error: "already submitted" }, { status: 400 });
   }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -65,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unknown step" }, { status: 400 });
   }
 
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await admin
     .from("exam_sessions")
     .update(patch)
     .eq("id", sessionId);

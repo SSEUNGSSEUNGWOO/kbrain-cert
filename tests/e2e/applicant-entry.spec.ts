@@ -15,6 +15,7 @@ type Fixture = {
   phoneLast4: string;
   sessionId?: string;
   answerQuestionId?: string;
+  identityPath?: string;
 };
 
 const env = readEnvLocal();
@@ -78,6 +79,11 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
 
   test.afterAll(async () => {
     if (!fixture) return;
+    if (fixture.identityPath) {
+      await supabase.storage
+        .from("identity-documents")
+        .remove([fixture.identityPath]);
+    }
     await supabase
       .from("exam_sessions")
       .delete()
@@ -182,6 +188,75 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       sessionId: fixture.sessionId,
       reconnect: true,
     });
+  });
+
+  test("기존 신분증을 복원하고 예약 시각에 대기실에서 자동 입장한다", async ({
+    page,
+  }) => {
+    test.setTimeout(75_000);
+    expect(fixture.sessionId).toBeTruthy();
+    fixture.identityPath = `${fixture.sessionId}/e2e_identity.png`;
+    const onePixelPng = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=",
+      "base64"
+    );
+    const { error: uploadError } = await supabase.storage
+      .from("identity-documents")
+      .upload(fixture.identityPath, onePixelPng, {
+        contentType: "image/png",
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+
+    const startsAt = new Date(Date.now() + 30_000).toISOString();
+    const { error: setupError } = await supabase
+      .from("exam_sessions")
+      .update({ identity_image_url: fixture.identityPath })
+      .eq("id", fixture.sessionId!);
+    if (setupError) throw setupError;
+    const { error: scheduleError } = await supabase
+      .from("exams")
+      .update({ exam_date: startsAt })
+      .eq("id", fixture.examId);
+    if (scheduleError) throw scheduleError;
+
+    await page.goto(`/exam/${fixture.slug}`);
+    await page.getByLabel("이름").fill(fixture.name);
+    await page.getByLabel("전화번호 뒷 4자리").fill(fixture.phoneLast4);
+    await page.getByRole("button", { name: /응시 시작/ }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/exam/session/${fixture.sessionId}/take$`)
+    );
+
+    await page
+      .getByRole("button", { name: "화면 공유 테스트" })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "보안 서약으로 이동 →" })
+    ).toBeEnabled({ timeout: 15_000 });
+    await page
+      .getByRole("button", { name: "보안 서약으로 이동 →" })
+      .click();
+    const checkboxes = page.getByRole("checkbox");
+    for (let index = 0; index < (await checkboxes.count()); index += 1) {
+      await checkboxes.nth(index).check();
+    }
+    await page
+      .getByRole("button", { name: "동의하고 대기실로 이동 →" })
+      .click();
+
+    await expect(page.getByText("✓ 업로드 완료")).toBeVisible();
+    await expect(page.getByText("Step 3 · 대기실")).toBeVisible();
+    await expect(page.getByText(/문항 · 총 \d+/)).toBeVisible({
+      timeout: 40_000,
+    });
+    await expect(page.getByText("Step 3 · 대기실")).not.toBeVisible();
+
+    const { error: restoreError } = await supabase
+      .from("exams")
+      .update({ exam_date: fixture.originalExamDate })
+      .eq("id", fixture.examId);
+    if (restoreError) throw restoreError;
   });
 
   test("예약 시각 전 시험 시작을 서버에서 차단한다", async ({ request }) => {
