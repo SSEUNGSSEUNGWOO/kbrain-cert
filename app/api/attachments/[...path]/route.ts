@@ -120,8 +120,9 @@ async function isPathInSessionExam(
   if (!examSets) return false;
 
   for (const es of examSets) {
-    const qs = (es as { question_sets: { attachments: unknown } | null })
-      .question_sets;
+    const qs = (es as unknown as {
+      question_sets: { attachments: unknown } | null;
+    }).question_sets;
     if (!qs || !Array.isArray(qs.attachments)) continue;
     for (const att of qs.attachments as Array<{ path?: string }>) {
       if (att.path === storagePath) return true;

@@ -129,6 +129,20 @@ export function PracticeRunner({
     }
   }, [tab, isRealExam, practiceStartTime]);
 
+  // 감독 이벤트 batch 저장 (실 시험만 · Practice는 no-op)
+  const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
+
+  // 세션 라이브: 시간 연장 · 강제 종료 감지 · 채팅 메시지 (타이머 전에 선언 · 아래에서 참조)
+  const { live: sessionLive, markRead: markChatRead } =
+    useExamSessionLive(sessionId);
+
+  // 감독관이 강제 종료했으면 done 페이지로 이동
+  useEffect(() => {
+    if (sessionLive.isSubmitted && sessionId && tab === "exam") {
+      window.location.href = `/exam/session/${sessionId}/done`;
+    }
+  }, [sessionLive.isSubmitted, sessionId, tab]);
+
   // 타이머 기준 시각
   // - 실 시험 + exam_date 있음 → exam_date 기준 (모든 응시자 동시 종료)
   // - 실 시험 + exam_date 없음 → 개인 진입 시각 폴백 (start_time)
@@ -140,20 +154,6 @@ export function PracticeRunner({
   const effectiveDurationMinutes =
     exam.durationMinutes + (isRealExam ? sessionLive.timeExtensionMinutes : 0);
   const timer = useExamTimer(effectiveStartTime, effectiveDurationMinutes);
-
-  // 감독 이벤트 batch 저장 (실 시험만 · Practice는 no-op)
-  const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
-
-  // 세션 라이브: 시간 연장 · 강제 종료 감지 · 채팅 메시지
-  const { live: sessionLive, markRead: markChatRead } =
-    useExamSessionLive(sessionId);
-
-  // 감독관이 강제 종료했으면 done 페이지로 이동
-  useEffect(() => {
-    if (sessionLive.isSubmitted && sessionId && tab === "exam") {
-      window.location.href = `/exam/session/${sessionId}/done`;
-    }
-  }, [sessionLive.isSubmitted, sessionId, tab]);
 
   // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
   const autoSubmittedRef = useRef(false);

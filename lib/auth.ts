@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase, createAdminSupabase } from "@/lib/supabase/server";
-import type { AppRole } from "@/lib/supabase/database.types";
+
+export type AppRole = "admin" | "examiner" | "grader" | "applicant";
 
 /**
  * 현재 로그인한 사용자 조회 (없으면 null)
@@ -24,7 +25,7 @@ export async function getUserRoles(userId: string): Promise<AppRole[]> {
     .select("role")
     .eq("user_id", userId);
   if (error || !data) return [];
-  return data.map((r) => r.role);
+  return data.map((r) => r.role as AppRole);
 }
 
 /**
@@ -39,14 +40,15 @@ export async function requireAuth() {
 }
 
 /**
- * 페이지 가드 · 특정 role 있어야 통과
+ * 페이지 가드 · 특정 role 있어야 통과 · 단일값 or 배열(OR 매칭)
  * 없으면 홈으로 리다이렉트 (권한 없음)
  */
-export async function requireRole(role: AppRole) {
+export async function requireRole(role: AppRole | AppRole[]) {
   const user = await requireAuth();
   const roles = await getUserRoles(user.id);
-  if (!roles.includes(role)) {
-    redirect("/?forbidden=" + role);
+  const required = Array.isArray(role) ? role : [role];
+  if (!required.some((r) => roles.includes(r))) {
+    redirect("/?forbidden=" + required.join(","));
   }
   return { user, roles };
 }

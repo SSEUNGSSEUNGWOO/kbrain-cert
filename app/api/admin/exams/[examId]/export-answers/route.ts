@@ -73,7 +73,7 @@ export async function GET(
 
   const questions = (examQuestions ?? []).map(
     (eq) =>
-      (eq as {
+      (eq as unknown as {
         questions: {
           id: string;
           code: string;
@@ -93,7 +93,7 @@ export async function GET(
   const questionMap = new Map(questions.map((q) => [q.id, q]));
   const setMap = new Map(
     (examSets ?? []).map((es) => {
-      const s = (es as {
+      const s = (es as unknown as {
         question_sets: { id: string; title: string; scenario: string | null };
       }).question_sets;
       return [s.id, s];

@@ -75,7 +75,7 @@ export async function GET(
 
   const questions = (examQs ?? []).map(
     (eq) =>
-      (eq as {
+      (eq as unknown as {
         questions: {
           id: string;
           code: string;

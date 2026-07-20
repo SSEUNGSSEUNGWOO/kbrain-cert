@@ -38,7 +38,7 @@ export default async function ExamPreviewPage({
   }
 
   const sets = (examSets ?? []).map((es) => {
-    const s = (es as { question_sets: {
+    const s = (es as unknown as { question_sets: {
       id: string; title: string; scenario: string | null; attachments: Attachment[]
     } }).question_sets;
     return {

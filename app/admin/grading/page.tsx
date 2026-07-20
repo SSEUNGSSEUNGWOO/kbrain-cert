@@ -40,7 +40,7 @@ export default async function GradingPage() {
         .in("exam_id", examIds)
     : { data: [] };
   const maxScoreByExam: Record<string, number> = {};
-  for (const eq of (examQuestions ?? []) as Array<{
+  for (const eq of (examQuestions ?? []) as unknown as Array<{
     exam_id: string;
     questions: { max_score: number } | null;
   }>) {

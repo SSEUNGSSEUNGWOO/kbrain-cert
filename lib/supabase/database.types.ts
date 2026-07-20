@@ -1,10 +1,18 @@
 /**
- * Supabase 스키마 타입 - 수동 정의 (초기)
- *
- * 정식 자동생성 방법 (승우님이 supabase login 후 실행):
+ * Supabase 스키마 타입 - 수동 정의
+ * 정식 자동생성 (승우님이 login 후):
  *   npx supabase gen types typescript --project-id rrewqehmebpzwbiuavdw --schema public > lib/supabase/database.types.ts
  *
- * 지금은 M2에서 실제 사용할 최소 테이블만 정의. 나머지는 자동생성 후 대체.
+ * 지금은 수동 유지 · 마이그레이션 신규 컬럼 · 테이블 추가할 때마다 이 파일도 갱신
+ * 반영된 마이그레이션:
+ *   - 20260714000001_initial_schema
+ *   - 20260715000001_exam_practice_slug
+ *   - 20260715000002_exam_session_precheck
+ *   - 20260715000003_auto_submit_cron (함수만)
+ *   - 20260715000004_realtime_publications (publication만)
+ *   - 20260716000001_examiner_actions (time_extension + session_messages)
+ *   - 20260716000002_answer_files (bucket)
+ *   - 20260716000003_identity_documents (bucket)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
@@ -18,6 +26,9 @@ export type SessionStatus =
   | "failed";
 export type InvitationStatus = "created" | "sent" | "used" | "expired";
 export type EventSeverity = "info" | "warn" | "high";
+export type IdentityReviewStatus = "pending" | "approved" | "rejected";
+export type RecordingKind = "webcam" | "screen";
+export type SenderRole = "applicant" | "examiner" | "system";
 
 export type Json =
   | string
@@ -27,7 +38,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       user_roles: {
@@ -182,6 +193,7 @@ export interface Database {
           agora_channel_name: string | null;
           custom_texts: Json;
           alert_event_types: string[];
+          practice_slug: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -195,6 +207,251 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["exams"]["Insert"]>;
+      };
+      exam_sets: {
+        Row: {
+          exam_id: string;
+          set_id: string;
+          order_num: number;
+        };
+        Insert: {
+          exam_id: string;
+          set_id: string;
+          order_num?: number;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_sets"]["Insert"]
+        >;
+      };
+      exam_questions: {
+        Row: {
+          exam_id: string;
+          question_id: string;
+          order_num: number;
+        };
+        Insert: {
+          exam_id: string;
+          question_id: string;
+          order_num?: number;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_questions"]["Insert"]
+        >;
+      };
+      exam_invitations: {
+        Row: {
+          id: string;
+          exam_id: string;
+          email: string;
+          name: string | null;
+          organization: string | null;
+          invite_code: string;
+          status: InvitationStatus;
+          sent_at: string | null;
+          used_at: string | null;
+          allow_dual_monitor: boolean | null;
+          allow_no_webcam: boolean | null;
+          allow_no_screen_share: boolean | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          exam_id: string;
+          email: string;
+          name?: string | null;
+          organization?: string | null;
+          invite_code: string;
+          status?: InvitationStatus;
+          sent_at?: string | null;
+          used_at?: string | null;
+          allow_dual_monitor?: boolean | null;
+          allow_no_webcam?: boolean | null;
+          allow_no_screen_share?: boolean | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_invitations"]["Insert"]
+        >;
+      };
+      guest_otp_codes: {
+        Row: {
+          id: string;
+          invitation_id: string;
+          email: string;
+          code: string;
+          expires_at: string;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invitation_id: string;
+          email: string;
+          code: string;
+          expires_at: string;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["guest_otp_codes"]["Insert"]
+        >;
+      };
+      exam_sessions: {
+        Row: {
+          id: string;
+          exam_id: string;
+          applicant_id: string | null;
+          invitation_id: string | null;
+          status: SessionStatus;
+          start_time: string | null;
+          submit_time: string | null;
+          score_total: number | null;
+          is_flagged: boolean;
+          identity_image_url: string | null;
+          identity_review_status: IdentityReviewStatus | null;
+          identity_review_note: string | null;
+          identity_reviewed_by: string | null;
+          monitoring_notes: string | null;
+          auto_submitted: boolean;
+          time_extension_minutes: number;
+          precheck_env_result: Json | null;
+          precheck_pledge_accepted_at: string | null;
+          precheck_waiting_entered_at: string | null;
+          precheck_user_agent: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          exam_id: string;
+          applicant_id?: string | null;
+          invitation_id?: string | null;
+          status?: SessionStatus;
+          start_time?: string | null;
+          submit_time?: string | null;
+          score_total?: number | null;
+          is_flagged?: boolean;
+          identity_image_url?: string | null;
+          identity_review_status?: IdentityReviewStatus | null;
+          identity_review_note?: string | null;
+          identity_reviewed_by?: string | null;
+          monitoring_notes?: string | null;
+          auto_submitted?: boolean;
+          time_extension_minutes?: number;
+          precheck_env_result?: Json | null;
+          precheck_pledge_accepted_at?: string | null;
+          precheck_waiting_entered_at?: string | null;
+          precheck_user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_sessions"]["Insert"]
+        >;
+      };
+      answers: {
+        Row: {
+          id: string;
+          session_id: string;
+          question_id: string;
+          slot_values: Json;
+          slot_scores: Json | null;
+          score: number | null;
+          feedback: string | null;
+          graded_by: string | null;
+          graded_at: string | null;
+          submitted_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          question_id: string;
+          slot_values?: Json;
+          slot_scores?: Json | null;
+          score?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          graded_at?: string | null;
+          submitted_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["answers"]["Insert"]>;
+      };
+      monitoring_events: {
+        Row: {
+          id: number;
+          session_id: string;
+          event_type: string;
+          detected_at: string;
+          screenshot_url: string | null;
+          question_index: number | null;
+          severity: EventSeverity;
+          payload: Json | null;
+          is_reviewed: boolean;
+        };
+        Insert: {
+          id?: number;
+          session_id: string;
+          event_type: string;
+          detected_at?: string;
+          screenshot_url?: string | null;
+          question_index?: number | null;
+          severity?: EventSeverity;
+          payload?: Json | null;
+          is_reviewed?: boolean;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["monitoring_events"]["Insert"]
+        >;
+      };
+      session_messages: {
+        Row: {
+          id: number;
+          session_id: string;
+          sender_role: SenderRole;
+          sender_id: string | null;
+          content: string;
+          is_announcement: boolean;
+          created_at: string;
+          read_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          session_id: string;
+          sender_role: SenderRole;
+          sender_id?: string | null;
+          content: string;
+          is_announcement?: boolean;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["session_messages"]["Insert"]
+        >;
+      };
+      recordings: {
+        Row: {
+          id: string;
+          session_id: string;
+          kind: RecordingKind;
+          storage_key: string;
+          size_bytes: number | null;
+          duration_seconds: number | null;
+          started_at: string | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          kind: RecordingKind;
+          storage_key: string;
+          size_bytes?: number | null;
+          duration_seconds?: number | null;
+          started_at?: string | null;
+          uploaded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recordings"]["Insert"]>;
       };
       site_settings: {
         Row: {
@@ -212,11 +469,29 @@ export interface Database {
         >;
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      questions_for_applicant: {
+        Row: {
+          id: string;
+          code: string;
+          content: string;
+          submission_slots: Json;
+          max_score: number;
+          set_id: string | null;
+          set_order: number | null;
+          tags: string[];
+          difficulty: DifficultyLevel | null;
+        };
+      };
+    };
     Functions: {
       to_percentage: {
         Args: { raw: number; max_val: number };
         Returns: number;
+      };
+      auto_submit_expired_sessions: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
     Enums: {
@@ -226,6 +501,11 @@ export interface Database {
       session_status: SessionStatus;
       invitation_status: InvitationStatus;
       event_severity: EventSeverity;
+      identity_review_status: IdentityReviewStatus;
+      recording_kind: RecordingKind;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
-}
+};

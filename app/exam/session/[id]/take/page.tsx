@@ -72,7 +72,7 @@ export default async function ExamSessionTakePage({
     (grades ?? []).find((g) => g.id === exam.grade_id)?.name;
 
   const sets = (examSets ?? []).map((es) => {
-    const s = (es as {
+    const s = (es as unknown as {
       question_sets: {
         id: string;
         title: string;
@@ -90,7 +90,7 @@ export default async function ExamSessionTakePage({
 
   const questions = (examQs ?? [])
     .map((eq) => {
-      const q = (eq as {
+      const q = (eq as unknown as {
         questions: {
           id: string;
           code: string;

@@ -1,16 +1,19 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
 
 /**
  * 서버 컴포넌트 · Route Handler · Server Action에서 사용
  * 유저 세션(쿠키)을 자동으로 읽고 RLS 적용
+ *
+ * NOTE: Database generic 없이 loose typing. supabase-js가 요구하는
+ * 자동생성 스키마 형식(Relationships/CompositeTypes 등)을 수동 정의로
+ * 완전 맞추기 어려워 우회. select 결과는 각 호출에서 명시적 타입 캐스팅.
  */
 export async function createServerSupabase() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -38,7 +41,7 @@ export async function createServerSupabase() {
  * - 절대 클라이언트로 노출 금지
  */
 export function createAdminSupabase() {
-  return createSupabaseClient<Database>(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
