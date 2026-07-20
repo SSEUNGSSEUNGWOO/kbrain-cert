@@ -102,14 +102,43 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     await expect(response.json()).resolves.toEqual({ error: "not on roster" });
   });
 
-  test("정상 입력은 세션을 만들고 재접속 시 재사용한다", async ({ page, request }) => {
+  test("동시에 진입해도 세션을 하나만 생성한다", async ({ request }) => {
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        request.post("/api/exam/enter", {
+          data: {
+            examId: fixture.examId,
+            name: fixture.name,
+            phoneLast4: fixture.phoneLast4,
+          },
+        })
+      )
+    );
+    expect(responses.every((response) => response.status() === 200)).toBe(true);
+
+    const bodies = await Promise.all(responses.map((response) => response.json()));
+    const sessionIds = new Set(bodies.map((body) => body.sessionId));
+    expect(sessionIds.size).toBe(1);
+    fixture.sessionId = [...sessionIds][0];
+
+    const { count, error } = await supabase
+      .from("exam_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("invitation_id", fixture.invitationId);
+    if (error) throw error;
+    expect(count).toBe(1);
+  });
+
+  test("정상 재진입은 기존 세션을 이어서 사용한다", async ({ page, request }) => {
     await page.goto(`/exam/${fixture.slug}`);
     await page.getByLabel("이름").fill(fixture.name);
     await page.getByLabel("전화번호 뒷 4자리").fill(fixture.phoneLast4);
     await page.getByRole("button", { name: /응시 시작/ }).click();
     await expect(page).toHaveURL(/\/exam\/session\/[^/]+\/take$/);
-    fixture.sessionId = page.url().match(/\/exam\/session\/([^/]+)\/take$/)?.[1];
-    expect(fixture.sessionId).toBeTruthy();
+    const browserSessionId = page
+      .url()
+      .match(/\/exam\/session\/([^/]+)\/take$/)?.[1];
+    expect(browserSessionId).toBe(fixture.sessionId);
 
     const response = await request.post("/api/exam/enter", {
       data: {
