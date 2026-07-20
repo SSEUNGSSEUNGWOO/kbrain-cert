@@ -6,11 +6,6 @@ import { expect, test } from "@playwright/test";
 type Fixture = {
   examId: string;
   invitationId: string;
-  originalSlug: string | null;
-  originalIsTestMode: boolean;
-  originalExamDate: string | null;
-  originalStatus: string;
-  originalAllowNoScreenShare: boolean;
   durationMinutes: number;
   slug: string;
   name: string;
@@ -36,9 +31,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test.beforeAll(async () => {
     const { data: exam, error: examError } = await supabase
       .from("exams")
-      .select(
-        "id, slug, is_test_mode, exam_date, duration_minutes, status, allow_no_screen_share"
-      )
+      .select("id, duration_minutes")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -48,21 +41,68 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const slug = `e2e-phone-${suffix}`;
     const name = `E2E_${suffix}`;
     const phoneLast4 = "1357";
-    const { error: slugError } = await supabase
+    const { data: isolatedExam, error: isolatedExamError } = await supabase
       .from("exams")
-      .update({
+      .insert({
+        title: `Playwright E2E ${suffix}`,
         slug,
         is_test_mode: false,
         status: "open",
         allow_no_screen_share: false,
+        duration_minutes: exam.duration_minutes,
       })
-      .eq("id", exam.id);
-    if (slugError) throw slugError;
+      .select("id")
+      .single();
+    if (isolatedExamError || !isolatedExam) {
+      throw isolatedExamError ?? new Error("격리 시험 생성 실패");
+    }
+
+    const [{ data: sourceSets, error: setError }, { data: sourceQuestions, error: questionLinkError }] =
+      await Promise.all([
+        supabase
+          .from("exam_sets")
+          .select("set_id, order_num")
+          .eq("exam_id", exam.id),
+        supabase
+          .from("exam_questions")
+          .select("question_id, order_num")
+          .eq("exam_id", exam.id),
+      ]);
+    if (setError || questionLinkError || !sourceQuestions?.length) {
+      await supabase.from("exams").delete().eq("id", isolatedExam.id);
+      throw setError ?? questionLinkError ?? new Error("검증용 문항이 없습니다.");
+    }
+    if (sourceSets?.length) {
+      const { error } = await supabase.from("exam_sets").insert(
+        sourceSets.map((row) => ({
+          exam_id: isolatedExam.id,
+          set_id: row.set_id,
+          order_num: row.order_num,
+        }))
+      );
+      if (error) {
+        await supabase.from("exams").delete().eq("id", isolatedExam.id);
+        throw error;
+      }
+    }
+    const { error: questionCopyError } = await supabase
+      .from("exam_questions")
+      .insert(
+        sourceQuestions.map((row) => ({
+          exam_id: isolatedExam.id,
+          question_id: row.question_id,
+          order_num: row.order_num,
+        }))
+      );
+    if (questionCopyError) {
+      await supabase.from("exams").delete().eq("id", isolatedExam.id);
+      throw questionCopyError;
+    }
 
     const { data: invitation, error: invitationError } = await supabase
       .from("exam_invitations")
       .insert({
-        exam_id: exam.id,
+        exam_id: isolatedExam.id,
         name,
         phone: `010-2468-${phoneLast4}`,
         email: null,
@@ -73,15 +113,18 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .select("id")
       .single();
     if (invitationError || !invitation) {
-      await supabase.from("exams").update({ slug: exam.slug }).eq("id", exam.id);
+      await supabase.from("exams").delete().eq("id", isolatedExam.id);
       throw invitationError ?? new Error("검증용 명단 생성 실패");
     }
 
     const { data: examQuestions, error: fileQuestionError } = await supabase
       .from("exam_questions")
       .select("question_id, questions(submission_slots)")
-      .eq("exam_id", exam.id);
-    if (fileQuestionError) throw fileQuestionError;
+      .eq("exam_id", isolatedExam.id);
+    if (fileQuestionError) {
+      await supabase.from("exams").delete().eq("id", isolatedExam.id);
+      throw fileQuestionError;
+    }
     const fileQuestion = (examQuestions ?? []).find((item) => {
       const slots = (
         item as unknown as {
@@ -101,13 +144,8 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       : [];
 
     fixture = {
-      examId: exam.id,
+      examId: isolatedExam.id,
       invitationId: invitation.id,
-      originalSlug: exam.slug,
-      originalIsTestMode: exam.is_test_mode,
-      originalExamDate: exam.exam_date,
-      originalStatus: exam.status,
-      originalAllowNoScreenShare: exam.allow_no_screen_share,
       durationMinutes: exam.duration_minutes,
       slug,
       name,
@@ -124,24 +162,9 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
         .from("identity-documents")
         .remove([fixture.identityPath]);
     }
-    await supabase
-      .from("exam_sessions")
-      .delete()
-      .eq("invitation_id", fixture.invitationId);
-    await supabase
-      .from("exam_invitations")
-      .delete()
-      .eq("id", fixture.invitationId);
-    await supabase
-      .from("exams")
-      .update({
-        slug: fixture.originalSlug,
-        is_test_mode: fixture.originalIsTestMode,
-        exam_date: fixture.originalExamDate,
-        status: fixture.originalStatus,
-        allow_no_screen_share: fixture.originalAllowNoScreenShare,
-      })
-      .eq("id", fixture.examId);
+    await supabase.from("exam_sessions").delete().eq("exam_id", fixture.examId);
+    await supabase.from("exam_invitations").delete().eq("exam_id", fixture.examId);
+    await supabase.from("exams").delete().eq("id", fixture.examId);
   });
 
   test("공용 slug 페이지가 열린다", async ({ page }) => {
@@ -370,7 +393,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
 
     const { error: restoreError } = await supabase
       .from("exams")
-      .update({ exam_date: fixture.originalExamDate })
+      .update({ exam_date: null })
       .eq("id", fixture.examId);
     if (restoreError) throw restoreError;
   });
@@ -425,7 +448,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
 
     const { error: restoreError } = await supabase
       .from("exams")
-      .update({ exam_date: fixture.originalExamDate })
+      .update({ exam_date: null })
       .eq("id", fixture.examId);
     if (restoreError) throw restoreError;
   });
