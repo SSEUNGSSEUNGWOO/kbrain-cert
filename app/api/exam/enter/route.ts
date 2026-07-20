@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   const { data: exam } = await admin
     .from("exams")
-    .select("id")
+    .select("id, is_test_mode")
     .eq("id", examId)
     .maybeSingle();
   if (!exam) {
@@ -76,14 +76,20 @@ export async function POST(request: Request) {
     );
   }
 
-  // 기존 세션이 있으면 재사용 (제출 완료면 차단)
-  const { data: existingSession } = await admin
+  const existingQuery = admin
     .from("exam_sessions")
     .select("id, submit_time")
-    .eq("invitation_id", invitation.id)
-    .maybeSingle();
+    .eq("invitation_id", invitation.id);
+  const { data: existingSession } = await (exam.is_test_mode
+    ? existingQuery
+        .eq("is_test_attempt", true)
+        .is("submit_time", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+    : existingQuery.eq("is_test_attempt", false)
+  ).maybeSingle();
 
-  if (existingSession?.submit_time) {
+  if (!exam.is_test_mode && existingSession?.submit_time) {
     return NextResponse.json(
       { error: "already submitted" },
       { status: 400 }
@@ -101,6 +107,7 @@ export async function POST(request: Request) {
         exam_id: examId,
         applicant_id: null,
         invitation_id: invitation.id,
+        is_test_attempt: exam.is_test_mode,
         status: "waiting",
       })
       .select("id")
@@ -110,6 +117,8 @@ export async function POST(request: Request) {
         .from("exam_sessions")
         .select("id, submit_time")
         .eq("invitation_id", invitation.id)
+        .eq("is_test_attempt", exam.is_test_mode)
+        .is("submit_time", null)
         .single();
       if (concurrentError || !concurrentSession) {
         return NextResponse.json(

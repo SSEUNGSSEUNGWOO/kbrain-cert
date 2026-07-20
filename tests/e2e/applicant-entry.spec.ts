@@ -178,21 +178,44 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     await expect(response.json()).resolves.toEqual({ error: "already submitted" });
   });
 
-  test("테스트 시험은 명단 없이 반복해서 열 수 있다", async ({ browser }) => {
+  test("테스트 시험은 제출 후 새 회차로 다시 응시한다", async ({ request }) => {
     const { error } = await supabase
       .from("exams")
       .update({ is_test_mode: true })
       .eq("id", fixture.examId);
     if (error) throw error;
 
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const context = await browser.newContext();
-      const page = await context.newPage();
-      await page.goto(`/exam/${fixture.slug}`);
-      await expect(page.getByText("1. 환경 체크", { exact: true })).toBeVisible();
-      await expect(page.getByLabel("이름")).toHaveCount(0);
-      await context.close();
-    }
+    const first = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(first.status()).toBe(200);
+    const firstBody = await first.json();
+    expect(firstBody.sessionId).not.toBe(fixture.sessionId);
+    expect(firstBody.reconnect).toBe(false);
+
+    const reconnect = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(reconnect.status()).toBe(200);
+    await expect(reconnect.json()).resolves.toMatchObject({
+      sessionId: firstBody.sessionId,
+      reconnect: true,
+    });
+
+    const { count, error: countError } = await supabase
+      .from("exam_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("invitation_id", fixture.invitationId);
+    if (countError) throw countError;
+    expect(count).toBe(2);
   });
 });
 

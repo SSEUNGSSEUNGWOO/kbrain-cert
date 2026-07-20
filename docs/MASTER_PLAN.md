@@ -85,8 +85,9 @@
   - [x] CSV 명단 업로드 (`name,phone,email,organization`, 최대 1000명)
   - [x] `/exam/[slug]` 공용 링크 · 이름 + 전화번호 뒷 4자리 검증
   - [x] `POST /api/exam/enter` 검증 시 `exam_sessions` 생성 + HMAC 서명 쿠키 발급
-  - [x] `is_test_mode=true` 시험은 동일 `/exam/{slug}`에서 명단 없이 반복 응시
-  - [x] 일반 시험의 legacy `/practice/{slug}` 접근 차단
+  - [x] `is_test_mode=true` 시험도 명단 인증 · 제출 후 새 회차로 반복 응시
+  - [x] 일반 시험은 초대당 1회, 테스트 시험은 활성 회차당 세션 1개
+  - [x] legacy `/practice/{slug}` 공개 경로 제거
 - **4-step 응시자 wizard** (Practice + 실 시험 공용 `PracticeRunner`)
   - [x] Step 1 · 환경 체크 6개 항목 (듀얼모니터 → 웹캠 → 화면공유 → 네트워크 → CPU 벤치 → 브라우저)
   - [x] Step 2 · 보안 서약 7개 항목 체크 (원본 텍스트 다듬음)

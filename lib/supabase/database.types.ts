@@ -15,6 +15,7 @@
  *   - 20260716000003_identity_documents (bucket)
  *   - 20260720000001_exam_slug_and_phone_entry (slug + phone + guest_otp_codes drop)
  *   - 20260720000002_single_session_per_invitation (invitation당 단일 session)
+ *   - 20260720000003_test_exam_attempts (테스트 시험 다회차)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
@@ -284,6 +285,7 @@ export type Database = {
           exam_id: string;
           applicant_id: string | null;
           invitation_id: string | null;
+          is_test_attempt: boolean;
           status: SessionStatus;
           start_time: string | null;
           submit_time: string | null;
@@ -308,6 +310,7 @@ export type Database = {
           exam_id: string;
           applicant_id?: string | null;
           invitation_id?: string | null;
+          is_test_attempt?: boolean;
           status?: SessionStatus;
           start_time?: string | null;
           submit_time?: string | null;

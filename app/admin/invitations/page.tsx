@@ -10,18 +10,26 @@ import { CsvUploadButton } from "./csv-upload-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function InvitationsPage() {
+export default async function InvitationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ examId?: string }>;
+}) {
+  const { examId } = await searchParams;
   const supabase = createAdminSupabase();
 
-  const [{ data: invitations }, { data: exams }] = await Promise.all([
-    supabase
+  const { data: exams } = await supabase.from("exams").select("id, title");
+  const selectedExam =
+    (exams ?? []).find((exam) => exam.id === examId) ?? exams?.[0] ?? null;
+  const invitationQuery = supabase
       .from("exam_invitations")
       .select(
         "id, name, phone, email, organization, invite_code, status, sent_at, used_at, exam_id"
       )
-      .order("created_at", { ascending: false }),
-    supabase.from("exams").select("id, title"),
-  ]);
+      .order("created_at", { ascending: false });
+  const { data: invitations } = selectedExam
+    ? await invitationQuery.eq("exam_id", selectedExam.id)
+    : { data: [] };
 
   const invitationIds = (invitations ?? []).map((i) => i.id);
   const { data: sessions } = invitationIds.length
@@ -31,6 +39,7 @@ export default async function InvitationsPage() {
           "invitation_id, id, status, start_time, submit_time, auto_submitted, precheck_env_result, precheck_pledge_accepted_at, precheck_waiting_entered_at, precheck_user_agent"
         )
         .in("invitation_id", invitationIds)
+        .order("created_at", { ascending: false })
     : { data: [] };
 
   const sessionByInv: Record<string, {
@@ -57,6 +66,7 @@ export default async function InvitationsPage() {
       precheck_waiting_entered_at: string | null;
       precheck_user_agent: string | null;
     };
+    if (sessionByInv[anyS.invitation_id]) continue;
     sessionByInv[anyS.invitation_id] = {
       id: anyS.id,
       status: anyS.status,
@@ -95,15 +105,31 @@ export default async function InvitationsPage() {
   return (
     <AdminShell active="invitations">
       <PageHeader
-        title="응시자 초대"
-        description={`전체 ${stats.total}명 · 시험 공용 링크에서 이름과 전화번호 뒷 4자리로 진입`}
+        title={selectedExam ? `${selectedExam.title} · 응시자` : "응시자 관리"}
+        description={`선택 시험 ${stats.total}명 · 이름과 전화번호 뒷 4자리로 진입`}
         action={
           <>
-            <CsvUploadButton exams={exams ?? []} />
-            <CreateInvitationForm exams={exams ?? []} />
+            <CsvUploadButton exams={selectedExam ? [selectedExam] : []} />
+            <CreateInvitationForm exams={selectedExam ? [selectedExam] : []} />
           </>
         }
       />
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        {(exams ?? []).map((exam) => (
+          <a
+            key={exam.id}
+            href={`/admin/invitations?examId=${exam.id}`}
+            className={`h-8 px-3 rounded-sm text-xs font-bold flex items-center ${
+              exam.id === selectedExam?.id
+                ? "bg-primary text-white"
+                : "bg-white border border-border text-muted-foreground"
+            }`}
+          >
+            {exam.title}
+          </a>
+        ))}
+      </div>
 
       <div className="grid grid-cols-4 gap-3 mb-8">
         <StatBox label="전체 초대" value={stats.total} unit="명" />

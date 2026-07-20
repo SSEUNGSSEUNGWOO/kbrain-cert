@@ -169,7 +169,7 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
           첨부 미리보기
         </Link>
         <Link
-          href="/admin/invitations"
+          href={`/admin/invitations?examId=${exam.id}`}
           className="flex-1 h-9 rounded-md bg-white border border-border hover:border-primary text-xs font-bold flex items-center justify-center transition"
         >
           응시자 관리
