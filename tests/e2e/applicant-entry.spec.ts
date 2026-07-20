@@ -12,6 +12,7 @@ type Fixture = {
   name: string;
   phoneLast4: string;
   sessionId?: string;
+  answerQuestionId?: string;
 };
 
 const env = readEnvLocal();
@@ -159,14 +160,107 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     });
   });
 
+  test("전체 답안을 확정 저장하고 재접속 데이터로 복원한다", async ({
+    request,
+  }) => {
+    expect(fixture.sessionId).toBeTruthy();
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+
+    const { data: examQuestion, error: questionError } = await supabase
+      .from("exam_questions")
+      .select("question_id")
+      .eq("exam_id", fixture.examId)
+      .order("order_num")
+      .limit(1)
+      .single();
+    if (questionError || !examQuestion) {
+      throw questionError ?? new Error("검증용 문항이 없습니다.");
+    }
+    fixture.answerQuestionId = examQuestion.question_id;
+    const marker = `복원검증_${randomUUID()}`;
+
+    const save = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: fixture.sessionId,
+        answers: [
+          {
+            questionId: fixture.answerQuestionId,
+            slotValues: { e2e_restore: marker },
+          },
+        ],
+      },
+    });
+    expect(save.status()).toBe(200);
+
+    const { data: savedAnswer, error: answerError } = await supabase
+      .from("answers")
+      .select("slot_values")
+      .eq("session_id", fixture.sessionId!)
+      .eq("question_id", fixture.answerQuestionId)
+      .single();
+    if (answerError) throw answerError;
+    expect(savedAnswer.slot_values).toMatchObject({ e2e_restore: marker });
+
+    const takePage = await request.get(
+      `/exam/session/${fixture.sessionId}/take`
+    );
+    expect(takePage.status()).toBe(200);
+    expect(await takePage.text()).toContain(marker);
+  });
+
+  test("최종 제출 직전 저장한 답안까지 제출 상태로 확정한다", async ({
+    request,
+  }) => {
+    expect(fixture.sessionId).toBeTruthy();
+    expect(fixture.answerQuestionId).toBeTruthy();
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+    const marker = `즉시제출_${randomUUID()}`;
+
+    const save = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: fixture.sessionId,
+        answers: [
+          {
+            questionId: fixture.answerQuestionId,
+            slotValues: { e2e_submit: marker },
+          },
+        ],
+      },
+    });
+    expect(save.status()).toBe(200);
+
+    const submit = await request.post("/api/exam/session/submit", {
+      data: { sessionId: fixture.sessionId, auto: false },
+    });
+    expect(submit.status()).toBe(200);
+
+    const { data: submittedAnswer, error } = await supabase
+      .from("answers")
+      .select("slot_values, submitted_at")
+      .eq("session_id", fixture.sessionId!)
+      .eq("question_id", fixture.answerQuestionId!)
+      .single();
+    if (error) throw error;
+    expect(submittedAnswer.slot_values).toMatchObject({ e2e_submit: marker });
+    expect(submittedAnswer.submitted_at).not.toBeNull();
+  });
+
   test("제출 완료한 응시자의 재진입을 차단한다", async ({ request }) => {
     expect(fixture.sessionId).toBeTruthy();
-    const { error } = await supabase
-      .from("exam_sessions")
-      .update({ status: "submitted", submit_time: new Date().toISOString() })
-      .eq("id", fixture.sessionId!);
-    if (error) throw error;
-
     const response = await request.post("/api/exam/enter", {
       data: {
         examId: fixture.examId,

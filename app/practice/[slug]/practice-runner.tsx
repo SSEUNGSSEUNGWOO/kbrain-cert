@@ -51,6 +51,7 @@ export function PracticeRunner({
   sets,
   questions,
   sessionId,
+  initialAnswers = {},
   skipToExam = false,
 }: {
   slug: string;
@@ -67,6 +68,8 @@ export function PracticeRunner({
   questions: Question[];
   /** 실 시험 세션 id · Practice에서는 null · 있으면 precheck 결과 서버 저장 */
   sessionId?: string | null;
+  /** 재접속 시 DB에서 복원한 문항별 답안 */
+  initialAnswers?: Record<string, Record<string, unknown>>;
   /** Practice ?skip=1 · 환경체크/서약/대기실 건너뛰고 시험창부터 (미리보기용) */
   skipToExam?: boolean;
 }) {
@@ -76,7 +79,8 @@ export function PracticeRunner({
   const [pledgePassed, setPledgePassed] = useState(skipToExam);
   const [waitingReady, setWaitingReady] = useState(skipToExam);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
+  const [answers, setAnswers] =
+    useState<Record<string, Record<string, unknown>>>(initialAnswers);
 
   // 웹캠 · 화면 공유 스트림 · 환경 체크에서 획득 → 페이지 unmount까지 유지
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
@@ -94,7 +98,12 @@ export function PracticeRunner({
   const currentAnswer = currentQ ? answers[currentQ.id] ?? {} : {};
 
   // 답안 auto-save · sessionId 없으면 no-op (Practice)
-  const { status: saveStatus, lastSavedAt } = useAutoSaveAnswer(
+  const {
+    status: saveStatus,
+    lastSavedAt,
+    flushCurrent,
+    saveAll,
+  } = useAutoSaveAnswer(
     sessionId,
     currentQ?.id,
     currentAnswer
@@ -180,6 +189,12 @@ export function PracticeRunner({
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const saved = await saveAll(answers);
+      if (!saved) {
+        throw new Error(
+          "답안을 서버에 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 제출해 주세요."
+        );
+      }
       const res = await fetch("/api/exam/session/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -192,6 +207,19 @@ export function PracticeRunner({
       setSubmitError(err instanceof Error ? err.message : "제출 실패");
       setSubmitting(false);
     }
+  }
+
+  async function moveToQuestion(index: number) {
+    if (index === currentIdx || index < 0 || index >= questions.length) return;
+    const saved = await flushCurrent();
+    if (!saved) {
+      setSubmitError(
+        "현재 문항을 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 이동해 주세요."
+      );
+      return;
+    }
+    setSubmitError(null);
+    setCurrentIdx(index);
   }
   const questionsBySet = useMemo(() => {
     const map: Record<string, Question[]> = {};
@@ -356,7 +384,7 @@ export function PracticeRunner({
           currentQuestionId={currentQ?.id}
           onSelect={(qId) => {
             const i = questions.findIndex((q) => q.id === qId);
-            if (i >= 0) setCurrentIdx(i);
+            if (i >= 0) void moveToQuestion(i);
           }}
         />
 
@@ -389,7 +417,7 @@ export function PracticeRunner({
 
           <div className="flex items-center justify-between gap-3">
             <button
-              onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+              onClick={() => void moveToQuestion(currentIdx - 1)}
               disabled={currentIdx === 0}
               className="h-11 px-5 rounded-md bg-white border border-border text-sm font-bold hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
@@ -408,9 +436,7 @@ export function PracticeRunner({
               </button>
             ) : (
               <button
-                onClick={() =>
-                  setCurrentIdx((i) => Math.min(questions.length - 1, i + 1))
-                }
+                onClick={() => void moveToQuestion(currentIdx + 1)}
                 disabled={currentIdx === questions.length - 1}
                 className="h-11 px-5 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition"
               >

@@ -48,7 +48,12 @@ export default async function ExamSessionTakePage({
     .single();
   if (!exam) notFound();
 
-  const [{ data: examSets }, { data: examQs }, { data: grades }] =
+  const [
+    { data: examSets },
+    { data: examQs },
+    { data: grades },
+    { data: savedAnswers },
+  ] =
     await Promise.all([
       admin
         .from("exam_sets")
@@ -65,6 +70,10 @@ export default async function ExamSessionTakePage({
         .eq("exam_id", exam.id)
         .order("order_num"),
       admin.from("exam_grades").select("id, name"),
+      admin
+        .from("answers")
+        .select("question_id, slot_values")
+        .eq("session_id", session.id),
     ]);
 
   const gradeName =
@@ -132,6 +141,12 @@ export default async function ExamSessionTakePage({
       sets={sets}
       questions={questions}
       sessionId={session.id}
+      initialAnswers={Object.fromEntries(
+        (savedAnswers ?? []).map((answer) => [
+          answer.question_id,
+          (answer.slot_values ?? {}) as Record<string, unknown>,
+        ])
+      )}
     />
   );
 }

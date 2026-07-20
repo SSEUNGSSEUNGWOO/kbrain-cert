@@ -8,7 +8,9 @@ import {
 
 /**
  * 응시자 답안 auto-save
- * Body: { sessionId, questionId, slotValues }
+ * Body:
+ * - auto-save: { sessionId, questionId, slotValues }
+ * - submit 전 확정 저장: { sessionId, answers: [{ questionId, slotValues }] }
  * upsert by (session_id, question_id) · submit 전엔 submitted_at null
  */
 export async function POST(request: Request) {
@@ -21,16 +23,28 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const { sessionId, questionId, slotValues } = (body ?? {}) as {
+  const { sessionId, questionId, slotValues, answers } = (body ?? {}) as {
     sessionId?: string;
     questionId?: string;
     slotValues?: Record<string, unknown>;
+    answers?: Array<{
+      questionId?: string;
+      slotValues?: Record<string, unknown>;
+    }>;
   };
-  if (!sessionId || !questionId) {
+  const isBulkSave = Array.isArray(answers);
+  if (!sessionId || (!questionId && !isBulkSave)) {
     return NextResponse.json(
-      { error: "sessionId and questionId required" },
+      { error: "sessionId and answer data required" },
       { status: 400 }
     );
+  }
+  if (
+    isBulkSave &&
+    (answers.length > 500 ||
+      answers.some((answer) => !answer.questionId))
+  ) {
+    return NextResponse.json({ error: "invalid answers" }, { status: 400 });
   }
   if (cookieSessionId !== sessionId) {
     return NextResponse.json({ error: "session mismatch" }, { status: 403 });
@@ -51,17 +65,29 @@ export async function POST(request: Request) {
   }
 
   const nowIso = new Date().toISOString();
+  const rows = isBulkSave
+    ? answers.map((answer) => ({
+        session_id: sessionId,
+        question_id: answer.questionId!,
+        slot_values: answer.slotValues ?? {},
+        updated_at: nowIso,
+      }))
+    : [
+        {
+          session_id: sessionId,
+          question_id: questionId!,
+          slot_values: slotValues ?? {},
+          updated_at: nowIso,
+        },
+      ];
+
+  if (rows.length === 0) {
+    return NextResponse.json({ ok: true, updatedAt: nowIso });
+  }
+
   const { error: upsertErr } = await admin
     .from("answers")
-    .upsert(
-      {
-        session_id: sessionId,
-        question_id: questionId,
-        slot_values: slotValues ?? {},
-        updated_at: nowIso,
-      },
-      { onConflict: "session_id,question_id" }
-    );
+    .upsert(rows, { onConflict: "session_id,question_id" });
   if (upsertErr) {
     return NextResponse.json({ error: upsertErr.message }, { status: 500 });
   }
