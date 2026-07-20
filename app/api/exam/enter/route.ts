@@ -91,6 +91,7 @@ export async function POST(request: Request) {
   }
 
   let sessionId: string;
+  let reconnect = !!existingSession;
   if (existingSession) {
     sessionId = existingSession.id;
   } else {
@@ -104,13 +105,34 @@ export async function POST(request: Request) {
       })
       .select("id")
       .single();
-    if (sessionErr || !session) {
+    if (sessionErr?.code === "23505") {
+      const { data: concurrentSession, error: concurrentError } = await admin
+        .from("exam_sessions")
+        .select("id, submit_time")
+        .eq("invitation_id", invitation.id)
+        .single();
+      if (concurrentError || !concurrentSession) {
+        return NextResponse.json(
+          { error: concurrentError?.message ?? "session lookup failed" },
+          { status: 500 }
+        );
+      }
+      if (concurrentSession.submit_time) {
+        return NextResponse.json(
+          { error: "already submitted" },
+          { status: 400 }
+        );
+      }
+      sessionId = concurrentSession.id;
+      reconnect = true;
+    } else if (sessionErr || !session) {
       return NextResponse.json(
         { error: sessionErr?.message ?? "session create failed" },
         { status: 500 }
       );
+    } else {
+      sessionId = session.id;
     }
-    sessionId = session.id;
   }
 
   // 초대 상태 갱신 (첫 사용 시만)
@@ -134,7 +156,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     sessionId,
-    reconnect: !!existingSession,
+    reconnect,
   });
 }
 

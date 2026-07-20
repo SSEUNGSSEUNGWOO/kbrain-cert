@@ -14,6 +14,7 @@
  *   - 20260716000002_answer_files (bucket)
  *   - 20260716000003_identity_documents (bucket)
  *   - 20260720000001_exam_slug_and_phone_entry (slug + phone + guest_otp_codes drop)
+ *   - 20260720000002_single_session_per_invitation (invitation당 단일 session)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
