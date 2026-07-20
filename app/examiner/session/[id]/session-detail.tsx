@@ -33,7 +33,6 @@ type InvitationInfo = {
   name: string | null;
   email: string;
   organization: string | null;
-  inviteCode: string;
   sentAt: string | null;
   usedAt: string | null;
 };
@@ -293,10 +292,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
               </span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              {invitation?.organization ?? "-"} · 초대코드{" "}
-              <span className="font-tabular font-bold">
-                {invitation?.inviteCode ?? "-"}
-              </span>
+              {invitation?.organization ?? "-"}
             </div>
           </div>
           <div className="text-right text-[11px] text-muted-foreground font-tabular">

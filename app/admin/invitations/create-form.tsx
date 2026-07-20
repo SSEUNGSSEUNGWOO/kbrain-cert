@@ -15,7 +15,6 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
   const [organization, setOrganization] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
-    inviteCode: string;
     entryUrl: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +32,7 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
-      setResult({ inviteCode: data.inviteCode, entryUrl: data.entryUrl });
+      setResult({ entryUrl: data.entryUrl });
       setEmail("");
       setName("");
       setPhone("");
@@ -153,10 +152,6 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
             <div className="rounded-md bg-success-soft border border-success text-xs p-3 space-y-1">
               <div className="font-bold text-success">
                 ✓ 초대 생성 완료
-              </div>
-              <div>
-                <span className="text-muted-foreground">코드:</span>{" "}
-                <code className="font-tabular">{result.inviteCode}</code>
               </div>
               <div className="break-all">
                 <span className="text-muted-foreground">진입 URL:</span>{" "}

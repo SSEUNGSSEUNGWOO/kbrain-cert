@@ -23,7 +23,6 @@ type Row = {
   phone: string;
   organization: string;
   examTitle: string;
-  inviteCode: string;
   status: Status;
   sentAt: string | null;
   usedAt: string | null;
@@ -120,14 +119,6 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           <div className="text-sm font-bold text-primary">
             {selected.size}명 선택됨
           </div>
-          <div className="flex items-center gap-2">
-            <button className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-xs font-bold">
-              초대코드 재발급
-            </button>
-            <button className="h-8 px-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold">
-              선택 작업
-            </button>
-          </div>
         </div>
       )}
 
@@ -145,7 +136,6 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
             <th className="px-3 py-3">응시자</th>
             <th className="px-3 py-3">조직</th>
             <th className="px-3 py-3">시험</th>
-            <th className="px-3 py-3">초대코드</th>
             <th className="px-3 py-3">상태</th>
             <th className="px-3 py-3">준비 상태</th>
             <th className="px-3 py-3">발송</th>
@@ -184,11 +174,6 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                   {inv.examTitle}
                 </td>
                 <td className="px-3 py-3">
-                  <span className="font-tabular text-[11px] font-bold text-primary bg-primary-soft px-2 py-0.5 rounded-sm">
-                    {inv.inviteCode}
-                  </span>
-                </td>
-                <td className="px-3 py-3">
                   <span
                     className={`inline-flex text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-sm ${st.bg} ${st.text}`}
                   >
@@ -210,7 +195,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           {filtered.length === 0 && (
             <tr>
               <td
-                colSpan={9}
+                colSpan={8}
                 className="px-5 py-16 text-center text-sm text-muted-foreground"
               >
                 <div className="font-bold text-foreground mb-1">

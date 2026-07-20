@@ -50,7 +50,7 @@ export async function GET(
       session.invitation_id
         ? admin
             .from("exam_invitations")
-            .select("id, name, email, organization, invite_code, sent_at, used_at")
+            .select("id, name, email, organization, sent_at, used_at")
             .eq("id", session.invitation_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -140,7 +140,6 @@ export async function GET(
           name: invitation.name,
           email: invitation.email,
           organization: invitation.organization,
-          inviteCode: invitation.invite_code,
           sentAt: invitation.sent_at,
           usedAt: invitation.used_at,
         }

@@ -25,7 +25,7 @@ export default async function InvitationsPage({
   const invitationQuery = supabase
       .from("exam_invitations")
       .select(
-        "id, name, phone, email, organization, invite_code, status, sent_at, used_at, exam_id"
+        "id, name, phone, email, organization, status, sent_at, used_at, exam_id"
       )
       .order("created_at", { ascending: false });
   const { data: invitations } = selectedExam
@@ -89,7 +89,6 @@ export default async function InvitationsPage({
     phone: inv.phone ?? "-",
     organization: inv.organization ?? "-",
     examTitle: examMap[inv.exam_id] ?? "-",
-    inviteCode: inv.invite_code,
     status: inv.status as "created" | "sent" | "used" | "expired",
     sentAt: inv.sent_at,
     usedAt: inv.used_at,

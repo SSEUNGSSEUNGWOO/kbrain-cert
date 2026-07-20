@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from("exam_invitations")
     .insert(inserts)
-    .select("name, phone, invite_code");
+    .select("name, phone");
   if (error) {
     return NextResponse.json(
       { error: error.message },
@@ -71,7 +71,6 @@ export async function POST(request: Request) {
     created: (data ?? []).map((row) => ({
       name: row.name,
       phone: row.phone,
-      inviteCode: row.invite_code,
       entryUrl,
     })),
     errors: [],

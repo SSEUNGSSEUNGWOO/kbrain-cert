@@ -110,7 +110,7 @@ export async function GET(
       invitationIds.length
         ? admin
             .from("exam_invitations")
-            .select("id, name, email, organization, invite_code")
+            .select("id, name, email, organization")
             .in("id", invitationIds)
         : Promise.resolve({
             data: [] as Array<{
@@ -118,7 +118,6 @@ export async function GET(
               name: string | null;
               email: string;
               organization: string | null;
-              invite_code: string;
             }>,
           }),
       sessionIds.length
@@ -192,8 +191,8 @@ export async function GET(
         `생성: ${new Date().toLocaleString("ko-KR")}\n\n` +
         `구조:\n` +
         `  summary.csv                  전체 응시자 요약\n` +
-        `  {이름}_{초대코드}/            정상 응시자 폴더 (각 폴더에 _info.md + Q01_1-슬롯.txt ...)\n` +
-        `  auto_submitted/{이름}_{초대코드}/  자동 제출 응시자 (시간 만료 or 감독관 강제 종료)\n\n` +
+        `  {이름}_{세션ID}/            정상 응시자 폴더 (각 폴더에 _info.md + Q01_1-슬롯.txt ...)\n` +
+        `  auto_submitted/{이름}_{세션ID}/  자동 제출 응시자 (시간 만료 or 감독관 강제 종료)\n\n` +
         `채점 참고:\n` +
         `  - _info.md 파일에 응시자 상태·이벤트·연장 시간 등 요약\n` +
         `  - Q{문항번호}_{슬롯순번}-{슬롯라벨}.txt 형태\n` +
@@ -209,7 +208,6 @@ export async function GET(
       "응시자",
       "이메일",
       "조직",
-      "초대코드",
       "상태",
       "시작",
       "제출",
@@ -232,7 +230,7 @@ export async function GET(
   for (const session of sessions ?? []) {
     const inv = session.invitation_id ? invMap.get(session.invitation_id) : null;
     const name = inv?.name ?? (inv?.email ? inv.email.split("@")[0] : "익명");
-    const code = inv?.invite_code ?? session.id.slice(0, 8);
+    const sessionShortId = session.id.slice(0, 8);
     const events = eventStatsBySession.get(session.id) ?? {
       high: 0,
       warn: 0,
@@ -252,7 +250,6 @@ export async function GET(
         csvEscape(name),
         csvEscape(inv?.email ?? ""),
         csvEscape(inv?.organization ?? ""),
-        code,
         session.status,
         session.start_time ? new Date(session.start_time).toISOString() : "",
         session.submit_time ? new Date(session.submit_time).toISOString() : "",
@@ -267,7 +264,7 @@ export async function GET(
       ].join(",")
     );
 
-    const folderName = slugify(`${name}_${code}`);
+    const folderName = slugify(`${name}_${sessionShortId}`);
     const basePath = session.auto_submitted
       ? `auto_submitted/${folderName}`
       : folderName;
@@ -278,7 +275,6 @@ export async function GET(
     infoLines.push("");
     infoLines.push(`- 이메일: ${inv?.email ?? "-"}`);
     infoLines.push(`- 조직: ${inv?.organization ?? "-"}`);
-    infoLines.push(`- 초대코드: ${code}`);
     infoLines.push(`- 세션 ID: ${session.id}`);
     infoLines.push("");
     infoLines.push(`## 상태`);

@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       invite_code: randomBytes(6).toString("hex"),
       status: "created",
     })
-    .select("id, invite_code")
+    .select("id")
     .single();
   if (error || !invitation) {
     return NextResponse.json(
@@ -65,7 +65,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     id: invitation.id,
-    inviteCode: invitation.invite_code,
     entryUrl: buildEntryUrl(request, exam.slug ?? exam.id),
   });
 }
