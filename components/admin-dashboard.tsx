@@ -251,7 +251,7 @@ function TopNav({
             <NavItem href="/admin/questions" label="문제은행" />
             <NavItem href="/admin/exams" label="시험" />
             <NavItem href="/admin/invitations" label="응시자" />
-            <NavItem href="/admin/grading" label="채점" />
+            <NavItem href="/examiner/monitor" label="감독" />
           </div>
           <div className="flex items-center gap-2">
             <div className="text-right leading-tight">
