@@ -41,7 +41,7 @@ export default function WaitingRoomPage() {
             <Chip text="생성형AI 활용" tone="primary" />
             <Chip text="Black 등급" tone="danger" dot />
             <Chip text="90분" tone="primary" />
-            <Chip text="총점 300점 · 합격 75/100" tone="success" />
+            <Chip text="작업형 인증 시험" tone="success" />
           </div>
         </div>
 

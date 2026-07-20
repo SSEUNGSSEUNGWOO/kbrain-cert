@@ -82,7 +82,7 @@ export function WaitingRoom({
         <ReadyRow
           n={3}
           label="시험 정보 확인"
-          detail={`${exam.title} · ${exam.durationMinutes}분 · 합격 ${exam.passScore}점`}
+          detail={`${exam.title} · ${exam.durationMinutes}분`}
         />
       </div>
 
@@ -92,10 +92,9 @@ export function WaitingRoom({
           응시할 시험
         </div>
         <div className="text-lg font-bold mb-4">{exam.title}</div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <InfoBox label="등급" value={exam.grade} />
           <InfoBox label="시험 시간" value={`${exam.durationMinutes}분`} />
-          <InfoBox label="합격 기준" value={`${exam.passScore}점 이상`} />
         </div>
       </div>
 

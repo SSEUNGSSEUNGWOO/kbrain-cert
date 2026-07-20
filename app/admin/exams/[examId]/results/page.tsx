@@ -180,7 +180,7 @@ export default async function ExamResultsPage({
     <AdminShell active="exams">
       <PageHeader
         title={`${exam.title} · 결과·통계`}
-        description={`시험 · ${exam.duration_minutes}분 · 합격 ${exam.pass_score}/100 · ${
+        description={`시험 · ${exam.duration_minutes}분 · ${
           exam.exam_date
             ? `예약 ${new Date(exam.exam_date).toLocaleString("ko-KR")}`
             : "예약 시각 미정"

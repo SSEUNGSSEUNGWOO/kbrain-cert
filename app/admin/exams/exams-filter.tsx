@@ -134,7 +134,7 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
             {exam.title}
           </div>
           <div className="text-xs text-muted-foreground font-tabular">
-            {examDate} · {exam.durationMinutes}분 · 합격 {exam.passScore}/100
+            {examDate} · {exam.durationMinutes}분
           </div>
         </div>
         <ScheduleEditor

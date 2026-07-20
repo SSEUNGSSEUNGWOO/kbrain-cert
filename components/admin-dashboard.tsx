@@ -441,15 +441,14 @@ function ExamListCard({ exam }: { exam: ExamRow }) {
             {exam.title}
           </div>
           <div className="text-xs text-muted-foreground font-tabular">
-            {examDate} · {exam.durationMinutes}분 · 합격 {exam.passScore}/100
+            {examDate} · {exam.durationMinutes}분
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <MiniStat label="세트" value={`${exam.setCount}`} />
         <MiniStat label="문항" value={`${exam.questionCount}`} />
-        <MiniStat label="합격" value={`${exam.passScore}/100`} />
       </div>
     </div>
   );

@@ -53,7 +53,7 @@ export default async function ExamPreviewPage({
     <AdminShell active="exams">
       <PageHeader
         title={exam.title}
-        description={`${exam.duration_minutes}분 · 합격 ${exam.pass_score}/100 · 첨부 자료 응시자 관점 미리보기`}
+        description={`${exam.duration_minutes}분 · 첨부 자료 응시자 관점 미리보기`}
         action={
           <Link href="/admin/exams">
             <SecondaryButton>← 목록</SecondaryButton>
