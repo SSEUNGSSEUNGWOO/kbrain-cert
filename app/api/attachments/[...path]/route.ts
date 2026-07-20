@@ -115,6 +115,17 @@ async function isPathInSessionExam(
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return false;
+  const { data: exam } = await supabase
+    .from("exams")
+    .select("exam_date")
+    .eq("id", session.exam_id)
+    .maybeSingle();
+  if (
+    !exam ||
+    (exam.exam_date && new Date(exam.exam_date).getTime() > Date.now())
+  ) {
+    return false;
+  }
   return isPathInExam(supabase, session.exam_id, storagePath);
 }
 

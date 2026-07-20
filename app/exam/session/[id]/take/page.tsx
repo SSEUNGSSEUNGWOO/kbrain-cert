@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { PracticeRunner } from "@/app/practice/[slug]/practice-runner";
-import type { Attachment } from "@/components/attachment-viewer";
 import {
   SESSION_COOKIE_NAME,
   verifySessionCookieValue,
@@ -50,27 +49,8 @@ export default async function ExamSessionTakePage({
     .single();
   if (!exam) notFound();
 
-  const [
-    { data: examSets },
-    { data: examQs },
-    { data: grades },
-    { data: savedAnswers },
-  ] =
+  const [{ data: grades }, { data: savedAnswers }] =
     await Promise.all([
-      admin
-        .from("exam_sets")
-        .select(
-          "order_num, question_sets(id, title, scenario, attachments, order_num)"
-        )
-        .eq("exam_id", exam.id)
-        .order("order_num"),
-      admin
-        .from("exam_questions")
-        .select(
-          "order_num, questions(id, code, content, submission_slots, max_score, set_id, set_order, tags, difficulty)"
-        )
-        .eq("exam_id", exam.id)
-        .order("order_num"),
       admin.from("exam_grades").select("id, name"),
       admin
         .from("answers")
@@ -81,53 +61,6 @@ export default async function ExamSessionTakePage({
   const gradeName =
     exam.grade_id &&
     (grades ?? []).find((g) => g.id === exam.grade_id)?.name;
-
-  const sets = (examSets ?? []).map((es) => {
-    const s = (es as unknown as {
-      question_sets: {
-        id: string;
-        title: string;
-        scenario: string | null;
-        attachments: Attachment[];
-      };
-    }).question_sets;
-    return {
-      id: s.id,
-      title: s.title,
-      scenario: s.scenario,
-      attachments: (s.attachments ?? []) as Attachment[],
-    };
-  });
-
-  const questions = (examQs ?? [])
-    .map((eq) => {
-      const q = (eq as unknown as {
-        questions: {
-          id: string;
-          code: string;
-          content: string;
-          submission_slots: Array<{
-            id: string;
-            type: "text" | "long_text" | "url" | "file" | "number";
-            label: string;
-            max_score: number;
-            accept?: string;
-          }>;
-          max_score: number;
-          set_id: string;
-          set_order: number;
-          tags: string[];
-          difficulty: string | null;
-        };
-      }).questions;
-      return q;
-    })
-    .sort((a, b) => {
-      const setA = sets.findIndex((s) => s.id === a.set_id);
-      const setB = sets.findIndex((s) => s.id === b.set_id);
-      if (setA !== setB) return setA - setB;
-      return a.set_order - b.set_order;
-    });
 
   return (
     <PracticeRunner
@@ -140,8 +73,8 @@ export default async function ExamSessionTakePage({
         grade: gradeName ?? "",
         examDate: exam.exam_date,
       }}
-      sets={sets}
-      questions={questions}
+      sets={[]}
+      questions={[]}
       sessionId={session.id}
       initialIdentityPath={session.identity_image_url}
       initialAnswers={Object.fromEntries(

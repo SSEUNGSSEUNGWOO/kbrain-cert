@@ -5,7 +5,8 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
-import { getSessionDeadlineMs } from "@/lib/exam/deadline";
+
+const MAX_BODY_BYTES = 1024 * 1024;
 
 /**
  * 응시자 답안 auto-save
@@ -15,6 +16,10 @@ import { getSessionDeadlineMs } from "@/lib/exam/deadline";
  * upsert by (session_id, question_id) · submit 전엔 submitted_at null
  */
 export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "answer payload too large" }, { status: 413 });
+  }
   const cookieStore = await cookies();
   const cookieSessionId = verifySessionCookieValue(
     cookieStore.get(SESSION_COOKIE_NAME)?.value
@@ -51,96 +56,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "session mismatch" }, { status: 403 });
   }
 
-  const admin = createAdminSupabase();
-  // 세션이 이미 제출됐으면 저장 거부
-  const { data: session } = await admin
-    .from("exam_sessions")
-    .select(
-      "id, exam_id, status, start_time, submit_time, time_extension_minutes"
-    )
-    .eq("id", sessionId)
-    .maybeSingle();
-  if (!session) {
-    return NextResponse.json({ error: "session not found" }, { status: 404 });
-  }
-  if (session.submit_time || session.status === "submitted") {
-    return NextResponse.json({ error: "already submitted" }, { status: 400 });
-  }
-
-  const { data: exam } = await admin
-    .from("exams")
-    .select("exam_date, duration_minutes")
-    .eq("id", session.exam_id)
-    .single();
-  if (!exam) {
-    return NextResponse.json({ error: "exam not found" }, { status: 404 });
-  }
-
-  const serverNowMs = Date.now();
-  const deadlineMs = getSessionDeadlineMs({
-    examDate: exam.exam_date,
-    startTime: session.start_time,
-    durationMinutes: exam.duration_minutes,
-    extensionMinutes: session.time_extension_minutes ?? 0,
-  });
-  if (deadlineMs != null && deadlineMs <= serverNowMs) {
-    const submittedAt = new Date(serverNowMs).toISOString();
-    await admin
-      .from("exam_sessions")
-      .update({
-        status: "submitted",
-        submit_time: submittedAt,
-        auto_submitted: true,
-        updated_at: submittedAt,
-      })
-      .eq("id", sessionId)
-      .is("submit_time", null);
-    await admin
-      .from("answers")
-      .update({ submitted_at: submittedAt })
-      .eq("session_id", sessionId)
-      .is("submitted_at", null);
-    return NextResponse.json({ error: "exam time expired" }, { status: 409 });
-  }
-
-  const nowIso = new Date(serverNowMs).toISOString();
   const rows = isBulkSave
     ? answers.map((answer) => ({
-        session_id: sessionId,
-        question_id: answer.questionId!,
-        slot_values: answer.slotValues ?? {},
-        updated_at: nowIso,
+        questionId: answer.questionId!,
+        slotValues: answer.slotValues ?? {},
       }))
     : [
         {
-          session_id: sessionId,
-          question_id: questionId!,
-          slot_values: slotValues ?? {},
-          updated_at: nowIso,
+          questionId: questionId!,
+          slotValues: slotValues ?? {},
         },
       ];
 
-  if (rows.length === 0) {
-    return NextResponse.json({ ok: true, updatedAt: nowIso });
+  const admin = createAdminSupabase();
+  const { data: updatedAt, error } = await admin.rpc("save_exam_answers", {
+    p_session_id: sessionId,
+    p_answers: rows,
+  });
+  if (error) {
+    if (error.message.includes("session not found")) {
+      return NextResponse.json({ error: "session not found" }, { status: 404 });
+    }
+    if (error.message.includes("already submitted")) {
+      return NextResponse.json({ error: "already submitted" }, { status: 409 });
+    }
+    if (error.message.includes("exam time expired")) {
+      await admin.rpc("auto_submit_expired_sessions");
+      return NextResponse.json({ error: "exam time expired" }, { status: 409 });
+    }
+    if (
+      error.message.includes("invalid answers") ||
+      error.message.includes("duplicate question") ||
+      error.message.includes("question not in exam") ||
+      error.message.includes("slot not in question")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { error: upsertErr } = await admin
-    .from("answers")
-    .upsert(rows, { onConflict: "session_id,question_id" });
-  if (upsertErr) {
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
-  }
-
-  // 최초 저장 시 status → in_progress + start_time 설정
-  if (session.status === "waiting") {
-    await admin
-      .from("exam_sessions")
-      .update({
-        status: "in_progress",
-        start_time: nowIso,
-      })
-      .eq("id", sessionId);
-  }
-
-  return NextResponse.json({ ok: true, updatedAt: nowIso });
+  return NextResponse.json({
+    ok: true,
+    updatedAt,
+  });
 }

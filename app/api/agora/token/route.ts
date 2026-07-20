@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   const admin = createAdminSupabase();
   const body = (await request.json().catch(() => null)) as {
     mode?: "applicant" | "examiner";
+    media?: "webcam" | "screen";
     examId?: string;
   } | null;
   const cookieStore = await cookies();
@@ -40,7 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid session" }, { status: 403 });
     }
     examId = session.exam_id;
-    uid = `applicant-${session.id}`;
+    uid =
+      body.media === "screen"
+        ? `screen-${session.id}`
+        : `applicant-${session.id}`;
     clientRole = "host";
   } else {
     const supabase = await createServerSupabase();

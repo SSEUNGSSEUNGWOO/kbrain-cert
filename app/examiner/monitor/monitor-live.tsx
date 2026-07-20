@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type {
+  IAgoraRTCClient,
   IAgoraRTCRemoteUser,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
@@ -71,7 +72,37 @@ export function MonitorLive({
   const [videoTracks, setVideoTracks] = useState<
     Record<string, IRemoteVideoTrack>
   >({});
+  const [screenTracks, setScreenTracks] = useState<
+    Record<string, IRemoteVideoTrack>
+  >({});
   const sessionIdsRef = useRef<Set<string>>(new Set());
+  const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
+  const screenUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
+  const selectedSessionRef = useRef<string | null>(null);
+  const subscribedWebcamsRef = useRef<Set<string>>(new Set());
+  const subscribedScreenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedSessionRef.current = selectedSession;
+    const client = agoraClientRef.current;
+    if (!client) return;
+    const previousSession = subscribedScreenRef.current;
+    if (previousSession && previousSession !== selectedSession) {
+      const previousUser = screenUsersRef.current.get(previousSession);
+      if (previousUser) void client.unsubscribe(previousUser, "video").catch(() => {});
+      subscribedScreenRef.current = null;
+      setScreenTracks({});
+    }
+    if (!selectedSession || previousSession === selectedSession) return;
+    const user = screenUsersRef.current.get(selectedSession);
+    if (!user?.hasVideo) return;
+    void client.subscribe(user, "video").then(() => {
+      if (user.videoTrack) {
+        subscribedScreenRef.current = selectedSession;
+        setScreenTracks({ [selectedSession]: user.videoTrack });
+      }
+    }).catch(() => {});
+  }, [selectedSession]);
 
   // 데이터 fetch (refetch)
   useEffect(() => {
@@ -169,6 +200,8 @@ export function MonitorLive({
   useEffect(() => {
     let cancelled = false;
     let leave: (() => Promise<void>) | undefined;
+    const screenUsers = screenUsersRef.current;
+    const subscribedWebcams = subscribedWebcamsRef.current;
 
     void (async () => {
       try {
@@ -185,30 +218,52 @@ export function MonitorLive({
         if (cancelled) return;
 
         const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        agoraClientRef.current = client;
         const onPublished = async (
           user: IAgoraRTCRemoteUser,
           mediaType: "audio" | "video"
         ) => {
           if (mediaType !== "video") return;
-          await client.subscribe(user, "video");
           const uid = String(user.uid);
-          const sessionId = uid.startsWith("applicant-")
+          const isScreen = uid.startsWith("screen-");
+          const sessionId = isScreen
+            ? uid.slice("screen-".length)
+            : uid.startsWith("applicant-")
             ? uid.slice("applicant-".length)
             : null;
+          if (!sessionId) return;
+          if (isScreen) {
+            screenUsersRef.current.set(sessionId, user);
+            if (selectedSessionRef.current !== sessionId) return;
+            subscribedScreenRef.current = sessionId;
+          } else {
+            if (
+              !subscribedWebcamsRef.current.has(sessionId) &&
+              subscribedWebcamsRef.current.size >= 16
+            ) {
+              return;
+            }
+            subscribedWebcamsRef.current.add(sessionId);
+          }
+          await client.subscribe(user, "video");
           if (sessionId && user.videoTrack) {
-            setVideoTracks((current) => ({
-              ...current,
-              [sessionId]: user.videoTrack!,
-            }));
+            const setter = isScreen ? setScreenTracks : setVideoTracks;
+            setter((current) => ({ ...current, [sessionId]: user.videoTrack! }));
           }
         };
         const onUnpublished = (user: IAgoraRTCRemoteUser) => {
           const uid = String(user.uid);
-          const sessionId = uid.startsWith("applicant-")
+          const isScreen = uid.startsWith("screen-");
+          const sessionId = isScreen
+            ? uid.slice("screen-".length)
+            : uid.startsWith("applicant-")
             ? uid.slice("applicant-".length)
             : null;
           if (!sessionId) return;
-          setVideoTracks((current) => {
+          if (isScreen) screenUsersRef.current.delete(sessionId);
+          else subscribedWebcamsRef.current.delete(sessionId);
+          const setter = isScreen ? setScreenTracks : setVideoTracks;
+          setter((current) => {
             const next = { ...current };
             next[sessionId]?.stop();
             delete next[sessionId];
@@ -236,7 +291,15 @@ export function MonitorLive({
 
     return () => {
       cancelled = true;
+      agoraClientRef.current = null;
+      screenUsers.clear();
+      subscribedWebcams.clear();
+      subscribedScreenRef.current = null;
       setVideoTracks((current) => {
+        Object.values(current).forEach((track) => track.stop());
+        return {};
+      });
+      setScreenTracks((current) => {
         Object.values(current).forEach((track) => track.stop());
         return {};
       });
@@ -352,6 +415,7 @@ export function MonitorLive({
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
+                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -378,6 +442,7 @@ export function MonitorLive({
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
+                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -404,6 +469,7 @@ export function MonitorLive({
                     selected={selectedSession === app.sessionId}
                     onSelect={() => setSelectedSession(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
+                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -608,12 +674,14 @@ function ApplicantCard({
   selected,
   onSelect,
   videoTrack,
+  screenTrack,
 }: {
   app: Session;
   size: "sm" | "md" | "lg";
   selected: boolean;
   onSelect: () => void;
   videoTrack?: IRemoteVideoTrack;
+  screenTrack?: IRemoteVideoTrack;
 }) {
   const hasHigh = app.highCount > 0 || app.isFlagged;
   const hasWarn = !hasHigh && app.warnCount > 0;
@@ -646,7 +714,9 @@ function ApplicantCard({
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square"
         )}
       >
-        {videoTrack && <RemoteVideo track={videoTrack} />}
+        {(selected && screenTrack ? screenTrack : videoTrack) && (
+          <RemoteVideo track={selected && screenTrack ? screenTrack : videoTrack!} />
+        )}
         <div className="absolute inset-0 flex items-center justify-center">
           <div
             className={cn(
@@ -654,7 +724,7 @@ function ApplicantCard({
               size === "lg" ? "text-4xl" : size === "md" ? "text-2xl" : "text-sm"
             )}
           >
-            {!videoTrack && initial}
+            {!videoTrack && !screenTrack && initial}
           </div>
         </div>
         {(app.highCount + app.warnCount) > 0 && (

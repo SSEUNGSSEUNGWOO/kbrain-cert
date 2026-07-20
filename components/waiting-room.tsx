@@ -35,6 +35,7 @@ export function WaitingRoom({
     initialIdentityPath
   );
   const identityReady = isPractice || !!identityPath;
+  const canEnterImmediately = isPractice || scheduledAt == null;
   const { nowMs, synchronized } = useServerClock(
     !isPractice && scheduledAt != null
   );
@@ -108,20 +109,23 @@ export function WaitingRoom({
       />
 
       {/* 입장 CTA · Practice면 즉시 · 실 시험이면 카운트다운 */}
-      {isPractice ? (
+      {canEnterImmediately ? (
         <div className="rounded-md bg-gradient-to-br from-primary to-primary-hover text-white p-6">
           <div className="text-[10px] font-bold tracking-widest opacity-80 uppercase mb-2">
-            테스트 링크 · 대기 시간 없음
+            {isPractice ? "미리보기 · 대기 시간 없음" : "개별 시작 시험"}
           </div>
           <div className="text-2xl font-bold mb-1">언제든 입장 가능</div>
           <div className="text-xs opacity-80 mb-5">
-            실 시험에서는 정해진 시작 시간까지 자동으로 대기합니다.
+            {isPractice
+              ? "미리보기는 예약 시간과 관계없이 입장합니다."
+              : "입장 시점부터 개인 시험 시간이 시작됩니다."}
           </div>
           <button
             onClick={onEnter}
-            className="w-full h-14 rounded-md bg-white text-primary font-bold text-base hover:bg-white/90 transition"
+            disabled={!identityReady}
+            className="w-full h-14 rounded-md bg-white text-primary font-bold text-base hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 transition"
           >
-            시험 입장하기 →
+            {identityReady ? "시험 입장하기 →" : "신분증 업로드 후 입장 가능"}
           </button>
         </div>
       ) : (

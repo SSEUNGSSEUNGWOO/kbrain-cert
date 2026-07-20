@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-export function AgoraWebcamPublisher({
+export function AgoraScreenPublisher({
   sessionId,
-  webcamStream,
+  screenStream,
   active,
   onFailure,
 }: {
   sessionId: string | null;
-  webcamStream: MediaStream | null;
+  screenStream: MediaStream | null;
   active: boolean;
   onFailure: () => void;
 }) {
@@ -18,7 +18,7 @@ export function AgoraWebcamPublisher({
   );
 
   useEffect(() => {
-    const mediaTrack = webcamStream?.getVideoTracks()[0];
+    const mediaTrack = screenStream?.getVideoTracks()[0];
     if (!active || !sessionId || !mediaTrack) return;
     let cancelled = false;
     let cleanup: (() => Promise<void>) | undefined;
@@ -30,7 +30,7 @@ export function AgoraWebcamPublisher({
           fetch("/api/agora/token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "applicant", media: "webcam" }),
+            body: JSON.stringify({ mode: "applicant", media: "screen" }),
           }),
         ]);
         const config = await response.json();
@@ -41,11 +41,11 @@ export function AgoraWebcamPublisher({
         await client.join(config.appId, config.channel, config.token, config.uid);
         const videoTrack = AgoraRTC.createCustomVideoTrack({
           mediaStreamTrack: mediaTrack,
-          width: 320,
-          height: 240,
-          frameRate: 10,
+          width: 640,
+          height: 360,
+          frameRate: 2,
           bitrateMin: 100,
-          bitrateMax: 200,
+          bitrateMax: 250,
         });
         await client.publish(videoTrack);
         if (!cancelled) setStatus("live");
@@ -67,16 +67,16 @@ export function AgoraWebcamPublisher({
       cancelled = true;
       if (cleanup) void cleanup();
     };
-  }, [active, sessionId, webcamStream, onFailure]);
+  }, [active, sessionId, screenStream, onFailure]);
 
-  if (!active || !sessionId || !webcamStream) return null;
+  if (!active || !sessionId || !screenStream) return null;
   return (
-    <div className="fixed right-6 bottom-[278px] z-40 rounded-sm bg-black/75 px-2 py-1 text-[10px] font-bold text-white">
+    <div className="fixed right-6 bottom-[250px] z-40 rounded-sm bg-black/75 px-2 py-1 text-[10px] font-bold text-white">
       {status === "live"
-        ? "● 감독관 웹캠 송출 중"
+        ? "● 감독관 화면 송출 중"
         : status === "error"
-        ? "웹캠 송출 연결 실패"
-        : "웹캠 송출 연결 중…"}
+        ? "화면 송출 연결 실패"
+        : "화면 송출 연결 중…"}
     </div>
   );
 }

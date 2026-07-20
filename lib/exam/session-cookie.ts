@@ -1,21 +1,23 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const COOKIE_NAME = "kbrain_exam_session";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 6; // 6h · 시험 최대 시간 + 여유
 
-function getSecret(): string {
+export function getExamSessionSecret(): string {
   const secret = process.env.EXAM_SESSION_SECRET;
   if (!secret) {
-    console.warn(
-      "[session-cookie] EXAM_SESSION_SECRET not set · using fallback (dev only!)"
-    );
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("EXAM_SESSION_SECRET is required");
+    }
     return "dev-fallback-secret-not-for-production";
   }
   return secret;
 }
 
 function sign(sessionId: string): string {
-  return createHmac("sha256", getSecret()).update(sessionId).digest("base64url");
+  return createHmac("sha256", getExamSessionSecret())
+    .update(sessionId)
+    .digest("base64url");
 }
 
 /**
@@ -34,7 +36,14 @@ export function verifySessionCookieValue(value: string | undefined): string | nu
   const [sessionId, sig] = value.split(".");
   if (!sessionId || !sig) return null;
   const expected = sign(sessionId);
-  if (sig !== expected) return null;
+  const actualBuffer = Buffer.from(sig);
+  const expectedBuffer = Buffer.from(expected);
+  if (
+    actualBuffer.length !== expectedBuffer.length ||
+    !timingSafeEqual(actualBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
   return sessionId;
 }
 

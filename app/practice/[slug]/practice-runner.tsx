@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
 import { EnvCheck, type EnvResultSnapshot } from "@/components/env-check";
@@ -15,6 +15,7 @@ import { ProctorGuard } from "@/components/proctor-guard";
 import { ExamChat } from "@/components/exam-chat";
 import { cn } from "@/lib/utils";
 import { AgoraWebcamPublisher } from "@/components/agora-webcam-publisher";
+import { AgoraScreenPublisher } from "@/components/agora-screen-publisher";
 
 type Slot = {
   id: string;
@@ -48,8 +49,8 @@ type Tab = "env" | "pledge" | "waiting" | "exam";
 export function PracticeRunner({
   slug,
   exam,
-  sets,
-  questions,
+  sets: initialSets,
+  questions: initialQuestions,
   sessionId,
   initialIdentityPath = null,
   initialAnswers = {},
@@ -82,18 +83,29 @@ export function PracticeRunner({
   const [pledgePassed, setPledgePassed] = useState(skipToExam);
   const [waitingReady, setWaitingReady] = useState(skipToExam);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [sets, setSets] = useState(initialSets);
+  const [questions, setQuestions] = useState(initialQuestions);
+  const [contentBusy, setContentBusy] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
   const [answers, setAnswers] =
     useState<Record<string, Record<string, unknown>>>(initialAnswers);
 
   // 웹캠 · 화면 공유 스트림 · 환경 체크에서 획득 → 페이지 unmount까지 유지
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const webcamStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  useEffect(() => {
+    webcamStreamRef.current = webcamStream;
+  }, [webcamStream]);
+  useEffect(() => {
+    screenStreamRef.current = screenStream;
+  }, [screenStream]);
   useEffect(() => {
     return () => {
-      webcamStream?.getTracks().forEach((t) => t.stop());
-      screenStream?.getTracks().forEach((t) => t.stop());
+      webcamStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentQ = questions[currentIdx];
@@ -113,6 +125,7 @@ export function PracticeRunner({
   );
 
   const [submitting, setSubmitting] = useState(false);
+  const [activeUploads, setActiveUploads] = useState(0);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [serverStartTime, setServerStartTime] = useState<string | null>(null);
@@ -136,9 +149,34 @@ export function PracticeRunner({
 
   // Practice는 로컬 시간 기준 · exam 탭 진입 시각으로 폴백
   const [practiceStartTime, setPracticeStartTime] = useState<string | null>(null);
-  const enterExam = () => {
+  const enterExam = async () => {
     if (!isRealExam && !practiceStartTime) {
       setPracticeStartTime(new Date().toISOString());
+    }
+    if (isRealExam && questions.length === 0) {
+      if (contentBusy) return;
+      setContentBusy(true);
+      setContentError(null);
+      try {
+        const response = await fetch("/api/exam/content", {
+          cache: "no-store",
+        });
+        const content = await response.json();
+        if (!response.ok) {
+          throw new Error(content.error ?? "시험 문제를 불러오지 못했습니다.");
+        }
+        setSets(content.sets ?? []);
+        setQuestions(content.questions ?? []);
+      } catch (error) {
+        setContentError(
+          error instanceof Error
+            ? error.message
+            : "시험 문제를 불러오지 못했습니다."
+        );
+        return;
+      } finally {
+        setContentBusy(false);
+      }
     }
     setTab("exam");
   };
@@ -189,6 +227,10 @@ export function PracticeRunner({
 
   async function doSubmit(auto = false) {
     if (!sessionId) return;
+    if (!auto && activeUploads > 0) {
+      setSubmitError("파일 업로드가 끝난 뒤 제출해 주세요.");
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -241,6 +283,29 @@ export function PracticeRunner({
 
   const showTimer = tab === "exam";
   const proctorActive = tab === "exam" && isRealExam;
+  const reportWebcamFailure = useCallback(
+    () => fireMonitorEvent({ eventType: "webcam_publish_failed", severity: "high" }),
+    [fireMonitorEvent]
+  );
+  const reportScreenFailure = useCallback(
+    () => fireMonitorEvent({ eventType: "screen_publish_failed", severity: "high" }),
+    [fireMonitorEvent]
+  );
+  useEffect(() => {
+    if (!proctorActive) return;
+    const webcamTrack = webcamStream?.getVideoTracks()[0];
+    const screenTrack = screenStream?.getVideoTracks()[0];
+    const onWebcamEnded = () =>
+      fireMonitorEvent({ eventType: "webcam_stopped", severity: "high" });
+    const onScreenEnded = () =>
+      fireMonitorEvent({ eventType: "screen_share_stopped", severity: "high" });
+    webcamTrack?.addEventListener("ended", onWebcamEnded);
+    screenTrack?.addEventListener("ended", onScreenEnded);
+    return () => {
+      webcamTrack?.removeEventListener("ended", onWebcamEnded);
+      screenTrack?.removeEventListener("ended", onScreenEnded);
+    };
+  }, [fireMonitorEvent, proctorActive, screenStream, webcamStream]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -263,6 +328,14 @@ export function PracticeRunner({
       <AgoraWebcamPublisher
         sessionId={sessionId ?? null}
         webcamStream={webcamStream}
+        active={proctorActive}
+        onFailure={reportWebcamFailure}
+      />
+      <AgoraScreenPublisher
+        sessionId={sessionId ?? null}
+        screenStream={screenStream}
+        active={proctorActive}
+        onFailure={reportScreenFailure}
       />
 
       <div className="border-b border-border bg-white">
@@ -349,9 +422,14 @@ export function PracticeRunner({
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);
-              enterExam();
+              void enterExam();
             }}
           />
+          {contentError && (
+            <div className="mt-4 rounded-md border border-danger bg-danger-soft p-4 text-center text-xs font-bold text-danger">
+              {contentError} · 잠시 후 다시 시도해 주세요.
+            </div>
+          )}
         </div>
       )}
 
@@ -412,6 +490,9 @@ export function PracticeRunner({
                 setAnswers((prev) => ({ ...prev, [currentQ.id]: v }))
               }
               sessionId={sessionId ?? null}
+              onUploadStateChange={(busy) =>
+                setActiveUploads((count) => Math.max(0, count + (busy ? 1 : -1)))
+              }
             />
           )}
 
@@ -433,7 +514,7 @@ export function PracticeRunner({
             {currentIdx === questions.length - 1 && isRealExam ? (
               <button
                 onClick={() => setConfirmSubmit(true)}
-                disabled={submitting}
+                disabled={submitting || activeUploads > 0}
                 className="h-11 px-5 rounded-md bg-success hover:opacity-90 text-white text-sm font-bold disabled:opacity-40 transition"
               >
                 시험 제출하기 →
@@ -907,11 +988,13 @@ function QuestionCard({
   answer,
   onChange,
   sessionId,
+  onUploadStateChange,
 }: {
   question: Question;
   answer: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
   sessionId: string | null;
+  onUploadStateChange: (busy: boolean) => void;
 }) {
   return (
     <div className="rounded-md bg-white border border-border overflow-hidden">
@@ -967,6 +1050,7 @@ function QuestionCard({
           onChange={onChange}
           sessionId={sessionId}
           questionId={question.id}
+          onUploadStateChange={onUploadStateChange}
         />
       </div>
     </div>
@@ -1034,12 +1118,14 @@ function SlotEditor({
   onChange,
   sessionId,
   questionId,
+  onUploadStateChange,
 }: {
   slots: Slot[];
   values: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
   sessionId: string | null;
   questionId: string;
+  onUploadStateChange: (busy: boolean) => void;
 }) {
   const setValue = (id: string, v: unknown) => {
     onChange({ ...values, [id]: v });
@@ -1110,6 +1196,7 @@ function SlotEditor({
                 onChange={(next) => setValue(slot.id, next)}
                 sessionId={sessionId}
                 questionId={questionId}
+                onUploadStateChange={onUploadStateChange}
               />
             )}
           </div>
@@ -1125,12 +1212,14 @@ function FileSlot({
   onChange,
   sessionId,
   questionId,
+  onUploadStateChange,
 }: {
   slot: Slot;
   value: AnswerFile | null;
   onChange: (v: AnswerFile | null) => void;
   sessionId: string | null;
   questionId: string;
+  onUploadStateChange: (busy: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1143,6 +1232,7 @@ function FileSlot({
       return;
     }
     setBusy(true);
+    onUploadStateChange(true);
     setError(null);
     try {
       const form = new FormData();
@@ -1161,6 +1251,7 @@ function FileSlot({
       setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
       setBusy(false);
+      onUploadStateChange(false);
     }
   }
 
@@ -1218,7 +1309,7 @@ function FileSlot({
         {slot.accept && (
           <div className="text-[10px]">허용: {slot.accept}</div>
         )}
-        <div className="text-[10px]">최대 50MB · 슬롯당 1개</div>
+        <div className="text-[10px]">최대 20MB · 슬롯당 1개</div>
         {!sessionId && (
           <div className="text-[10px] text-warning font-bold">
             Practice 링크에서는 저장되지 않습니다

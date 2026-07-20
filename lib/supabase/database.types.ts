@@ -489,6 +489,28 @@ export type Database = {
           already_submitted: boolean;
         }>;
       };
+      save_exam_answers: {
+        Args: {
+          p_session_id: string;
+          p_answers: Json;
+        };
+        Returns: string;
+      };
+      consume_exam_entry_attempt: {
+        Args: {
+          p_attempt_key: string;
+          p_max_attempts?: number;
+          p_window_seconds?: number;
+        };
+        Returns: boolean;
+      };
+      validate_exam_answers: {
+        Args: {
+          p_exam_id: string;
+          p_answers: Json;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       app_role: AppRole;

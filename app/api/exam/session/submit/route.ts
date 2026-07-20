@@ -6,12 +6,18 @@ import {
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
 
+const MAX_BODY_BYTES = 1024 * 1024;
+
 /**
  * 시험 최종 제출
  * Body: { sessionId, auto?: boolean, answers?: [{ questionId, slotValues }] }
  * 최종 답안 upsert와 세션 제출을 DB 트랜잭션 한 번으로 처리한다.
  */
 export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "answer payload too large" }, { status: 413 });
+  }
   const cookieStore = await cookies();
   const cookieSessionId = verifySessionCookieValue(
     cookieStore.get(SESSION_COOKIE_NAME)?.value
@@ -59,6 +65,14 @@ export async function POST(request: Request) {
     }
     if (error.message.includes("exam time expired")) {
       return NextResponse.json({ error: "exam time expired" }, { status: 409 });
+    }
+    if (
+      error.message.includes("invalid answers") ||
+      error.message.includes("duplicate question") ||
+      error.message.includes("question not in exam") ||
+      error.message.includes("slot not in question")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

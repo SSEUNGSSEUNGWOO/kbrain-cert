@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { createHmac } from "node:crypto";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import {
   SESSION_COOKIE_NAME,
   COOKIE_MAX_AGE_SECONDS,
+  getExamSessionSecret,
   makeSessionCookieValue,
 } from "@/lib/exam/session-cookie";
 
@@ -35,18 +37,27 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminSupabase();
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? request.headers.get("x-real-ip")
+    ?? "unknown";
+  const trimmedName = name.trim();
+  const attemptKey = createHmac("sha256", getExamSessionSecret())
+    .update(`${examId}\n${clientIp}\n${trimmedName}`)
+    .digest("hex");
 
   const { data: exam } = await admin
     .from("exams")
-    .select("id, is_test_mode")
+    .select("id, is_test_mode, status")
     .eq("id", examId)
     .maybeSingle();
   if (!exam) {
     return NextResponse.json({ error: "exam not found" }, { status: 404 });
   }
+  if (!exam.is_test_mode && exam.status !== "open") {
+    return NextResponse.json({ error: "exam not open" }, { status: 403 });
+  }
 
   // (exam_id, name) 후보 조회 → phone 뒷4자리 서버 필터 (RLS · 함수 인덱스 활용은 unique index에서)
-  const trimmedName = name.trim();
   const { data: candidates, error: findErr } = await admin
     .from("exam_invitations")
     .select("id, phone, status")
@@ -61,6 +72,26 @@ export async function POST(request: Request) {
   );
 
   if (matches.length === 0) {
+    const { data: allowed, error: rateLimitError } = await admin.rpc(
+      "consume_exam_entry_attempt",
+      {
+        p_attempt_key: attemptKey,
+        p_max_attempts: 10,
+        p_window_seconds: 600,
+      }
+    );
+    if (rateLimitError) {
+      return NextResponse.json(
+        { error: "entry verification unavailable" },
+        { status: 503 }
+      );
+    }
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "too many attempts" },
+        { status: 429 }
+      );
+    }
     return NextResponse.json({ error: "not on roster" }, { status: 404 });
   }
   if (matches.length > 1) {

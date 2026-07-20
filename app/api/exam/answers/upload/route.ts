@@ -6,8 +6,9 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
+import { getSessionDeadlineMs } from "@/lib/exam/deadline";
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 /**
  * 응시자 답안 파일 업로드
@@ -52,7 +53,9 @@ export async function POST(request: Request) {
   const admin = createAdminSupabase();
   const { data: session } = await admin
     .from("exam_sessions")
-    .select("id, submit_time, status")
+    .select(
+      "id, exam_id, start_time, submit_time, status, time_extension_minutes"
+    )
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) {
@@ -60,6 +63,45 @@ export async function POST(request: Request) {
   }
   if (session.submit_time || session.status === "submitted") {
     return NextResponse.json({ error: "already submitted" }, { status: 400 });
+  }
+  const { data: exam } = await admin
+    .from("exams")
+    .select("exam_date, duration_minutes")
+    .eq("id", session.exam_id)
+    .single();
+  const deadlineMs = exam
+    ? getSessionDeadlineMs({
+        examDate: exam.exam_date,
+        startTime: session.start_time,
+        durationMinutes: exam.duration_minutes,
+        extensionMinutes: session.time_extension_minutes ?? 0,
+      })
+    : null;
+  if (!exam || (deadlineMs != null && deadlineMs <= Date.now())) {
+    return NextResponse.json({ error: "exam time expired" }, { status: 409 });
+  }
+
+  const { data: examQuestion } = await admin
+    .from("exam_questions")
+    .select("questions(submission_slots)")
+    .eq("exam_id", session.exam_id)
+    .eq("question_id", questionId)
+    .maybeSingle();
+  const slots = (
+    examQuestion as unknown as {
+      questions: {
+        submission_slots: Array<{ id?: string; type?: string }>;
+      } | null;
+    } | null
+  )?.questions?.submission_slots;
+  const targetSlot = Array.isArray(slots)
+    ? slots.find((slot) => slot.id === slotId && slot.type === "file")
+    : undefined;
+  if (!targetSlot) {
+    return NextResponse.json(
+      { error: "file slot not in exam question" },
+      { status: 400 }
+    );
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -76,6 +118,21 @@ export async function POST(request: Request) {
     });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const { data: latestSession } = await admin
+    .from("exam_sessions")
+    .select("submit_time, status")
+    .eq("id", sessionId)
+    .single();
+  if (
+    !latestSession ||
+    latestSession.submit_time ||
+    latestSession.status === "submitted" ||
+    (deadlineMs != null && deadlineMs <= Date.now())
+  ) {
+    await admin.storage.from("answer-files").remove([storagePath]);
+    return NextResponse.json({ error: "exam time expired" }, { status: 409 });
   }
 
   return NextResponse.json({

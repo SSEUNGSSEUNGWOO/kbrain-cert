@@ -9,12 +9,15 @@ type Fixture = {
   originalSlug: string | null;
   originalIsTestMode: boolean;
   originalExamDate: string | null;
+  originalStatus: string;
   durationMinutes: number;
   slug: string;
   name: string;
   phoneLast4: string;
   sessionId?: string;
   answerQuestionId?: string;
+  answerSlotId?: string;
+  questionContent?: string;
   identityPath?: string;
 };
 
@@ -30,7 +33,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test.beforeAll(async () => {
     const { data: exam, error: examError } = await supabase
       .from("exams")
-      .select("id, slug, is_test_mode, exam_date, duration_minutes")
+      .select("id, slug, is_test_mode, exam_date, duration_minutes, status")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -42,7 +45,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const phoneLast4 = "1357";
     const { error: slugError } = await supabase
       .from("exams")
-      .update({ slug, is_test_mode: false })
+      .update({ slug, is_test_mode: false, status: "open" })
       .eq("id", exam.id);
     if (slugError) throw slugError;
 
@@ -70,6 +73,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       originalSlug: exam.slug,
       originalIsTestMode: exam.is_test_mode,
       originalExamDate: exam.exam_date,
+      originalStatus: exam.status,
       durationMinutes: exam.duration_minutes,
       slug,
       name,
@@ -98,6 +102,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
         slug: fixture.originalSlug,
         is_test_mode: fixture.originalIsTestMode,
         exam_date: fixture.originalExamDate,
+        status: fixture.originalStatus,
       })
       .eq("id", fixture.examId);
   });
@@ -136,6 +141,27 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     });
     expect(response.status()).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: "not on roster" });
+  });
+
+  test("같은 이름으로 전화번호를 반복 대입하면 제한한다", async ({ request }) => {
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      const response = await request.post("/api/exam/enter", {
+        data: {
+          examId: fixture.examId,
+          name: fixture.name,
+          phoneLast4: String(8000 + attempt),
+        },
+      });
+      expect(response.status()).toBe(404);
+    }
+    const blocked = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: "8999",
+      },
+    });
+    expect(blocked.status()).toBe(429);
   });
 
   test("동시에 진입해도 세션을 하나만 생성한다", async ({ request }) => {
@@ -286,6 +312,27 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       new Date(startsAt).getTime()
     );
 
+    const { data: examQuestion, error: questionError } = await supabase
+      .from("exam_questions")
+      .select("question_id, questions(content)")
+      .eq("exam_id", fixture.examId)
+      .order("order_num")
+      .limit(1)
+      .single();
+    if (questionError || !examQuestion) throw questionError;
+    const content = (
+      examQuestion as unknown as {
+        questions: { content: string } | null;
+      }
+    ).questions?.content;
+    expect(content).toBeTruthy();
+    const contentResponse = await request.get("/api/exam/content");
+    expect(contentResponse.status()).toBe(409);
+    const takeResponse = await request.get(
+      `/exam/session/${fixture.sessionId}/take`
+    );
+    expect(await takeResponse.text()).not.toContain(content!);
+
     const { error: restoreError } = await supabase
       .from("exams")
       .update({ exam_date: fixture.originalExamDate })
@@ -308,7 +355,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
 
     const { data: examQuestion, error: questionError } = await supabase
       .from("exam_questions")
-      .select("question_id")
+      .select("question_id, questions(content, submission_slots)")
       .eq("exam_id", fixture.examId)
       .order("order_num")
       .limit(1)
@@ -317,6 +364,17 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       throw questionError ?? new Error("검증용 문항이 없습니다.");
     }
     fixture.answerQuestionId = examQuestion.question_id;
+    const question = (
+      examQuestion as unknown as {
+        questions: {
+          content: string;
+          submission_slots: Array<{ id: string }>;
+        } | null;
+      }
+    ).questions;
+    fixture.answerSlotId = question?.submission_slots[0]?.id;
+    fixture.questionContent = question?.content;
+    if (!fixture.answerSlotId) throw new Error("검증용 답안 슬롯이 없습니다.");
     const marker = `복원검증_${randomUUID()}`;
 
     const save = await request.post("/api/exam/answers/save", {
@@ -325,7 +383,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
         answers: [
           {
             questionId: fixture.answerQuestionId,
-            slotValues: { e2e_restore: marker },
+            slotValues: { [fixture.answerSlotId]: marker },
           },
         ],
       },
@@ -339,7 +397,9 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .eq("question_id", fixture.answerQuestionId)
       .single();
     if (answerError) throw answerError;
-    expect(savedAnswer.slot_values).toMatchObject({ e2e_restore: marker });
+    expect(savedAnswer.slot_values).toMatchObject({
+      [fixture.answerSlotId]: marker,
+    });
 
     const takePage = await request.get(
       `/exam/session/${fixture.sessionId}/take`
@@ -348,11 +408,53 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     expect(await takePage.text()).toContain(marker);
   });
 
+  test("다른 시험 문항과 존재하지 않는 슬롯 주입을 차단한다", async ({
+    request,
+  }) => {
+    expect(fixture.sessionId).toBeTruthy();
+    expect(fixture.answerQuestionId).toBeTruthy();
+    const enter = await request.post("/api/exam/enter", {
+      data: {
+        examId: fixture.examId,
+        name: fixture.name,
+        phoneLast4: fixture.phoneLast4,
+      },
+    });
+    expect(enter.status()).toBe(200);
+
+    const foreignQuestion = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: fixture.sessionId,
+        answers: [
+          {
+            questionId: randomUUID(),
+            slotValues: {},
+          },
+        ],
+      },
+    });
+    expect(foreignQuestion.status()).toBe(400);
+
+    const invalidSlot = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: fixture.sessionId,
+        answers: [
+          {
+            questionId: fixture.answerQuestionId,
+            slotValues: { forged_slot: "주입 시도" },
+          },
+        ],
+      },
+    });
+    expect(invalidSlot.status()).toBe(400);
+  });
+
   test("최종 제출 직전 저장한 답안까지 제출 상태로 확정한다", async ({
     request,
   }) => {
     expect(fixture.sessionId).toBeTruthy();
     expect(fixture.answerQuestionId).toBeTruthy();
+    expect(fixture.answerSlotId).toBeTruthy();
     const enter = await request.post("/api/exam/enter", {
       data: {
         examId: fixture.examId,
@@ -369,7 +471,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
         answers: [
           {
             questionId: fixture.answerQuestionId,
-            slotValues: { e2e_submit: marker },
+            slotValues: { [fixture.answerSlotId!]: marker },
           },
         ],
       },
@@ -388,8 +490,23 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .eq("question_id", fixture.answerQuestionId!)
       .single();
     if (error) throw error;
-    expect(submittedAnswer.slot_values).toMatchObject({ e2e_submit: marker });
+    expect(submittedAnswer.slot_values).toMatchObject({
+      [fixture.answerSlotId!]: marker,
+    });
     expect(submittedAnswer.submitted_at).not.toBeNull();
+
+    const lateSave = await request.post("/api/exam/answers/save", {
+      data: {
+        sessionId: fixture.sessionId,
+        answers: [
+          {
+            questionId: fixture.answerQuestionId,
+            slotValues: { [fixture.answerSlotId!]: "제출후덮어쓰기" },
+          },
+        ],
+      },
+    });
+    expect(lateSave.status()).toBe(409);
   });
 
   test("제출 완료한 응시자의 재진입을 차단한다", async ({ request }) => {
