@@ -7,6 +7,7 @@ import { createAdminSupabase } from "@/lib/supabase/server";
 import { InvitationsTable } from "./invitations-table";
 import { CreateInvitationForm } from "./create-form";
 import { CsvUploadButton } from "./csv-upload-form";
+import { PasteUploadButton } from "./paste-upload-form";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,7 @@ export default async function InvitationsPage({
         description={`선택 시험 ${stats.total}명 · 이름과 전화번호 뒷 4자리로 진입`}
         action={
           <>
+            <PasteUploadButton exams={selectedExam ? [selectedExam] : []} />
             <CsvUploadButton exams={selectedExam ? [selectedExam] : []} />
             <CreateInvitationForm exams={selectedExam ? [selectedExam] : []} />
           </>

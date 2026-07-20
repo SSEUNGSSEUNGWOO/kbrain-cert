@@ -10,6 +10,46 @@ export type ParseResult = {
   errors: string[];
 };
 
+export function parseInvitationPaste(text: string): ParseResult {
+  const rows: InvitationCsvRow[] = [];
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  const lines = text.split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    const [rawName = "", rawPhone = ""] = line.split("\t");
+    const name = rawName.trim();
+    const phone = rawPhone.trim();
+    if (
+      index === 0 &&
+      ["이름", "name"].includes(name.toLowerCase()) &&
+      ["전화번호", "phone"].includes(phone.toLowerCase())
+    ) {
+      continue;
+    }
+    if (!name || !phone) {
+      errors.push(`${index + 1}행: 이름 또는 전화번호 없음`);
+      continue;
+    }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 4) {
+      errors.push(`${index + 1}행: 전화번호 형식 오류 (${phone})`);
+      continue;
+    }
+    const key = `${name}:${digits.slice(-4)}`;
+    if (seen.has(key)) {
+      errors.push(`${index + 1}행: 이름·전화번호 뒷자리 중복 (${name})`);
+      continue;
+    }
+    seen.add(key);
+    rows.push({ name, phone });
+  }
+
+  return { rows, errors };
+}
+
 /**
  * 응시자 초대 CSV 파서 · 헤더 기반 컬럼 매칭
  * 필수: name, phone · 선택: email, organization
