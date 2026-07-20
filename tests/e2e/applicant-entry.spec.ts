@@ -377,6 +377,21 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(
       true
     );
+    const questionButtons = page.getByRole("button", {
+      name: /\d+번 문항 · (응답 완료|미응답)/,
+    });
+    await questionButtons.last().click();
+    await page.getByRole("button", { name: "시험 제출하기 →" }).click();
+    await expect(
+      page.getByRole("button", { name: "제출하기", exact: true })
+    ).toBeDisabled();
+    await page
+      .getByRole("checkbox", { name: /미응답 \d+개 문항이 남아 있음을 확인/ })
+      .check();
+    await expect(
+      page.getByRole("button", { name: "제출하기", exact: true })
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "계속 응시" }).click();
     await page.evaluate(() => {
       (
         window as Window & { __e2eScreenStream?: MediaStream }

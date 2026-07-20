@@ -742,6 +742,7 @@ function SubmitConfirmDialog({
   onConfirm: () => void;
 }) {
   const unanswered = totalCount - answeredCount;
+  const [unansweredConfirmed, setUnansweredConfirmed] = useState(false);
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="rounded-md bg-white border border-border w-full max-w-md overflow-hidden">
@@ -762,6 +763,22 @@ function SubmitConfirmDialog({
               </div>
             )}
           </div>
+          {unanswered > 0 && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-warning bg-warning-soft p-4 text-sm">
+              <input
+                type="checkbox"
+                checked={unansweredConfirmed}
+                onChange={(event) =>
+                  setUnansweredConfirmed(event.target.checked)
+                }
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              />
+              <span className="font-bold leading-relaxed">
+                미응답 {unanswered}개 문항이 남아 있음을 확인했으며, 그대로
+                제출하겠습니다.
+              </span>
+            </label>
+          )}
           <div className="text-xs text-muted-foreground leading-relaxed">
             제출 후에는 답안을 수정할 수 없습니다. 시험이 종료되며 응시가 완료됩니다.
           </div>
@@ -780,7 +797,7 @@ function SubmitConfirmDialog({
             </button>
             <button
               onClick={onConfirm}
-              disabled={submitting}
+              disabled={submitting || (unanswered > 0 && !unansweredConfirmed)}
               className="flex-1 h-11 rounded-md bg-success hover:opacity-90 text-white text-sm font-bold disabled:opacity-50 transition"
             >
               {submitting ? "제출 중…" : "제출하기"}
