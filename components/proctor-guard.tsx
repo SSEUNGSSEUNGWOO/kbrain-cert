@@ -32,7 +32,7 @@ export function ProctorGuard({
 }) {
   const [fullscreenExits, setFullscreenExits] = useState(0);
   const [blackScreen, setBlackScreen] = useState(false);
-  const enterAtRef = useRef<number>(Date.now());
+  const enterAtRef = useRef<number>(0);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fullscreen 자동 요청 + 이탈 감지

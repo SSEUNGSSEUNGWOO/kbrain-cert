@@ -123,11 +123,12 @@ export function PracticeRunner({
 
   // Practice는 로컬 시간 기준 · exam 탭 진입 시각으로 폴백
   const [practiceStartTime, setPracticeStartTime] = useState<string | null>(null);
-  useEffect(() => {
-    if (tab === "exam" && !isRealExam && !practiceStartTime) {
+  const enterExam = () => {
+    if (!isRealExam && !practiceStartTime) {
       setPracticeStartTime(new Date().toISOString());
     }
-  }, [tab, isRealExam, practiceStartTime]);
+    setTab("exam");
+  };
 
   // 감독 이벤트 batch 저장 (실 시험만 · Practice는 no-op)
   const { fire: fireMonitorEvent } = useMonitorEvents(sessionId);
@@ -254,7 +255,7 @@ export function PracticeRunner({
           />
           <TabButton
             active={tab === "exam"}
-            onClick={() => waitingReady && setTab("exam")}
+            onClick={() => waitingReady && enterExam()}
             label="4. 시험창"
             hint={
               waitingReady
@@ -311,7 +312,7 @@ export function PracticeRunner({
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);
-              setTab("exam");
+              enterExam();
             }}
           />
         </div>

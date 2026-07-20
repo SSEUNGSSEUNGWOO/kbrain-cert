@@ -7,7 +7,7 @@ import { createAdminSupabase, createServerSupabase } from "@/lib/supabase/server
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ examId: string }> }
 ) {
   const supabase = await createServerSupabase();
   const {
@@ -26,7 +26,7 @@ export async function PATCH(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const { id } = await params;
+  const { examId } = await params;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
@@ -61,7 +61,10 @@ export async function PATCH(
   }
 
   const admin = createAdminSupabase();
-  const { error } = await admin.from("exams").update(patch).eq("id", id);
+  const { error } = await admin
+    .from("exams")
+    .update(patch)
+    .eq("id", examId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

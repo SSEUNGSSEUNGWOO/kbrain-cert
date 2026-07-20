@@ -20,16 +20,16 @@ export function ExamChat({
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // 감독관 공지가 오면 자동 open
-  useEffect(() => {
-    const hasNewAnnouncement = messages.some(
-      (m) => m.is_announcement && m.sender_role === "examiner"
+  const hasUnreadAnnouncement =
+    unreadCount > 0 &&
+    messages.some(
+      (message) =>
+        message.is_announcement && message.sender_role === "examiner"
     );
-    if (hasNewAnnouncement && unreadCount > 0) setOpen(true);
-  }, [messages, unreadCount]);
+  const visibleOpen = open || hasUnreadAnnouncement;
 
   useEffect(() => {
-    if (open) {
+    if (visibleOpen) {
       onOpen();
       // 스크롤 맨 아래
       requestAnimationFrame(() => {
@@ -38,7 +38,7 @@ export function ExamChat({
         }
       });
     }
-  }, [open, messages, onOpen]);
+  }, [visibleOpen, messages, onOpen]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +59,7 @@ export function ExamChat({
 
   return (
     <div className="fixed right-6 bottom-[210px] z-40">
-      {!open && (
+      {!visibleOpen && (
         <button
           onClick={() => setOpen(true)}
           className="relative w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-white shadow-lg flex items-center justify-center text-xl transition"
@@ -73,7 +73,7 @@ export function ExamChat({
         </button>
       )}
 
-      {open && (
+      {visibleOpen && (
         <div className="w-80 rounded-md bg-white border border-border shadow-xl overflow-hidden flex flex-col max-h-[400px]">
           <div className="px-4 py-3 border-b border-border bg-primary text-white flex items-center justify-between">
             <div>

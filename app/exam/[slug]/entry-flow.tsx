@@ -42,10 +42,14 @@ export function EntryFlow({ examId }: { examId: string }) {
       className="rounded-md bg-white border border-border p-6 space-y-4"
     >
       <div>
-        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
+        <label
+          htmlFor="applicant-name"
+          className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block"
+        >
           이름
         </label>
         <input
+          id="applicant-name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -56,10 +60,14 @@ export function EntryFlow({ examId }: { examId: string }) {
         />
       </div>
       <div>
-        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
+        <label
+          htmlFor="applicant-phone-last4"
+          className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block"
+        >
           전화번호 뒷 4자리
         </label>
         <input
+          id="applicant-phone-last4"
           type="text"
           inputMode="numeric"
           pattern="[0-9]{4}"

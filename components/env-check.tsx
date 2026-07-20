@@ -76,42 +76,38 @@ export function EnvCheck({
 
   // 브라우저 정보 · Fullscreen 지원
   useEffect(() => {
-    const ua = navigator.userAgent;
-    const browser = /Chrome/.test(ua)
-      ? "Chrome"
-      : /Firefox/.test(ua)
-      ? "Firefox"
-      : /Safari/.test(ua)
-      ? "Safari"
-      : /Edge/.test(ua)
-      ? "Edge"
-      : "Unknown";
-    const supported = ["Chrome", "Edge", "Firefox"].includes(browser);
-    setBrowserInfo({
-      status: supported ? "ok" : "warn",
-      detail: `${browser} · ${supported ? "지원 브라우저" : "권장 X (Chrome/Edge 사용 권장)"}`,
-    });
-
-    const fsSupported =
-      document.documentElement.requestFullscreen != null &&
-      document.exitFullscreen != null;
-    setFullscreen({
-      status: fsSupported ? "ok" : "error",
-      detail: fsSupported
-        ? "Fullscreen API 지원"
-        : "Fullscreen API 미지원 · 다른 브라우저 필요",
-    });
-    if (supported && fsSupported) {
-      setBrowserInfo({
-        status: "ok",
-        detail: `${browser} · 지원 브라우저 · Fullscreen OK`,
+    const timer = window.setTimeout(() => {
+      const ua = navigator.userAgent;
+      const browser = /Chrome/.test(ua)
+        ? "Chrome"
+        : /Firefox/.test(ua)
+        ? "Firefox"
+        : /Safari/.test(ua)
+        ? "Safari"
+        : /Edge/.test(ua)
+        ? "Edge"
+        : "Unknown";
+      const supported = ["Chrome", "Edge", "Firefox"].includes(browser);
+      const fsSupported =
+        document.documentElement.requestFullscreen != null &&
+        document.exitFullscreen != null;
+      setFullscreen({
+        status: fsSupported ? "ok" : "error",
+        detail: fsSupported
+          ? "Fullscreen API 지원"
+          : "Fullscreen API 미지원 · 다른 브라우저 필요",
       });
-    } else if (supported && !fsSupported) {
       setBrowserInfo({
-        status: "error",
-        detail: `${browser} · Fullscreen API 미지원 · 다른 브라우저 필요`,
+        status: supported && fsSupported ? "ok" : supported ? "error" : "warn",
+        detail:
+          supported && fsSupported
+            ? `${browser} · 지원 브라우저 · Fullscreen OK`
+            : supported
+            ? `${browser} · Fullscreen API 미지원 · 다른 브라우저 필요`
+            : `${browser} · 권장 X (Chrome/Edge 사용 권장)`,
       });
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // 네트워크 응답 시간 · 재측정 가능
@@ -142,7 +138,8 @@ export function EnvCheck({
   };
 
   useEffect(() => {
-    void measureNetwork();
+    const timer = window.setTimeout(() => void measureNetwork(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // 웹캠 요청 · 스트림은 부모가 유지 (시험 종료까지)
@@ -182,7 +179,8 @@ export function EnvCheck({
   // 최초 진입 시 웹캠 자동 요청 · 이미 활성이면 프리뷰만 연결
   useEffect(() => {
     if (webcamStream) return;
-    void requestWebcam();
+    const timer = window.setTimeout(() => void requestWebcam(), 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -247,7 +245,7 @@ export function EnvCheck({
 
   // 자동 시도 · 실패해도 사용자 재시도 가능
   useEffect(() => {
-    void requestMonitorCheck();
+    const timer = window.setTimeout(() => void requestMonitorCheck(), 0);
     // 스크린 연결 변경 감지
     const anyScreen = window.screen as unknown as {
       addEventListener?: (t: string, l: () => void) => void;
@@ -256,6 +254,7 @@ export function EnvCheck({
     const onChange = () => void requestMonitorCheck();
     anyScreen.addEventListener?.("change", onChange);
     return () => {
+      window.clearTimeout(timer);
       anyScreen.removeEventListener?.("change", onChange);
     };
   }, []);
