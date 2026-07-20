@@ -1,6 +1,7 @@
 export type InvitationCsvRow = {
-  email: string;
-  name?: string;
+  name: string;
+  phone: string;
+  email?: string;
   organization?: string;
 };
 
@@ -11,7 +12,7 @@ export type ParseResult = {
 
 /**
  * 응시자 초대 CSV 파서 · 헤더 기반 컬럼 매칭
- * 필수: email · 선택: name, organization
+ * 필수: name, phone · 선택: email, organization
  * - BOM/공백 제거 · 쉼표 구분 (쿠오트 내부 쉼표는 지원 안 함 · 단순 케이스만)
  * - 각 행별 오류는 errors에 누적 (파싱 계속)
  */
@@ -28,11 +29,12 @@ export function parseInvitationCsv(text: string): ParseResult {
   const header = splitCsvLine(lines[0]).map((c) => c.trim().toLowerCase());
   const emailIdx = header.indexOf("email");
   const nameIdx = header.indexOf("name");
+  const phoneIdx = header.indexOf("phone");
   const orgIdx = header.indexOf("organization");
-  if (emailIdx < 0) {
+  if (nameIdx < 0 || phoneIdx < 0) {
     return {
       rows: [],
-      errors: ["헤더에 'email' 컬럼이 반드시 필요합니다"],
+      errors: ["헤더에 'name', 'phone' 컬럼이 반드시 필요합니다"],
     };
   }
 
@@ -41,24 +43,31 @@ export function parseInvitationCsv(text: string): ParseResult {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     const cols = splitCsvLine(line).map((c) => c.trim());
-    const email = cols[emailIdx];
-    if (!email) {
-      errors.push(`${i + 1}행: 이메일 없음`);
+    const name = cols[nameIdx];
+    const phone = cols[phoneIdx];
+    const email = emailIdx >= 0 ? cols[emailIdx] : "";
+    if (!name || !phone) {
+      errors.push(`${i + 1}행: 이름 또는 전화번호 없음`);
       continue;
     }
-    const emailLower = email.toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    if (phone.replace(/\D/g, "").length < 4) {
+      errors.push(`${i + 1}행: 전화번호 형식 오류 (${phone})`);
+      continue;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
       errors.push(`${i + 1}행: 이메일 형식 오류 (${email})`);
       continue;
     }
-    if (seen.has(emailLower)) {
-      errors.push(`${i + 1}행: 중복 (${email})`);
+    const key = `${name}:${phone.replace(/\D/g, "").slice(-4)}`;
+    if (seen.has(key)) {
+      errors.push(`${i + 1}행: 이름·전화번호 뒷자리 중복 (${name})`);
       continue;
     }
-    seen.add(emailLower);
+    seen.add(key);
     rows.push({
-      email,
-      name: nameIdx >= 0 ? cols[nameIdx] || undefined : undefined,
+      name,
+      phone,
+      email: email || undefined,
       organization: orgIdx >= 0 ? cols[orgIdx] || undefined : undefined,
     });
   }
@@ -70,7 +79,6 @@ function splitCsvLine(line: string): string[] {
   return line.split(",").map((c) => c.replace(/^"(.*)"$/, "$1"));
 }
 
-export const CSV_TEMPLATE = `email,name,organization
-applicant1@example.com,홍길동,케이브레인
-applicant2@example.com,김철수,DAEASY
-applicant3@example.com,,`;
+export const CSV_TEMPLATE = `name,phone,email,organization
+홍길동,010-1234-5678,applicant1@example.com,케이브레인
+김철수,010-9876-5432,,DAEASY`;

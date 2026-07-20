@@ -19,9 +19,9 @@
 | 배포 | **Vercel** (Frontend) |
 | **화상회의 (감독관 실시간 관찰)** | **Agora Web SDK** (Seoul 리전 · SD simulcast) — 2026-07-14 Daily.co에서 재확정 |
 | **응시 녹화** | **Cloudflare R2** (웹캠·화면 청크 저장) |
-| **이메일 발송 (초대·OTP)** | **Resend** (원본 방식, 승우님 재확인 필요) |
+| **응시자 진입** | **시험 공용 링크 + 이름 + 전화번호 뒷 4자리** |
 | **본인 인증** | **신분증 이미지 업로드 → 관리자 사후 검토** (AWS Rekognition 미사용) |
-| **응시자 등록** | **초대전용 메인** (관리자 명단 업로드 → 이메일 OTP) |
+| **응시자 등록** | **관리자 명단 업로드** (이름·전체 전화번호 필수, 이메일 선택) |
 | **감독 방식** | 브라우저 로컬 추론(얼굴·음성·화면) + 서버 이벤트 로그 + Agora 실시간 스트림 + R2 녹화 |
 | **문제 유형** | **작업형(work_based, 슬롯형) 한 종류만** (결정 I) — 슬롯 조합: text · long_text · url · file · number |
 | **자동채점 범위** | **없음** (결정 I 파급) — 모든 문항이 작업형이라 자동채점 대상 없음. 슬롯별 수동채점 + 답안 CSV/JSON export로 외부 위임 |
@@ -62,9 +62,8 @@
 - Supabase 프로젝트 신규 2개 생성 → RLS 기본 정책 + 4역할(admin/examiner/grader/applicant)
 - **Agora 계정 · Seoul 프로젝트 생성 · App ID/Certificate 발급**
 - **Cloudflare R2 버킷 생성 · SigV4 credential**
-- **Resend 계정 · 발신 도메인 인증** (또는 Supabase Auth 내장으로 결정)
 - 환경 변수 통합 세팅
-- **검증**: 로컬 dev 서버 기동, 각 외부 서비스 헬로월드 (Daily 룸 생성 · R2 파일 업로드 · Resend 테스트 메일)
+- **검증**: 로컬 dev 서버 기동, 각 외부 서비스 헬로월드 (Agora 연결 · R2 파일 업로드)
 
 ### M2 — 문제은행 & 세트 관리 + 커스터마이징 (3~5일, **작업형 전용으로 축소**)
 - 스키마 마이그레이션 최초 세트:
@@ -80,14 +79,12 @@
 
 ### M3 — 시험 관리 + 초대 + 응시 core loop (2026-07-15 대부분 완료)
 - **관리자 시험 관리**: 시험 CRUD, 세트 조합, 절대/상대/테스트 모드, `entry_start_minutes`, `alert_event_types`, `custom_texts`, `pass_score`
-- **초대전용 흐름**:
-  - [x] `POST /api/admin/invitations` — 12자 hex invite_code 발급 + `exam_invitations.status='sent'`
+- **명단 기반 진입 흐름**:
+  - [x] `POST /api/admin/invitations` — 이름·전체 전화번호 필수, 이메일 선택
   - [x] 관리자 페이지 `+ 초대 만들기` 모달 (개별 폼)
-  - [x] Resend **stub** (`lib/email/send-invitation.ts` · 콘솔 출력 · API 등록 후 4줄 교체하면 실 발송)
-  - [ ] CSV 명단 업로드 (100명 일괄) — 후속
-  - [x] `/exam/[code]` 응시자 진입 · 이메일 확인 · OTP 요청/검증
-  - [x] `POST /api/exam/otp/{request,verify}` · `guest_otp_codes` 활용
-  - [x] OTP 검증 시 `exam_sessions` 생성 + HMAC 서명 쿠키(`kbrain_exam_session`) 발급
+  - [x] CSV 명단 업로드 (`name,phone,email,organization`, 최대 1000명)
+  - [x] `/exam/[slug]` 공용 링크 · 이름 + 전화번호 뒷 4자리 검증
+  - [x] `POST /api/exam/enter` 검증 시 `exam_sessions` 생성 + HMAC 서명 쿠키 발급
 - **4-step 응시자 wizard** (Practice + 실 시험 공용 `PracticeRunner`)
   - [x] Step 1 · 환경 체크 6개 항목 (듀얼모니터 → 웹캠 → 화면공유 → 네트워크 → CPU 벤치 → 브라우저)
   - [x] Step 2 · 보안 서약 7개 항목 체크 (원본 텍스트 다듬음)
@@ -105,7 +102,7 @@
 - **첨부 파일 인증 3방식**: 로그인 · practice slug · 세션 쿠키(exam 소속 path만)
 - **결과 페이지** `/exam/session/[id]/done` — 응시 완료 · 소요 시간 · 채점 안내
 - 응시자 개별 예외(듀얼 모니터 허용·웹캠 없음 허용) 설정 — 스키마만 있음 · UI 후속
-- **검증**: (수동) `.env.local`에 `EXAM_SESSION_SECRET` 세팅 → SQL Editor에서 `20260715000002_exam_session_precheck.sql`, `20260715000003_auto_submit_cron.sql` 실행 → 초대 → OTP → 4-step → 답안 저장 → 시간 만료 자동 제출까지 end-to-end
+- **검증**: (수동) `.env.local`에 `EXAM_SESSION_SECRET` 세팅 → 명단 등록 → 공용 링크에서 이름·전화번호 뒷 4자리 입력 → 4-step → 답안 저장 → 시간 만료 자동 제출까지 end-to-end
 
 ### M3.5 — 감독관 대시보드 + 응시자 감독 (2026-07-16 대부분 완료)
 - [x] **ProctorGuard** — Fullscreen 강제(5회 위반 시 자동 제출) · 탭 이탈 · 윈도우 blur · 복붙/우클릭/드래그·드롭/F12/PrintScreen/DevTools 단축키 · 인쇄 · beforeunload 트랩
@@ -182,7 +179,6 @@ M0(완료) + M1(3~5일) + M2(5~7일) + M3(4~6일) + M4(7~10일) + M5(5~7일) + M
 
 1. ~~Daily.co 구독 플랜~~ → **Agora 확정 (2026-07-14)**
 2. **Cloudflare R2 계정 명의** — 개인/daeasy
-3. **Resend 발신 이메일 주소** — 후보: `onboarding@resend.dev`(개발용) · `no-reply@kbrainc.com`(회사) · `cert@dataeasy.kr`(브랜드) — 코드는 stub 준비 완료, API 키만 넣으면 실 발송
 4. **얼굴 감지 모델** — face-api.js 유지 vs MediaPipe
 5. **응시 녹화 보관 기간** — 30일 / 6개월 / 1년
 6. **Vercel 프로젝트 도메인** (임시 `kbrain-cert.vercel.app`)

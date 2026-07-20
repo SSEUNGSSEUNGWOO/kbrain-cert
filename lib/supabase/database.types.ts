@@ -13,6 +13,7 @@
  *   - 20260716000001_examiner_actions (time_extension + session_messages)
  *   - 20260716000002_answer_files (bucket)
  *   - 20260716000003_identity_documents (bucket)
+ *   - 20260720000001_exam_slug_and_phone_entry (slug + phone + guest_otp_codes drop)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
@@ -194,6 +195,7 @@ export type Database = {
           custom_texts: Json;
           alert_event_types: string[];
           practice_slug: string | null;
+          slug: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -242,7 +244,8 @@ export type Database = {
         Row: {
           id: string;
           exam_id: string;
-          email: string;
+          email: string | null;
+          phone: string | null;
           name: string | null;
           organization: string | null;
           invite_code: string;
@@ -257,7 +260,8 @@ export type Database = {
         Insert: {
           id?: string;
           exam_id: string;
-          email: string;
+          email?: string | null;
+          phone?: string | null;
           name?: string | null;
           organization?: string | null;
           invite_code: string;
@@ -271,29 +275,6 @@ export type Database = {
         };
         Update: Partial<
           Database["public"]["Tables"]["exam_invitations"]["Insert"]
-        >;
-      };
-      guest_otp_codes: {
-        Row: {
-          id: string;
-          invitation_id: string;
-          email: string;
-          code: string;
-          expires_at: string;
-          verified_at: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          invitation_id: string;
-          email: string;
-          code: string;
-          expires_at: string;
-          verified_at?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<
-          Database["public"]["Tables"]["guest_otp_codes"]["Insert"]
         >;
       };
       exam_sessions: {

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   AdminShell,
   PageHeader,
@@ -11,21 +10,10 @@ import { ExamsFilter } from "./exams-filter";
 
 export const dynamic = "force-dynamic";
 
-const statusStyle = {
-  open: { text: "text-danger", bg: "bg-danger-soft", label: "OPEN", pulse: true },
-  draft: { text: "text-info", bg: "bg-info-soft", label: "DRAFT", pulse: false },
-  closed: {
-    text: "text-muted-foreground",
-    bg: "bg-surface-soft",
-    label: "CLOSED",
-    pulse: false,
-  },
-} as const;
-
 type ExamRow = {
   id: string;
   title: string;
-  status: keyof typeof statusStyle;
+  status: "open" | "draft" | "closed";
   grade: string;
   examDate: string | null;
   durationMinutes: number;
@@ -34,6 +22,7 @@ type ExamRow = {
   questionCount: number;
   passScore: number;
   practiceSlug: string | null;
+  slug: string | null;
 };
 
 export default async function ExamsPage() {
@@ -42,7 +31,7 @@ export default async function ExamsPage() {
   const { data: exams } = await supabase
     .from("exams")
     .select(
-      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, practice_slug"
+      "id, title, status, exam_date, duration_minutes, max_participants, pass_score, grade_id, practice_slug, slug"
     )
     .order("created_at", { ascending: false });
 
@@ -79,6 +68,7 @@ export default async function ExamsPage() {
     questionCount: qCount[e.id] ?? 0,
     passScore: e.pass_score,
     practiceSlug: (e as { practice_slug: string | null }).practice_slug ?? null,
+    slug: e.slug,
   }));
 
   const stats = {

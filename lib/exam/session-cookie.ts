@@ -20,7 +20,7 @@ function sign(sessionId: string): string {
 
 /**
  * 응시자 세션 쿠키 값 생성 · `<sessionId>.<hmac>`
- * OTP 검증 성공 시 발급
+ * 명단의 이름·전화번호 뒷 4자리 검증 성공 시 발급
  */
 export function makeSessionCookieValue(sessionId: string): string {
   return `${sessionId}.${sign(sessionId)}`;

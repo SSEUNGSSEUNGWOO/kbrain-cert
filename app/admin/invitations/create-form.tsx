@@ -11,8 +11,8 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
   const [examId, setExamId] = useState(exams[0]?.id ?? "");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [organization, setOrganization] = useState("");
-  const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     inviteCode: string;
@@ -29,13 +29,14 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
       const res = await fetch("/api/admin/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ examId, email, name, organization, sendEmail }),
+        body: JSON.stringify({ examId, email, name, phone, organization }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
       setResult({ inviteCode: data.inviteCode, entryUrl: data.entryUrl });
       setEmail("");
       setName("");
+      setPhone("");
       setOrganization("");
       router.refresh();
     } catch (err) {
@@ -92,13 +93,12 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
           </div>
           <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
-              이메일 *
+              이메일 (선택)
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               placeholder="applicant@example.com"
               className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
             />
@@ -106,17 +106,32 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
-                이름
+                이름 *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
                 placeholder="홍길동"
                 className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
               />
             </div>
             <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
+                전화번호 *
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                placeholder="010-1234-5678"
+                className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
+              />
+            </div>
+          </div>
+          <div>
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 block">
                 소속
               </label>
@@ -127,22 +142,7 @@ export function CreateInvitationForm({ exams }: { exams: ExamOption[] }) {
                 placeholder="회사명"
                 className="w-full h-10 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
               />
-            </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sendEmail}
-              onChange={(e) => setSendEmail(e.target.checked)}
-              className="w-4 h-4 accent-primary"
-            />
-            <span className="text-sm">
-              초대 이메일 발송
-              <span className="text-xs text-muted-foreground ml-1">
-                (Resend 미등록 · 콘솔에 링크 출력)
-              </span>
-            </span>
-          </label>
 
           {error && (
             <div className="rounded-md bg-danger-soft border border-danger text-danger text-xs p-3">

@@ -38,11 +38,10 @@ function CsvUploadModal({
   const [examId, setExamId] = useState(exams[0]?.id ?? "");
   const [parsed, setParsed] = useState<InvitationCsvRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
-  const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     created: number;
-    errors: Array<{ email: string; reason: string }>;
+    errors: Array<{ name: string; reason: string }>;
   } | null>(null);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -78,7 +77,7 @@ function CsvUploadModal({
       const res = await fetch("/api/admin/invitations/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ examId, rows: parsed, sendEmail }),
+        body: JSON.stringify({ examId, rows: parsed }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "업로드 실패");
@@ -92,7 +91,7 @@ function CsvUploadModal({
         created: 0,
         errors: [
           {
-            email: "-",
+            name: "-",
             reason: err instanceof Error ? err.message : "업로드 실패",
           },
         ],
@@ -141,12 +140,12 @@ function CsvUploadModal({
           <div className="rounded-md bg-surface-soft p-4 space-y-2">
             <div className="text-sm font-bold">CSV 형식</div>
             <pre className="text-[11px] font-tabular text-muted-foreground bg-white p-3 rounded-sm border border-border overflow-x-auto">
-{`email,name,organization
-applicant1@example.com,홍길동,케이브레인
-applicant2@example.com,김철수,DAEASY`}
+{`name,phone,email,organization
+홍길동,010-1234-5678,applicant1@example.com,케이브레인
+김철수,010-9876-5432,,DAEASY`}
             </pre>
             <div className="text-[11px] text-muted-foreground leading-relaxed">
-              • 헤더 필수 · email 컬럼은 반드시 있어야 함 · name/organization은 선택
+              • name, phone 필수 · email, organization 선택
               <br />
               • UTF-8 인코딩 · 최대 1000행
             </div>
@@ -198,23 +197,25 @@ applicant2@example.com,김철수,DAEASY`}
                 <table className="w-full text-xs">
                   <thead className="bg-surface-soft sticky top-0">
                     <tr className="text-left text-[10px] font-bold text-muted uppercase tracking-widest">
-                      <th className="px-3 py-2">이메일</th>
                       <th className="px-3 py-2">이름</th>
+                      <th className="px-3 py-2">전화번호</th>
+                      <th className="px-3 py-2">이메일</th>
                       <th className="px-3 py-2">소속</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {parsed.slice(0, 100).map((r, i) => (
                       <tr key={i}>
-                        <td className="px-3 py-2 font-tabular">{r.email}</td>
-                        <td className="px-3 py-2">{r.name ?? "-"}</td>
+                        <td className="px-3 py-2">{r.name}</td>
+                        <td className="px-3 py-2 font-tabular">{r.phone}</td>
+                        <td className="px-3 py-2 font-tabular">{r.email ?? "-"}</td>
                         <td className="px-3 py-2">{r.organization ?? "-"}</td>
                       </tr>
                     ))}
                     {parsed.length > 100 && (
                       <tr>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           className="px-3 py-2 text-center text-muted"
                         >
                           …외 {parsed.length - 100}행
@@ -225,23 +226,6 @@ applicant2@example.com,김철수,DAEASY`}
                 </table>
               </div>
             </div>
-          )}
-
-          {parsed.length > 0 && !result && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sendEmail}
-                onChange={(e) => setSendEmail(e.target.checked)}
-                className="w-4 h-4 accent-primary"
-              />
-              <span className="text-sm">
-                초대 이메일 발송
-                <span className="text-xs text-muted-foreground ml-1">
-                  (Resend 미등록 · 콘솔에 링크 출력)
-                </span>
-              </span>
-            </label>
           )}
 
           {result && (
@@ -261,7 +245,7 @@ applicant2@example.com,김철수,DAEASY`}
                 <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
                   {result.errors.slice(0, 10).map((e, i) => (
                     <li key={i}>
-                      {e.email}: {e.reason}
+                      {e.name}: {e.reason}
                     </li>
                   ))}
                   {result.errors.length > 10 && (

@@ -17,7 +17,7 @@ export default async function InvitationsPage() {
     supabase
       .from("exam_invitations")
       .select(
-        "id, name, email, organization, invite_code, status, sent_at, used_at, exam_id"
+        "id, name, phone, email, organization, invite_code, status, sent_at, used_at, exam_id"
       )
       .order("created_at", { ascending: false }),
     supabase.from("exams").select("id, title"),
@@ -75,6 +75,7 @@ export default async function InvitationsPage() {
     id: inv.id,
     name: inv.name ?? "-",
     email: inv.email,
+    phone: inv.phone ?? "-",
     organization: inv.organization ?? "-",
     examTitle: examMap[inv.exam_id] ?? "-",
     inviteCode: inv.invite_code,
@@ -95,7 +96,7 @@ export default async function InvitationsPage() {
     <AdminShell active="invitations">
       <PageHeader
         title="응시자 초대"
-        description={`전체 ${stats.total}명 · 명단 CSV 업로드 → 초대코드 생성 → 이메일 발송 → OTP 검증 (M3 진입 시 실동작)`}
+        description={`전체 ${stats.total}명 · 시험 공용 링크에서 이름과 전화번호 뒷 4자리로 진입`}
         action={
           <>
             <CsvUploadButton exams={exams ?? []} />

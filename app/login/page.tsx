@@ -37,7 +37,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-2xl">관리자 · 감독관 · 채점자 로그인</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              응시자는 초대 이메일 링크로 진입해주세요.
+              응시자는 안내받은 시험 링크로 진입해주세요.
             </p>
           </div>
 

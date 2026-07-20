@@ -11,7 +11,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * 실 시험 페이지 · OTP 검증 후 발급된 세션 쿠키로 접근
+ * 실 시험 페이지 · 명단의 이름·전화번호 뒷 4자리 검증 후 발급된 세션 쿠키로 접근
  * PracticeRunner 재사용 (sessionId 전달로 precheck 저장 자동 활성화)
  */
 export default async function ExamSessionTakePage({

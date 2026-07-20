@@ -19,7 +19,8 @@ type SessionInfo = {
 type Row = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  phone: string;
   organization: string;
   examTitle: string;
   inviteCode: string;
@@ -58,7 +59,8 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
       if (
         search &&
         !inv.name.includes(search) &&
-        !inv.email.includes(search) &&
+        !(inv.email ?? "").includes(search) &&
+        !inv.phone.includes(search) &&
         !inv.organization.includes(search)
       )
         return false;
@@ -87,7 +89,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름 · 이메일 · 조직 검색"
+            placeholder="이름 · 전화번호 · 이메일 · 조직 검색"
             className="w-full h-10 pl-10 pr-4 rounded-md bg-surface-soft border border-border text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-soft"
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-bold">
@@ -123,7 +125,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
               초대코드 재발급
             </button>
             <button className="h-8 px-3 rounded-sm bg-primary hover:bg-primary-hover text-white text-xs font-bold">
-              이메일 일괄 발송 (M3)
+              선택 작업
             </button>
           </div>
         </div>
@@ -172,7 +174,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                 <td className="px-3 py-3">
                   <div className="font-bold text-sm">{inv.name}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {inv.email}
+                    {inv.phone} · {inv.email ?? "이메일 없음"}
                   </div>
                 </td>
                 <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
@@ -218,7 +220,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                 </div>
                 <div className="text-xs">
                   {rows.length === 0
-                    ? "+ 명단 CSV 업로드로 첫 초대를 시작하세요 (M3 진입 시 실동작)"
+                    ? "+ 명단 CSV 업로드로 첫 응시자를 등록하세요"
                     : "필터를 조정해보세요"}
                 </div>
               </td>
@@ -324,7 +326,7 @@ function PrecheckDetailModal({
               응시자 준비 상태
             </div>
             <h3 className="font-bold text-base">
-              {row.name} · {row.email}
+              {row.name} · {row.phone}
             </h3>
           </div>
           <button

@@ -18,6 +18,7 @@ type ExamRow = {
   questionCount: number;
   passScore: number;
   practiceSlug: string | null;
+  slug: string | null;
 };
 
 const statusStyle = {
@@ -151,6 +152,16 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
       </div>
 
       <PracticeLink slug={exam.practiceSlug} />
+      <div className="mt-2 text-xs text-muted-foreground font-tabular">
+        응시 링크:{" "}
+        <Link
+          href={`/exam/${exam.slug ?? exam.id}`}
+          target="_blank"
+          className="text-primary font-semibold hover:underline"
+        >
+          /exam/{exam.slug ?? exam.id} ↗
+        </Link>
+      </div>
 
       <div className="flex items-center gap-2 mt-3">
         <Link

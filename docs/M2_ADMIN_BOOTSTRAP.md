@@ -62,7 +62,7 @@ Run.
 
 - 신규 감독관: `insert into user_roles (user_id, role) values ('<uid>', 'examiner');`
 - 신규 채점자: `insert into user_roles (user_id, role) values ('<uid>', 'grader');`
-- 응시자는 초대 OTP 흐름 (M3에서 자동 처리 · 수동 부여 불필요)
+- 응시자는 Supabase Auth role을 부여하지 않음. 관리자 명단의 이름·전체 전화번호를 기준으로 등록하고, 시험 공용 링크에서 이름·전화번호 뒷 4자리로 진입
 
 M2 후반부에 관리자 페이지에서 사용자 role CRUD UI 추가 예정.
 
