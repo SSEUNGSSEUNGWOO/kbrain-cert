@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ScheduleEditor } from "./schedule-editor";
 import { SlugEditor } from "./slug-editor";
+import { TestModeToggle } from "./test-mode-toggle";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -18,8 +19,8 @@ type ExamRow = {
   setCount: number;
   questionCount: number;
   passScore: number;
-  practiceSlug: string | null;
   slug: string | null;
+  isTestMode: boolean;
 };
 
 const statusStyle = {
@@ -123,6 +124,11 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               {exam.grade}
             </span>
+            {exam.isTestMode && (
+              <span className="text-[10px] font-bold text-warning bg-warning-soft px-2 py-0.5 rounded-sm">
+                TEST
+              </span>
+            )}
           </div>
           <div className="font-bold text-base text-heading mb-1">
             {exam.title}
@@ -152,8 +158,8 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
         <StatMini label="시간" value={`${exam.durationMinutes}분`} sub="총합" />
       </div>
 
-      <PracticeLink slug={exam.practiceSlug} />
       <SlugEditor examId={exam.id} slug={exam.slug} />
+      <TestModeToggle examId={exam.id} isTestMode={exam.isTestMode} />
 
       <div className="flex items-center gap-2 mt-3">
         <Link
@@ -175,55 +181,6 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
           결과 · 통계
         </Link>
       </div>
-    </div>
-  );
-}
-
-function PracticeLink({ slug }: { slug: string | null }) {
-  const [copied, setCopied] = useState(false);
-  if (!slug) {
-    return (
-      <div className="rounded-md border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground text-center">
-        테스트 링크 미발급 · 스크립트로 발급 필요
-      </div>
-    );
-  }
-  const path = `/practice/${slug}`;
-  const fullUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${path}`
-      : path;
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(fullUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
-  return (
-    <div className="rounded-md bg-info-soft border border-info-soft px-3 py-2 flex items-center gap-2">
-      <div className="flex-1 min-w-0">
-        <div className="text-[10px] font-bold tracking-widest text-info uppercase mb-0.5">
-          테스트 링크 · 여러 번 접속 가능
-        </div>
-        <div className="text-xs font-tabular text-info truncate">{path}</div>
-      </div>
-      <Link
-        href={path}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="h-7 px-2.5 rounded-sm bg-white border border-border text-[10px] font-bold hover:border-info transition"
-      >
-        열기 ↗
-      </Link>
-      <button
-        onClick={copy}
-        className="h-7 px-2.5 rounded-sm bg-info hover:opacity-90 text-white text-[10px] font-bold transition"
-      >
-        {copied ? "복사됨" : "URL 복사"}
-      </button>
     </div>
   );
 }

@@ -68,6 +68,15 @@ export async function PATCH(
     }
     patch.slug = slug || null;
   }
+  if ("isTestMode" in body) {
+    if (typeof body.isTestMode !== "boolean") {
+      return NextResponse.json(
+        { error: "isTestMode must be boolean" },
+        { status: 400 }
+      );
+    }
+    patch.is_test_mode = body.isTestMode;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });

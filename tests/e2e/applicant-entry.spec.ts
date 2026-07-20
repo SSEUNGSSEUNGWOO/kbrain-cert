@@ -7,6 +7,7 @@ type Fixture = {
   examId: string;
   invitationId: string;
   originalSlug: string | null;
+  originalIsTestMode: boolean;
   slug: string;
   name: string;
   phoneLast4: string;
@@ -25,7 +26,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
   test.beforeAll(async () => {
     const { data: exam, error: examError } = await supabase
       .from("exams")
-      .select("id, slug")
+      .select("id, slug, is_test_mode")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -37,7 +38,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const phoneLast4 = "1357";
     const { error: slugError } = await supabase
       .from("exams")
-      .update({ slug })
+      .update({ slug, is_test_mode: false })
       .eq("id", exam.id);
     if (slugError) throw slugError;
 
@@ -63,6 +64,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       examId: exam.id,
       invitationId: invitation.id,
       originalSlug: exam.slug,
+      originalIsTestMode: exam.is_test_mode,
       slug,
       name,
       phoneLast4,
@@ -81,7 +83,10 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       .eq("id", fixture.invitationId);
     await supabase
       .from("exams")
-      .update({ slug: fixture.originalSlug })
+      .update({
+        slug: fixture.originalSlug,
+        is_test_mode: fixture.originalIsTestMode,
+      })
       .eq("id", fixture.examId);
   });
 
@@ -171,6 +176,23 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     });
     expect(response.status()).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "already submitted" });
+  });
+
+  test("테스트 시험은 명단 없이 반복해서 열 수 있다", async ({ browser }) => {
+    const { error } = await supabase
+      .from("exams")
+      .update({ is_test_mode: true })
+      .eq("id", fixture.examId);
+    if (error) throw error;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.goto(`/exam/${fixture.slug}`);
+      await expect(page.getByText("1. 환경 체크", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("이름")).toHaveCount(0);
+      await context.close();
+    }
   });
 });
 

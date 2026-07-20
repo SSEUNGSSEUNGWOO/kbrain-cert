@@ -7,6 +7,7 @@ import {
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
 import { EntryFlow } from "./entry-flow";
+import { TestExam } from "@/app/practice/[slug]/test-exam";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,15 @@ export default async function ExamEntryPage({
 
   const examQuery = admin
     .from("exams")
-    .select("id, title, duration_minutes, exam_date, slug");
+    .select("id, title, duration_minutes, exam_date, slug, is_test_mode");
   const { data: exam } = await (UUID_RE.test(slug)
     ? examQuery.eq("id", slug)
     : examQuery.eq("slug", slug)
   ).maybeSingle();
   if (!exam) return notFound();
+  if (exam.is_test_mode) {
+    return <TestExam examId={exam.id} slug={slug} />;
+  }
 
   const cookieStore = await cookies();
   const cookieSessionId = verifySessionCookieValue(

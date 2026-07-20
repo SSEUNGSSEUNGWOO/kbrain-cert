@@ -12,7 +12,7 @@ import {
  *
  * 인증 3방식:
  * 1) 로그인된 사용자 → 통과
- * 2) ?practice=<slug> · 유효한 practice_slug면 · 로그인 없이 통과 (테스트 링크)
+ * 2) ?practice=<slug> · 테스트 시험의 slug면 해당 시험 첨부만 통과
  * 3) 세션 쿠키(kbrain_exam_session) 유효 · path가 그 세션의 exam에 속한 첨부면 통과 (실 응시자)
  *
  * 응답 모드:
@@ -37,9 +37,12 @@ export async function GET(
     const { data } = await supabase
       .from("exams")
       .select("id")
-      .eq("practice_slug", practiceSlug)
+      .eq("is_test_mode", true)
+      .or(`slug.eq.${practiceSlug},practice_slug.eq.${practiceSlug}`)
       .maybeSingle();
-    authorized = !!data;
+    authorized = data
+      ? await isPathInExam(supabase, data.id, storagePath)
+      : false;
   } else {
     // 세션 쿠키 (실 응시자) 우선 확인
     const cookieStore = await cookies();
@@ -112,11 +115,18 @@ async function isPathInSessionExam(
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return false;
+  return isPathInExam(supabase, session.exam_id, storagePath);
+}
 
+async function isPathInExam(
+  supabase: ReturnType<typeof createAdminSupabase>,
+  examId: string,
+  storagePath: string
+): Promise<boolean> {
   const { data: examSets } = await supabase
     .from("exam_sets")
     .select("question_sets(attachments)")
-    .eq("exam_id", session.exam_id);
+    .eq("exam_id", examId);
   if (!examSets) return false;
 
   for (const es of examSets) {
