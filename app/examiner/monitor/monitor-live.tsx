@@ -71,6 +71,9 @@ export function MonitorLive({
     "connecting" | "live" | "polling"
   >("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const [announcementBusy, setAnnouncementBusy] = useState(false);
+  const [announcementResult, setAnnouncementResult] = useState<string | null>(null);
   const [videoTracks, setVideoTracks] = useState<
     Record<string, IRemoteVideoTrack>
   >({});
@@ -439,6 +442,35 @@ export function MonitorLive({
     warns: warns.length,
   };
 
+  const sendAnnouncement = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const content = announcement.trim();
+    if (!content || announcementBusy) return;
+    setAnnouncementBusy(true);
+    setAnnouncementResult(null);
+    try {
+      const response = await fetch("/api/examiner/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ examId: exam.id, content }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "전체 공지 전송 실패");
+      setAnnouncement("");
+      setAnnouncementResult(
+        data.recipientCount > 0
+          ? `${data.recipientCount}명에게 공지를 전송했습니다.`
+          : "현재 입장한 응시자가 없습니다."
+      );
+    } catch (sendError) {
+      setAnnouncementResult(
+        sendError instanceof Error ? sendError.message : "전체 공지 전송 실패"
+      );
+    } finally {
+      setAnnouncementBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <TopBar
@@ -457,6 +489,44 @@ export function MonitorLive({
             <StatBig label="Alerts" value={stats.alerts} tone="danger" pulse />
             <StatBig label="Warn" value={stats.warns} tone="warning" />
           </div>
+
+          <form
+            onSubmit={sendAnnouncement}
+            className="rounded-md border border-primary bg-primary-soft p-4"
+          >
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                  전체 공지
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  현재 입장한 모든 미제출 응시자에게 즉시 전달됩니다.
+                </div>
+              </div>
+              {announcementResult && (
+                <div className="text-xs font-bold text-primary">
+                  {announcementResult}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={announcement}
+                onChange={(event) => setAnnouncement(event.target.value)}
+                maxLength={500}
+                placeholder="전체 공지 내용을 입력하세요"
+                aria-label="전체 공지 내용"
+                className="h-10 flex-1 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={announcementBusy || !announcement.trim()}
+                className="h-10 rounded-md bg-primary px-5 text-xs font-bold text-white disabled:opacity-40"
+              >
+                {announcementBusy ? "전송 중…" : "모두에게 전송"}
+              </button>
+            </div>
+          </form>
 
           <div className="rounded-md bg-white border border-border p-4 flex items-center gap-3 flex-wrap">
             <span
