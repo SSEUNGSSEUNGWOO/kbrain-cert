@@ -26,7 +26,8 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const { data: role } = await supabase
+  const admin = createAdminSupabase();
+  const { data: role } = await admin
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -37,7 +38,6 @@ export async function GET(
   }
 
   const { examId } = await params;
-  const admin = createAdminSupabase();
 
   const { data: exam } = await admin
     .from("exams")

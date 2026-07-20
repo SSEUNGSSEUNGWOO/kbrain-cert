@@ -16,7 +16,8 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const { data: roleRow } = await supabase
+  const admin = createAdminSupabase();
+  const { data: roleRow } = await admin
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -72,7 +73,6 @@ export async function PATCH(
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });
   }
 
-  const admin = createAdminSupabase();
   const { error } = await admin
     .from("exams")
     .update(patch)

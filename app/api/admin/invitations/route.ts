@@ -9,7 +9,8 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { data: role } = await supabase
+  const admin = createAdminSupabase();
+  const { data: role } = await admin
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -34,7 +35,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const admin = createAdminSupabase();
   const { data: exam } = await admin
     .from("exams")
     .select("id, slug")
