@@ -20,6 +20,11 @@ type Session = {
   organization: string;
   highCount: number;
   warnCount: number;
+  unreadMessageCount: number;
+  latestUnreadMessage: {
+    content: string;
+    createdAt: string;
+  } | null;
   lastEvent: {
     eventType: string;
     severity: string;
@@ -95,8 +100,20 @@ export function MonitorLive({
     const ordered = [...sessions].sort((a, b) => {
       if (a.sessionId === selectedSession) return -1;
       if (b.sessionId === selectedSession) return 1;
-      const aPriority = a.isFlagged || a.highCount > 0 ? 2 : a.warnCount > 0 ? 1 : 0;
-      const bPriority = b.isFlagged || b.highCount > 0 ? 2 : b.warnCount > 0 ? 1 : 0;
+      const aPriority = a.unreadMessageCount > 0
+        ? 3
+        : a.isFlagged || a.highCount > 0
+        ? 2
+        : a.warnCount > 0
+        ? 1
+        : 0;
+      const bPriority = b.unreadMessageCount > 0
+        ? 3
+        : b.isFlagged || b.highCount > 0
+        ? 2
+        : b.warnCount > 0
+        ? 1
+        : 0;
       return bPriority - aPriority;
     });
     const desired = new Set(
@@ -253,6 +270,27 @@ export function MonitorLive({
           // 새 세션 생성 (응시자 진입) → refetch
           const examId = (payload.new as { exam_id?: string })?.exam_id;
           if (examId === exam.id) scheduleFetch();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "session_messages",
+        },
+        (payload) => {
+          const sessionId = (payload.new as { session_id?: string })
+            .session_id;
+          const senderRole = (payload.new as { sender_role?: string })
+            .sender_role;
+          if (
+            senderRole === "applicant" &&
+            sessionId &&
+            sessionIdsRef.current.has(sessionId)
+          ) {
+            scheduleFetch();
+          }
         }
       )
       .subscribe((status) => {
@@ -441,6 +479,13 @@ export function MonitorLive({
     alerts: alerts.length,
     warns: warns.length,
   };
+  const chatSessions = sessions.filter(
+    (session) => session.unreadMessageCount > 0
+  );
+  const unreadChatCount = chatSessions.reduce(
+    (total, session) => total + session.unreadMessageCount,
+    0
+  );
 
   const sendAnnouncement = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -489,6 +534,45 @@ export function MonitorLive({
             <StatBig label="Alerts" value={stats.alerts} tone="danger" pulse />
             <StatBig label="Warn" value={stats.warns} tone="warning" />
           </div>
+
+          {unreadChatCount > 0 && (
+            <section className="rounded-md border-2 border-danger bg-danger-soft p-4 shadow-lg">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-danger text-lg text-white animate-pulse">
+                  💬
+                </span>
+                <div>
+                  <div className="font-bold text-danger">
+                    새 응시자 채팅 {unreadChatCount}건
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    응시자 카드를 열면 확인 처리됩니다.
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {chatSessions.map((session) => (
+                  <Link
+                    key={session.sessionId}
+                    href={`/examiner/session/${session.sessionId}`}
+                    className="rounded-md border border-danger/30 bg-white p-3 transition hover:border-danger"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-sm">
+                        {session.applicantName}
+                      </span>
+                      <span className="rounded-full bg-danger px-2 py-0.5 text-[10px] font-bold text-white">
+                        {session.unreadMessageCount}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      {session.latestUnreadMessage?.content}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <form
             onSubmit={sendAnnouncement}
@@ -860,6 +944,8 @@ function ApplicantCard({
 
   const borderClass = selected
     ? "border-primary ring-1 ring-primary-soft"
+    : app.unreadMessageCount > 0
+    ? "border-danger ring-2 ring-danger/20"
     : hasHigh
     ? "border-danger"
     : hasWarn
@@ -886,6 +972,11 @@ function ApplicantCard({
           size === "lg" ? "aspect-video" : size === "md" ? "aspect-video" : "aspect-square"
         )}
       >
+        {app.unreadMessageCount > 0 && (
+          <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full bg-danger px-2 py-1 text-[10px] font-bold text-white shadow-md animate-pulse">
+            💬 {app.unreadMessageCount}
+          </div>
+        )}
         {(selected && screenTrack ? screenTrack : videoTrack) && (
           <RemoteVideo track={selected && screenTrack ? screenTrack : videoTrack!} />
         )}

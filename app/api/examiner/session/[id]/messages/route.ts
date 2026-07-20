@@ -98,5 +98,11 @@ export async function GET(
     .select("id, session_id, sender_role, content, is_announcement, created_at, read_at")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
+  await admin
+    .from("session_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("session_id", sessionId)
+    .eq("sender_role", "applicant")
+    .is("read_at", null);
   return NextResponse.json({ messages: messages ?? [] });
 }

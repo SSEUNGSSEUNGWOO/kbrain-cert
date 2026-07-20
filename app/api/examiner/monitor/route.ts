@@ -46,7 +46,12 @@ export async function GET(request: Request) {
     new Set((sessions ?? []).map((s) => s.invitation_id).filter(Boolean))
   ) as string[];
 
-  const [{ data: invitations }, { data: recentEvents }, { data: eventCounts }] =
+  const [
+    { data: invitations },
+    { data: recentEvents },
+    { data: eventCounts },
+    { data: unreadMessages },
+  ] =
     await Promise.all([
       invitationIds.length
         ? admin
@@ -73,6 +78,16 @@ export async function GET(request: Request) {
             .order("detected_at", { ascending: false })
             .limit(5000)
         : Promise.resolve({ data: [] as Array<{ session_id: string; severity: string }> }),
+      sessionIds.length
+        ? admin
+            .from("session_messages")
+            .select("id, session_id, content, created_at")
+            .in("session_id", sessionIds)
+            .eq("sender_role", "applicant")
+            .is("read_at", null)
+            .order("created_at", { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [] as Array<{ id: number; session_id: string; content: string; created_at: string }> }),
     ]);
 
   const invMap: Record<
@@ -110,6 +125,22 @@ export async function GET(request: Request) {
     }
   }
 
+  const unreadBySession: Record<
+    string,
+    { count: number; content: string; createdAt: string }
+  > = {};
+  for (const message of unreadMessages ?? []) {
+    const current = unreadBySession[message.session_id];
+    if (current) current.count += 1;
+    else {
+      unreadBySession[message.session_id] = {
+        count: 1,
+        content: message.content,
+        createdAt: message.created_at,
+      };
+    }
+  }
+
   const enrichedSessions = (sessions ?? []).map((s) => {
     const inv = s.invitation_id ? invMap[s.invitation_id] : null;
     const counts = warnCount[s.id] ?? { high: 0, warn: 0 };
@@ -124,6 +155,13 @@ export async function GET(request: Request) {
       highCount: counts.high,
       warnCount: counts.warn,
       lastEvent: lastEventBySession[s.id] ?? null,
+      unreadMessageCount: unreadBySession[s.id]?.count ?? 0,
+      latestUnreadMessage: unreadBySession[s.id]
+        ? {
+            content: unreadBySession[s.id].content,
+            createdAt: unreadBySession[s.id].createdAt,
+          }
+        : null,
     };
   });
 
