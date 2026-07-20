@@ -3,7 +3,7 @@ import { createAdminSupabase, createServerSupabase } from "@/lib/supabase/server
 
 /**
  * 시험 부분 편집 (관리자 전용)
- * Body: { examDate?: string|null, durationMinutes?: number, status?: 'draft'|'open'|'closed', maxParticipants?: number|null }
+ * Body: { examDate?, durationMinutes?, status?, maxParticipants?, slug? }
  */
 export async function PATCH(
   request: Request,
@@ -55,6 +55,18 @@ export async function PATCH(
   if ("maxParticipants" in body) {
     patch.max_participants = body.maxParticipants ?? null;
   }
+  if ("slug" in body) {
+    const slug = typeof body.slug === "string" ? body.slug.trim() : body.slug;
+    if (
+      slug !== null &&
+      (typeof slug !== "string" ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ||
+        slug.length > 80)
+    ) {
+      return NextResponse.json({ error: "invalid slug" }, { status: 400 });
+    }
+    patch.slug = slug || null;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });
@@ -66,7 +78,10 @@ export async function PATCH(
     .update(patch)
     .eq("id", examId);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.code === "23505" ? "slug already exists" : error.message },
+      { status: error.code === "23505" ? 409 : 500 }
+    );
   }
   return NextResponse.json({ ok: true });
 }

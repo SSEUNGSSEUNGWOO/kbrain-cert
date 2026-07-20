@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ScheduleEditor } from "./schedule-editor";
+import { SlugEditor } from "./slug-editor";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -152,16 +153,7 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
       </div>
 
       <PracticeLink slug={exam.practiceSlug} />
-      <div className="mt-2 text-xs text-muted-foreground font-tabular">
-        응시 링크:{" "}
-        <Link
-          href={`/exam/${exam.slug ?? exam.id}`}
-          target="_blank"
-          className="text-primary font-semibold hover:underline"
-        >
-          /exam/{exam.slug ?? exam.id} ↗
-        </Link>
-      </div>
+      <SlugEditor examId={exam.id} slug={exam.slug} />
 
       <div className="flex items-center gap-2 mt-3">
         <Link
