@@ -106,7 +106,7 @@ export default async function ExamDonePage({
         <div className="rounded-md bg-info-soft border border-info p-5 text-sm">
           <div className="font-bold text-info mb-1">채점 안내</div>
           <div className="text-xs text-muted-foreground leading-relaxed">
-            제출된 답안은 감독관 검토 및 채점을 거쳐 결과가 이메일로 안내됩니다. 결과 발표까지 최대 7일이 소요될 수 있습니다.
+            제출된 답안은 감독관 검토 및 채점을 거쳐 결과가 이메일로 안내됩니다. 결과 발표까지 최대 15일 (*주말 및 공휴일 제외)이 소요될 수 있습니다.
           </div>
         </div>
 
