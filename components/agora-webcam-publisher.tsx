@@ -37,6 +37,11 @@ export function AgoraWebcamPublisher({
         await client.join(config.appId, config.channel, config.token, config.uid);
         const videoTrack = AgoraRTC.createCustomVideoTrack({
           mediaStreamTrack: mediaTrack,
+          width: 320,
+          height: 240,
+          frameRate: 10,
+          bitrateMin: 100,
+          bitrateMax: 200,
         });
         await client.publish(videoTrack);
         if (!cancelled) setStatus("live");

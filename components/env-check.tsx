@@ -149,7 +149,7 @@ export function EnvCheck({
     webcamStream?.getTracks().forEach((t) => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
+        video: { width: 320, height: 240, frameRate: 10 },
         audio: false,
       });
       setWebcamStream(stream);
