@@ -265,10 +265,10 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                   </div>
                 </td>
                 <td className="px-3 py-3 text-xs text-muted-foreground font-tabular whitespace-nowrap">
-                  {inv.sentAt ?? "-"}
+                  {fmtTime(inv.sentAt)}
                 </td>
                 <td className="px-5 py-3 text-xs text-muted-foreground font-tabular whitespace-nowrap">
-                  {inv.usedAt ?? "-"}
+                  {fmtTime(inv.usedAt)}
                 </td>
               </tr>
             );
@@ -584,5 +584,14 @@ function TimelineRow({
 
 function fmtTime(iso: string | null): string {
   if (!iso) return "-";
-  return new Date(iso).toLocaleString("ko-KR");
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
 }
