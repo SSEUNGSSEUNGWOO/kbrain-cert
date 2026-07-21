@@ -80,6 +80,7 @@ export function MonitorLive({
   const [announcement, setAnnouncement] = useState("");
   const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [announcementResult, setAnnouncementResult] = useState<string | null>(null);
+  const [batchEndOpen, setBatchEndOpen] = useState(false);
   const [videoTracks, setVideoTracks] = useState<
     Record<string, IRemoteVideoTrack>
   >({});
@@ -543,6 +544,14 @@ export function MonitorLive({
           onClose={() => setSelectedSession(null)}
         />
       )}
+      {batchEndOpen && (
+        <BatchEndDialog
+          examId={exam.id}
+          examTitle={exam.title}
+          targetCount={stats.active + stats.waiting}
+          onClose={() => setBatchEndOpen(false)}
+        />
+      )}
 
       <div className="mx-auto max-w-7xl px-6 py-6 flex gap-6">
         <main className="flex-1 min-w-0 space-y-6">
@@ -553,6 +562,23 @@ export function MonitorLive({
             <StatBig label="Alerts" value={stats.alerts} tone="danger" pulse />
             <StatBig label="Warn" value={stats.warns} tone="warning" />
           </div>
+
+          {(stats.active > 0 || stats.waiting > 0) && (
+            <div className="flex items-center justify-between rounded-md border border-danger/40 bg-white p-4">
+              <div>
+                <div className="text-xs font-bold text-danger">비상 운영 조치</div>
+                <div className="text-xs text-muted-foreground">
+                  시스템 장애·문제 오류 시 미제출 응시자 {stats.active + stats.waiting}명을 일괄 종료합니다.
+                </div>
+              </div>
+              <button
+                onClick={() => setBatchEndOpen(true)}
+                className="h-10 rounded-md bg-danger px-5 text-xs font-bold text-white"
+              >
+                전체 시험 종료
+              </button>
+            </div>
+          )}
 
           {unreadChatCount > 0 && (
             <section className="rounded-md border-2 border-danger bg-danger-soft p-4 shadow-lg">
@@ -802,6 +828,68 @@ export function MonitorLive({
             </div>
           </div>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+function BatchEndDialog({
+  examId,
+  examTitle,
+  targetCount,
+  onClose,
+}: {
+  examId: string;
+  examTitle: string;
+  targetCount: number;
+  onClose: () => void;
+}) {
+  const [titleConfirmation, setTitleConfirmation] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const confirmed = titleConfirmation === examTitle && reason.trim().length >= 5;
+  const submit = async () => {
+    if (!confirmed || busy) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const response = await fetch("/api/examiner/bulk-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ examId, examTitle: titleConfirmation, reason }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "전체 종료 실패");
+      setResult(`${data.submittedCount}명의 답안을 확정하고 시험을 종료했습니다.`);
+    } catch (submitError) {
+      setResult(submitError instanceof Error ? submitError.message : "전체 종료 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-lg rounded-md border border-danger bg-white p-6 shadow-2xl">
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-danger">위험 작업</div>
+        <h2 className="text-xl font-bold">전체 시험을 종료하시겠습니까?</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          대기·응시 중인 최대 {targetCount}명의 현재 답안을 제출 상태로 확정합니다. 실행 후 되돌릴 수 없습니다.
+        </p>
+        <label className="mt-5 block space-y-1">
+          <span className="text-xs font-bold">시험명 확인</span>
+          <div className="text-[11px] text-muted-foreground">아래에 “{examTitle}”을 정확히 입력하세요.</div>
+          <input value={titleConfirmation} onChange={(event) => setTitleConfirmation(event.target.value)} disabled={!!result} className="h-10 w-full rounded-md border border-border px-3 text-sm" aria-label="종료할 시험명 확인" />
+        </label>
+        <label className="mt-4 block space-y-1">
+          <span className="text-xs font-bold">종료 사유</span>
+          <textarea value={reason} onChange={(event) => setReason(event.target.value)} disabled={!!result} maxLength={500} rows={3} placeholder="최소 5자 · 응시자에게도 전달됩니다" className="w-full resize-none rounded-md border border-border p-3 text-sm" />
+        </label>
+        {result && <div className="mt-4 rounded-md border border-info bg-info-soft p-3 text-sm font-bold text-info">{result}</div>}
+        <div className="mt-5 flex gap-2">
+          <button onClick={onClose} disabled={busy} className="h-11 flex-1 rounded-md border border-border text-sm font-bold disabled:opacity-40">{result ? "닫기" : "취소"}</button>
+          {!result && <button onClick={() => void submit()} disabled={!confirmed || busy} className="h-11 flex-1 rounded-md bg-danger text-sm font-bold text-white disabled:opacity-30">{busy ? "종료 처리 중…" : `${targetCount}명 전체 종료`}</button>}
+        </div>
       </div>
     </div>
   );

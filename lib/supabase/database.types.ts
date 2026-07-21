@@ -480,6 +480,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: undefined;
       };
+      force_submit_exam_sessions: {
+        Args: { p_exam_id: string; p_reason: string };
+        Returns: number;
+      };
       submit_exam_session: {
         Args: {
           p_session_id: string;
