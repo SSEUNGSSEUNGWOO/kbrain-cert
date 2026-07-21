@@ -63,10 +63,10 @@ export function WaitingRoom({
         </div>
         <h2>시험 준비 완료</h2>
         <p className="text-sm text-muted-foreground mt-2">
-          환경 체크와 보안 서약이 모두 완료되었습니다.
-          {isPractice
-            ? " 테스트 링크는 언제든 입장할 수 있습니다."
-            : " 시험 시작 시간이 되면 자동으로 시험창으로 이동합니다."}
+          평가 당일 시작 시간에 맞춰 평가장 화면으로 자동 전환됩니다.
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          ※ TEST용은 언제든지 입장 가능
         </p>
       </div>
 
@@ -80,7 +80,7 @@ export function WaitingRoom({
         <ReadyRow
           n={2}
           label="보안 서약"
-          detail="7개 유의사항 모두 동의"
+          detail="6개 유의사항 모두 동의"
         />
         <ReadyRow
           n={3}

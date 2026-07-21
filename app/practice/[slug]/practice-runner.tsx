@@ -447,7 +447,7 @@ export function PracticeRunner({
                 active={tab === "pledge"}
                 onClick={() => envPassed && setTab("pledge")}
                 label="2. 보안 서약"
-                hint={envPassed ? "7개 유의사항 동의" : "환경 체크 후 이용"}
+                hint={envPassed ? "6개 유의사항 동의" : "환경 체크 후 이용"}
                 done={pledgePassed}
                 disabled={!envPassed}
               />
