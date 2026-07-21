@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { MonitorEvent } from "@/lib/hooks/use-monitor-events";
-
-const WINDOW_BLUR_THRESHOLD_MS = 3000;
-const ENTRY_GRACE_MS = 30_000; // 진입 후 30초는 permission dialog로 인한 오탐 방지
 
 /**
  * 시험창 CBT 감독 가드
- * - 탭 이탈·윈도우 blur 기록 (작업형 외부 도구 사용을 고려해 info)
  * - 복사·붙여넣기·잘라내기 차단 (input/textarea 제외)
  * - 우클릭 · 드래그·드롭 차단
  * - 키보드 단축키 차단 (F12, Ctrl+Shift+I/C/P/S, Ctrl+P/S/U, PrintScreen, Cmd+Shift+3/4/5)
@@ -24,55 +20,6 @@ export function ProctorGuard({
   active: boolean;
   onEvent: (event: MonitorEvent) => void;
 }) {
-  const enterAtRef = useRef<number>(0);
-  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!active) return;
-    enterAtRef.current = Date.now();
-  }, [active]);
-
-  // 탭 이탈 · visibilitychange
-  useEffect(() => {
-    if (!active) return;
-    const onVis = () => {
-      const gracePeriod = Date.now() - enterAtRef.current < ENTRY_GRACE_MS;
-      if (gracePeriod) return;
-      if (document.hidden) {
-        onEvent({ eventType: "tab_switch", severity: "info" });
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [active, onEvent]);
-
-  // 윈도우 blur 3초+ (조용한 alt-tab)
-  useEffect(() => {
-    if (!active) return;
-    const onBlur = () => {
-      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = setTimeout(() => {
-        const gracePeriod = Date.now() - enterAtRef.current < ENTRY_GRACE_MS;
-        if (gracePeriod) return;
-        onEvent({
-          eventType: "window_blur",
-          severity: "info",
-          payload: { thresholdMs: WINDOW_BLUR_THRESHOLD_MS },
-        });
-      }, WINDOW_BLUR_THRESHOLD_MS);
-    };
-    const onFocus = () => {
-      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-    };
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-    };
-  }, [active, onEvent]);
-
   // 복사·붙여넣기·잘라내기 차단 (input/textarea/contenteditable 제외)
   useEffect(() => {
     if (!active) return;
