@@ -44,9 +44,9 @@ export function TitleEditor({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="shrink-0 text-[10px] font-bold text-muted-foreground hover:text-primary"
+          className="shrink-0 inline-flex items-center gap-1 h-7 px-2 rounded-sm border border-primary bg-primary-soft text-primary text-[11px] font-bold hover:bg-primary hover:text-white transition"
         >
-          편집
+          <span aria-hidden>✏️</span>제목 편집
         </button>
       </div>
     );
