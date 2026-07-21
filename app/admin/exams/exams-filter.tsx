@@ -6,6 +6,7 @@ import { ScheduleEditor } from "./schedule-editor";
 import { SlugEditor } from "./slug-editor";
 import { TestModeToggle } from "./test-mode-toggle";
 import { ScreenShareToggle } from "./screen-share-toggle";
+import { TitleEditor } from "./title-editor";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -132,9 +133,7 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
               </span>
             )}
           </div>
-          <div className="font-bold text-base text-heading mb-1">
-            {exam.title}
-          </div>
+          <TitleEditor examId={exam.id} title={exam.title} />
           <div className="text-xs text-muted-foreground font-tabular">
             {examDate} · {exam.durationMinutes}분
           </div>

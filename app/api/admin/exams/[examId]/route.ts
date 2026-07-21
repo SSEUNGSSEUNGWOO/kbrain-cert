@@ -34,6 +34,16 @@ export async function PATCH(
   }
 
   const patch: Record<string, unknown> = {};
+  if ("title" in body) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (title.length === 0 || title.length > 200) {
+      return NextResponse.json(
+        { error: "title must be 1..200 chars" },
+        { status: 400 }
+      );
+    }
+    patch.title = title;
+  }
   if ("examDate" in body) {
     patch.exam_date = body.examDate ?? null;
   }
