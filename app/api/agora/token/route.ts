@@ -7,6 +7,10 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
+import {
+  getAgoraShard,
+  isAgoraShard,
+} from "@/lib/agora-channel";
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 6;
 
@@ -23,6 +27,7 @@ export async function POST(request: Request) {
     media?: "webcam" | "screen";
     uid?: string;
     examId?: string;
+    shard?: number;
   } | null;
   const cookieStore = await cookies();
   const sessionId = verifySessionCookieValue(
@@ -32,6 +37,7 @@ export async function POST(request: Request) {
   let examId: string;
   let uid: string;
   let clientRole: "host" | "audience";
+  let shard: number;
   const media = body?.media === "screen" ? "screen" : "webcam";
 
   if (body?.mode === "applicant" && sessionId) {
@@ -44,6 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid session" }, { status: 403 });
     }
     examId = session.exam_id;
+    shard = getAgoraShard(session.id);
     const uidPrefix =
       media === "screen"
         ? `screen-${session.id}-`
@@ -77,13 +84,17 @@ export async function POST(request: Request) {
     if (!examId) {
       return NextResponse.json({ error: "examId required" }, { status: 400 });
     }
+    if (!isAgoraShard(body?.shard)) {
+      return NextResponse.json({ error: "valid shard required" }, { status: 400 });
+    }
+    shard = body.shard;
     uid = `examiner-${media}-${user.id}`;
     clientRole = "audience";
   }
 
-  // 웹캠과 화면공유를 분리해 응시자 100명일 때 한 채널에
-  // 200개의 송출 호스트가 몰리지 않도록 한다.
-  const channel = `exam-${examId}-${media}`;
+  // 웹캠·화면공유를 각각 20개 채널로 분산한다. 세션 ID 기반 배정이라
+  // 응시자가 재접속해도 같은 채널을 사용한다.
+  const channel = `exam-${examId}-${media}-${shard}`;
   const token = RtcTokenBuilder.buildTokenWithUserAccount(
     appId,
     certificate,

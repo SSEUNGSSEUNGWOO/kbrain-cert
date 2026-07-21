@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { AGORA_SHARD_COUNT, getAgoraShard } from "@/lib/agora-channel";
 import type {
   IAgoraRTCClient,
   IAgoraRTCRemoteUser,
@@ -71,6 +72,7 @@ export function MonitorLive({
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [mediaPage, setMediaPage] = useState(0);
   const [expandedView, setExpandedView] = useState<"screen" | "webcam">("screen");
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<
@@ -100,7 +102,9 @@ export function MonitorLive({
   const subscribedScreenRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const ordered = [...sessions].sort((a, b) => {
+    const ordered = sessions.filter(
+      (session) => getAgoraShard(session.sessionId) === mediaPage
+    ).sort((a, b) => {
       if (a.sessionId === selectedSession) return -1;
       if (b.sessionId === selectedSession) return 1;
       const aPriority = a.unreadMessageCount > 0
@@ -150,7 +154,7 @@ export function MonitorLive({
         });
       }
     }
-  }, [selectedSession, sessions]);
+  }, [mediaPage, selectedSession, sessions]);
 
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
@@ -330,7 +334,12 @@ export function MonitorLive({
           const response = await fetch("/api/agora/token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "examiner", examId: exam.id, media }),
+            body: JSON.stringify({
+              mode: "examiner",
+              examId: exam.id,
+              media,
+              shard: mediaPage,
+            }),
           });
           const config = await response.json();
           if (!response.ok) {
@@ -349,6 +358,7 @@ export function MonitorLive({
                   mode: "examiner",
                   examId: exam.id,
                   media,
+                  shard: mediaPage,
                 }),
               });
               const renewed = await tokenResponse.json();
@@ -471,7 +481,7 @@ export function MonitorLive({
       });
       for (const leave of leaveCallbacks) void leave();
     };
-  }, [exam.id]);
+  }, [exam.id, mediaPage]);
 
   const { alerts, warns, normals } = useMemo(() => {
     const alerts: Session[] = [];
@@ -486,6 +496,15 @@ export function MonitorLive({
     warns.sort((a, b) => b.warnCount - a.warnCount);
     return { alerts, warns, normals };
   }, [sessions]);
+  const pageAlerts = alerts.filter(
+    (session) => getAgoraShard(session.sessionId) === mediaPage
+  );
+  const pageWarns = warns.filter(
+    (session) => getAgoraShard(session.sessionId) === mediaPage
+  );
+  const pageNormals = normals.filter(
+    (session) => getAgoraShard(session.sessionId) === mediaPage
+  );
 
   const filteredEvents = useMemo(
     () =>
@@ -506,9 +525,13 @@ export function MonitorLive({
     (session) => session.sessionId === selectedSession
   );
   const openApplicant = (sessionId: string) => {
+    setMediaPage(getAgoraShard(sessionId));
     setExpandedView("screen");
     setSelectedSession(sessionId);
   };
+  const pageSessions = sessions.filter(
+    (session) => getAgoraShard(session.sessionId) === mediaPage
+  );
   const chatSessions = sessions.filter(
     (session) => session.unreadMessageCount > 0
   ).sort(
@@ -789,19 +812,57 @@ export function MonitorLive({
             )}
           </div>
 
+          <nav
+            aria-label="감독 영상 페이지"
+            className="rounded-md border border-border bg-white p-4"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold">감독 영상 페이지</div>
+                <div className="text-[10px] text-muted-foreground">
+                  현재 페이지의 웹캠·화면공유 채널만 연결합니다.
+                </div>
+              </div>
+              <span className="text-xs font-bold text-primary">
+                {mediaPage + 1} / {AGORA_SHARD_COUNT} · {pageSessions.length}명
+              </span>
+            </div>
+            <div className="grid grid-cols-10 gap-2">
+              {Array.from({ length: AGORA_SHARD_COUNT }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSession(null);
+                    setMediaPage(index);
+                  }}
+                  aria-current={mediaPage === index ? "page" : undefined}
+                  className={cn(
+                    "h-9 rounded-md border text-xs font-bold transition",
+                    mediaPage === index
+                      ? "border-primary bg-primary text-white"
+                      : "border-border bg-white text-muted-foreground hover:border-primary"
+                  )}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </nav>
+
           <Section
             step="01"
             titleKor="주목 필요"
             tag="ALERT"
             subtitle="HIGH severity · is_flagged · 즉각 개입 검토"
-            count={alerts.length}
+            count={pageAlerts.length}
             tone="danger"
           >
-            {alerts.length === 0 ? (
+            {pageAlerts.length === 0 ? (
               <EmptyRow message="현재 주목이 필요한 응시자가 없습니다." />
             ) : (
               <div className="grid grid-cols-3 gap-4">
-                {alerts.map((app) => (
+                {pageAlerts.map((app) => (
                   <ApplicantCard
                     key={app.sessionId}
                     app={app}
@@ -820,14 +881,14 @@ export function MonitorLive({
             titleKor="경고"
             tag="WARN"
             subtitle="WARN severity · 관찰 유지"
-            count={warns.length}
+            count={pageWarns.length}
             tone="warning"
           >
-            {warns.length === 0 ? (
+            {pageWarns.length === 0 ? (
               <EmptyRow message="현재 경고 응시자가 없습니다." />
             ) : (
               <div className="grid grid-cols-5 gap-3">
-                {warns.map((app) => (
+                {pageWarns.map((app) => (
                   <ApplicantCard
                     key={app.sessionId}
                     app={app}
@@ -846,14 +907,14 @@ export function MonitorLive({
             titleKor="정상"
             tag="NORMAL"
             subtitle="INFO 이하 · 존재 확인"
-            count={normals.length}
+            count={pageNormals.length}
             tone="success"
           >
-            {normals.length === 0 ? (
+            {pageNormals.length === 0 ? (
               <EmptyRow message="현재 정상 응시자가 없습니다." />
             ) : (
               <div className="grid grid-cols-10 gap-2">
-                {normals.map((app) => (
+                {pageNormals.map((app) => (
                   <ApplicantCard
                     key={app.sessionId}
                     app={app}
