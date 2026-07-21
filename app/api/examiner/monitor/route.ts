@@ -68,6 +68,7 @@ export async function GET(request: Request) {
               "id, session_id, event_type, severity, detected_at, question_index, payload"
             )
             .in("session_id", sessionIds)
+            .neq("severity", "warn")
             .order("detected_at", { ascending: false })
             .limit(50)
         : Promise.resolve({ data: [] as Array<{ id: number; session_id: string; event_type: string; severity: string; detected_at: string; question_index: number | null; payload: unknown }> }),
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
             .from("monitoring_events")
             .select("session_id, severity")
             .in("session_id", sessionIds)
-            .in("severity", ["warn", "high"])
+            .eq("severity", "high")
             .order("detected_at", { ascending: false })
             .limit(5000)
         : Promise.resolve({ data: [] as Array<{ session_id: string; severity: string }> }),
@@ -112,13 +113,9 @@ export async function GET(request: Request) {
     };
   }
 
-  // 세션별 warningCount + lastEvent + last high severity
-  const warnCount: Record<string, { high: number; warn: number }> = {};
+  const highCount: Record<string, number> = {};
   for (const e of eventCounts ?? []) {
-    if (!warnCount[e.session_id])
-      warnCount[e.session_id] = { high: 0, warn: 0 };
-    if (e.severity === "high") warnCount[e.session_id].high += 1;
-    else if (e.severity === "warn") warnCount[e.session_id].warn += 1;
+    highCount[e.session_id] = (highCount[e.session_id] ?? 0) + 1;
   }
 
   const lastEventBySession: Record<
@@ -167,7 +164,6 @@ export async function GET(request: Request) {
 
   const enrichedSessions = (sessions ?? []).map((s) => {
     const inv = s.invitation_id ? invMap[s.invitation_id] : null;
-    const counts = warnCount[s.id] ?? { high: 0, warn: 0 };
     return {
       sessionId: s.id,
       status: s.status,
@@ -176,8 +172,7 @@ export async function GET(request: Request) {
       applicantName: inv?.name ?? (inv?.email ? inv.email.split("@")[0] : "-"),
       applicantEmail: inv?.email ?? "-",
       organization: inv?.organization ?? "-",
-      highCount: counts.high,
-      warnCount: counts.warn,
+      highCount: highCount[s.id] ?? 0,
       lastEvent: lastEventBySession[s.id] ?? null,
       unreadMessageCount: unreadBySession[s.id]?.count ?? 0,
       latestUnreadMessage: unreadBySession[s.id]

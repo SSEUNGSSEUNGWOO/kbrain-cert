@@ -20,7 +20,6 @@ type Session = {
   applicantEmail: string;
   organization: string;
   highCount: number;
-  warnCount: number;
   unreadMessageCount: number;
   latestUnreadMessage: {
     content: string;
@@ -73,7 +72,7 @@ const EVENT_LABEL: Record<string, string> = {
   multiple_faces: "다인원 감지",
 };
 
-type SeverityFilter = "all" | "high" | "warn" | "info";
+type SeverityFilter = "all" | "high" | "info";
 const MAX_LIVE_WEBCAMS = 8;
 const REALTIME_REFRESH_DELAY_MS = 750;
 
@@ -126,15 +125,11 @@ export function MonitorLive({
         ? 3
         : a.isFlagged || a.highCount > 0
         ? 2
-        : a.warnCount > 0
-        ? 1
         : 0;
       const bPriority = b.unreadMessageCount > 0
         ? 3
         : b.isFlagged || b.highCount > 0
         ? 2
-        : b.warnCount > 0
-        ? 1
         : 0;
       return bPriority - aPriority;
     });
@@ -498,23 +493,20 @@ export function MonitorLive({
     };
   }, [exam.id, mediaPage]);
 
-  const { alerts, warns, normals } = useMemo(() => {
+  const { alerts, normals } = useMemo(() => {
     const alerts: Session[] = [];
-    const warns: Session[] = [];
     const normals: Session[] = [];
     for (const s of sessions) {
       if (s.highCount > 0 || s.isFlagged) alerts.push(s);
-      else if (s.warnCount > 0) warns.push(s);
       else normals.push(s);
     }
     alerts.sort((a, b) => b.highCount - a.highCount);
-    warns.sort((a, b) => b.warnCount - a.warnCount);
-    return { alerts, warns, normals };
+    return { alerts, normals };
   }, [sessions]);
   const pageAlerts = alerts.filter(
     (session) => getAgoraShard(session.sessionId) === mediaPage
   );
-  const pageNormals = [...warns, ...normals].filter(
+  const pageNormals = normals.filter(
     (session) => getAgoraShard(session.sessionId) === mediaPage
   );
 
@@ -531,7 +523,6 @@ export function MonitorLive({
     active: sessions.filter((s) => s.status === "in_progress").length,
     waiting: sessions.filter((s) => s.status === "waiting").length,
     alerts: alerts.length,
-    warns: warns.length,
   };
   const selectedApplicant = sessions.find(
     (session) => session.sessionId === selectedSession
@@ -715,12 +706,11 @@ export function MonitorLive({
 
       <div className="mx-auto max-w-7xl px-6 py-6 flex gap-6">
         <main className="flex-1 min-w-0 space-y-6">
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <StatBig label="Sessions" value={stats.total} tone="primary" />
             <StatBig label="Active" value={stats.active} tone="primary" />
             <StatBig label="Waiting" value={stats.waiting} tone="info" />
             <StatBig label="Alerts" value={stats.alerts} tone="danger" pulse />
-            <StatBig label="Warn" value={stats.warns} tone="warning" />
           </div>
 
           {(stats.active > 0 || stats.waiting > 0) && (
@@ -993,7 +983,7 @@ export function MonitorLive({
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    {(["all", "high", "warn", "info"] as SeverityFilter[]).map(
+                    {(["all", "high", "info"] as SeverityFilter[]).map(
                       (severity) => (
                         <button
                           key={severity}
@@ -1572,7 +1562,6 @@ function ApplicantCard({
   videoTrack?: IRemoteVideoTrack;
 }) {
   const hasHigh = app.highCount > 0 || app.isFlagged;
-  const hasWarn = !hasHigh && app.warnCount > 0;
 
   const borderClass = selected
     ? "border-primary ring-1 ring-primary-soft"
@@ -1580,8 +1569,6 @@ function ApplicantCard({
     ? "border-danger ring-2 ring-danger/20"
     : hasHigh
     ? "border-danger"
-    : hasWarn
-    ? "border-warning"
     : "border-border";
 
   const initial = app.applicantName.slice(0, 2).toUpperCase();
@@ -1622,11 +1609,11 @@ function ApplicantCard({
             {(selected || !videoTrack) && initial}
           </div>
         </div>
-        {(app.highCount + app.warnCount) > 0 && (
+        {app.highCount > 0 && (
           <div
             className={cn(
               "absolute top-1.5 right-1.5 rounded-sm text-white font-bold flex items-center justify-center font-tabular",
-              hasHigh ? "bg-danger" : "bg-warning",
+              "bg-danger",
               size === "lg"
                 ? "text-sm w-6 h-6"
                 : size === "md"
@@ -1634,7 +1621,7 @@ function ApplicantCard({
                 : "text-[10px] w-4 h-4"
             )}
           >
-            {app.highCount + app.warnCount}
+            {app.highCount}
           </div>
         )}
         {size === "lg" && lastEventLabel && (
@@ -1643,8 +1630,6 @@ function ApplicantCard({
               "absolute bottom-0 left-0 right-0 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm tracking-wider",
               app.lastEvent?.severity === "high"
                 ? "bg-danger/85"
-                : app.lastEvent?.severity === "warn"
-                ? "bg-warning/85"
                 : "bg-black/60"
             )}
           >
