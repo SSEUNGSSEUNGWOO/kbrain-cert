@@ -71,6 +71,7 @@ export function MonitorLive({
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [expandedView, setExpandedView] = useState<"screen" | "webcam">("screen");
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<
     "connecting" | "live" | "polling"
@@ -479,6 +480,13 @@ export function MonitorLive({
     alerts: alerts.length,
     warns: warns.length,
   };
+  const selectedApplicant = sessions.find(
+    (session) => session.sessionId === selectedSession
+  );
+  const openApplicant = (sessionId: string) => {
+    setExpandedView("screen");
+    setSelectedSession(sessionId);
+  };
   const chatSessions = sessions.filter(
     (session) => session.unreadMessageCount > 0
   );
@@ -524,6 +532,17 @@ export function MonitorLive({
         durationMinutes={exam.durationMinutes}
         examDate={exam.examDate}
       />
+
+      {selectedApplicant && (
+        <ExpandedMonitor
+          applicant={selectedApplicant}
+          view={expandedView}
+          webcamTrack={videoTracks[selectedApplicant.sessionId]}
+          screenTrack={screenTracks[selectedApplicant.sessionId]}
+          onViewChange={setExpandedView}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
 
       <div className="mx-auto max-w-7xl px-6 py-6 flex gap-6">
         <main className="flex-1 min-w-0 space-y-6">
@@ -669,9 +688,8 @@ export function MonitorLive({
                     app={app}
                     size="lg"
                     selected={selectedSession === app.sessionId}
-                    onSelect={() => setSelectedSession(app.sessionId)}
+                    onSelect={() => openApplicant(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
-                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -696,9 +714,8 @@ export function MonitorLive({
                     app={app}
                     size="md"
                     selected={selectedSession === app.sessionId}
-                    onSelect={() => setSelectedSession(app.sessionId)}
+                    onSelect={() => openApplicant(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
-                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -723,9 +740,8 @@ export function MonitorLive({
                     app={app}
                     size="sm"
                     selected={selectedSession === app.sessionId}
-                    onSelect={() => setSelectedSession(app.sessionId)}
+                    onSelect={() => openApplicant(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
-                    screenTrack={screenTracks[app.sessionId]}
                   />
                 ))}
               </div>
@@ -772,7 +788,7 @@ export function MonitorLive({
                 <EventItem
                   key={e.id}
                   event={e}
-                  onClick={() => setSelectedSession(e.sessionId)}
+                  onClick={() => openApplicant(e.sessionId)}
                   active={selectedSession === e.sessionId}
                 />
               ))}
@@ -786,6 +802,90 @@ export function MonitorLive({
             </div>
           </div>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+function ExpandedMonitor({
+  applicant,
+  view,
+  webcamTrack,
+  screenTrack,
+  onViewChange,
+  onClose,
+}: {
+  applicant: Session;
+  view: "screen" | "webcam";
+  webcamTrack?: IRemoteVideoTrack;
+  screenTrack?: IRemoteVideoTrack;
+  onViewChange: (view: "screen" | "webcam") => void;
+  onClose: () => void;
+}) {
+  const track = view === "screen" ? screenTrack : webcamTrack;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6">
+      <div className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-md border border-white/20 bg-slate-950 shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-white/15 px-5 py-4 text-white">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+              실시간 확대 감독
+            </div>
+            <div className="font-bold">
+              {applicant.applicantName} · {applicant.organization}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onViewChange("screen")}
+              className={cn(
+                "h-9 rounded-md px-4 text-xs font-bold",
+                view === "screen"
+                  ? "bg-primary text-white"
+                  : "bg-white/10 text-white"
+              )}
+            >
+              화면 공유
+            </button>
+            <button
+              onClick={() => onViewChange("webcam")}
+              className={cn(
+                "h-9 rounded-md px-4 text-xs font-bold",
+                view === "webcam"
+                  ? "bg-primary text-white"
+                  : "bg-white/10 text-white"
+              )}
+            >
+              웹캠
+            </button>
+            <Link
+              href={`/examiner/session/${applicant.sessionId}`}
+              className="inline-flex h-9 items-center rounded-md bg-white px-4 text-xs font-bold text-slate-950"
+            >
+              상세 정보
+            </Link>
+            <button
+              onClick={onClose}
+              aria-label="확대 감독 닫기"
+              className="flex h-9 w-9 items-center justify-center rounded-md bg-white/10 text-xl text-white"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div className="relative aspect-video min-h-0 flex-1 bg-black">
+          {track ? (
+            <RemoteVideo track={track} fit={view === "screen" ? "contain" : "cover"} />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60">
+              <div className="mb-3 text-4xl">{view === "screen" ? "🖥️" : "📷"}</div>
+              <div className="font-bold">
+                {view === "screen" ? "화면 공유" : "웹캠"} 연결 대기 중
+              </div>
+              <div className="mt-1 text-xs">응시자의 스트림이 연결되면 자동으로 표시됩니다.</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -936,14 +1036,12 @@ function ApplicantCard({
   selected,
   onSelect,
   videoTrack,
-  screenTrack,
 }: {
   app: Session;
   size: "sm" | "md" | "lg";
   selected: boolean;
   onSelect: () => void;
   videoTrack?: IRemoteVideoTrack;
-  screenTrack?: IRemoteVideoTrack;
 }) {
   const hasHigh = app.highCount > 0 || app.isFlagged;
   const hasWarn = !hasHigh && app.warnCount > 0;
@@ -964,11 +1062,11 @@ function ApplicantCard({
     : null;
 
   return (
-    <Link
-      href={`/examiner/session/${app.sessionId}`}
+    <button
+      type="button"
       onClick={onSelect}
       className={cn(
-        "block text-left rounded-md bg-white border overflow-hidden transition hover:shadow-card-hover",
+        "block w-full text-left rounded-md bg-white border overflow-hidden transition hover:shadow-card-hover",
         borderClass
       )}
     >
@@ -983,8 +1081,8 @@ function ApplicantCard({
             💬 {app.unreadMessageCount}
           </div>
         )}
-        {(selected && screenTrack ? screenTrack : videoTrack) && (
-          <RemoteVideo track={selected && screenTrack ? screenTrack : videoTrack!} />
+        {!selected && videoTrack && (
+          <RemoteVideo track={videoTrack} />
         )}
         <div className="absolute inset-0 flex items-center justify-center">
           <div
@@ -993,7 +1091,7 @@ function ApplicantCard({
               size === "lg" ? "text-4xl" : size === "md" ? "text-2xl" : "text-sm"
             )}
           >
-            {!videoTrack && !screenTrack && initial}
+            {(selected || !videoTrack) && initial}
           </div>
         </div>
         {(app.highCount + app.warnCount) > 0 && (
@@ -1068,17 +1166,23 @@ function ApplicantCard({
           </div>
         </div>
       )}
-    </Link>
+    </button>
   );
 }
 
-function RemoteVideo({ track }: { track: IRemoteVideoTrack }) {
+function RemoteVideo({
+  track,
+  fit = "cover",
+}: {
+  track: IRemoteVideoTrack;
+  fit?: "cover" | "contain";
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!containerRef.current) return;
-    track.play(containerRef.current, { fit: "cover", mirror: false });
+    track.play(containerRef.current, { fit, mirror: false });
     return () => track.stop();
-  }, [track]);
+  }, [fit, track]);
   return <div ref={containerRef} className="absolute inset-0" />;
 }
 
