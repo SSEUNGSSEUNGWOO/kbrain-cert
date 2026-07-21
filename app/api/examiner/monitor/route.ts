@@ -20,6 +20,7 @@ export async function GET(request: Request) {
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["admin", "examiner"])
+    .limit(1)
     .maybeSingle();
   if (!role) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });

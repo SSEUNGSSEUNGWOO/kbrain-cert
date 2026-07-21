@@ -7,11 +7,12 @@ async function requireExaminer() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: role } = await supabase
+  const { data: role } = await createAdminSupabase()
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["admin", "examiner"])
+    .limit(1)
     .maybeSingle();
   return role ? user : null;
 }

@@ -16,11 +16,12 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const { data: role } = await supabase
+  const { data: role } = await createAdminSupabase()
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["admin", "examiner"])
+    .limit(1)
     .maybeSingle();
   if (!role) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -82,11 +83,12 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const { data: role } = await supabase
+  const { data: role } = await createAdminSupabase()
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["admin", "examiner"])
+    .limit(1)
     .maybeSingle();
   if (!role) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
