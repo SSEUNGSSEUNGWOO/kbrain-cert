@@ -546,7 +546,14 @@ export function EnvCheck({
           <div className="px-5 py-4 flex items-center gap-4">
             <NumberBadge n={item.n} status={item.result.status} />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold">{item.title}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-bold">{item.title}</div>
+                {item.result.status === "ok" && (
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-success">
+                    <span aria-hidden>✓</span>확인 완료
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground mt-0.5 truncate">
                 {item.result.detail}
               </div>
@@ -556,7 +563,9 @@ export function EnvCheck({
                 onClick={item.action.onClick}
                 className={cn(
                   "h-8 px-3 rounded-sm text-xs font-bold transition shrink-0",
-                  item.action.primary
+                  item.result.status === "ok"
+                    ? "bg-transparent text-muted-foreground hover:text-primary underline underline-offset-2"
+                    : item.action.primary
                     ? "bg-primary hover:bg-primary-hover text-white"
                     : "bg-white border border-border hover:border-primary text-foreground"
                 )}
