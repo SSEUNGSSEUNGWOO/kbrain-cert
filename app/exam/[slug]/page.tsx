@@ -62,7 +62,7 @@ export default async function ExamEntryPage({
             <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
               k
             </div>
-            <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
+            <div className="font-bold text-lg tracking-tight">AI 챔피언 역량평가</div>
           </Link>
         </div>
       </nav>
@@ -70,7 +70,7 @@ export default async function ExamEntryPage({
       <main className="flex-1 mx-auto max-w-lg w-full px-6 py-10 space-y-5">
         <div className="rounded-md bg-white border border-border p-6">
           <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
-            응시자 진입
+            응시자 로그인
           </div>
           <h1 className="text-xl font-bold mb-1">{exam.title}</h1>
           <div className="text-xs text-muted-foreground">
@@ -83,7 +83,7 @@ export default async function ExamEntryPage({
         <EntryFlow examId={exam.id} />
 
         <div className="text-[11px] text-muted-foreground text-center leading-relaxed">
-          문의: <span className="font-tabular">no-reply@kbrainc.com</span>
+          문의: <span className="font-tabular">databus@nia.or.kr / 010-0000-0000</span>
         </div>
       </main>
     </div>

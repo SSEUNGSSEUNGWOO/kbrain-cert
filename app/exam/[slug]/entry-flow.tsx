@@ -79,7 +79,7 @@ export function EntryFlow({ examId }: { examId: string }) {
           className="w-full h-14 rounded-md border-2 border-border bg-white px-3 text-2xl font-tabular tabular-nums text-center tracking-widest font-bold focus:border-primary focus:outline-none"
         />
         <div className="text-[11px] text-muted-foreground mt-1">
-          관리자 명단에 등록된 전화번호의 마지막 4자리를 입력해주세요.
+          본인의 전화번호 마지막 4자리 입력해주세요
         </div>
       </div>
 
