@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -26,11 +26,25 @@ type Session = {
     content: string;
     createdAt: string;
   } | null;
+  latestMessage: {
+    senderRole: string;
+    content: string;
+    createdAt: string;
+  } | null;
   lastEvent: {
     eventType: string;
     severity: string;
     detectedAt: string;
   } | null;
+};
+
+type ChatMessage = {
+  id: number;
+  sender_role: string;
+  content: string;
+  is_announcement: boolean;
+  created_at: string;
+  read_at: string | null;
 };
 
 type MonitorEvent = {
@@ -73,6 +87,7 @@ export function MonitorLive({
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [mediaPage, setMediaPage] = useState(0);
+  const [rightPanel, setRightPanel] = useState<"chat" | "events">("chat");
   const [expandedView, setExpandedView] = useState<"screen" | "webcam">("screen");
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<
@@ -540,6 +555,38 @@ export function MonitorLive({
     (total, session) => total + session.unreadMessageCount,
     0
   );
+  const handleChatRead = useCallback((sessionId: string) => {
+    setSessions((current) =>
+      current.map((session) =>
+        session.sessionId === sessionId
+          ? {
+              ...session,
+              unreadMessageCount: 0,
+              latestUnreadMessage: null,
+            }
+          : session
+      )
+    );
+  }, []);
+  const handleChatLatest = useCallback(
+    (sessionId: string, message: ChatMessage) => {
+      setSessions((current) =>
+        current.map((session) =>
+          session.sessionId === sessionId
+            ? {
+                ...session,
+                latestMessage: {
+                  senderRole: message.sender_role,
+                  content: message.content,
+                  createdAt: message.created_at,
+                },
+              }
+            : session
+        )
+      );
+    },
+    []
+  );
   const previousUnreadChatCount = useRef(0);
   useEffect(() => {
     if (unreadChatCount > previousUnreadChatCount.current) {
@@ -902,58 +949,326 @@ export function MonitorLive({
 
         <aside className="w-96 shrink-0">
           <div className="sticky top-24 rounded-md bg-white border border-border overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
-            <div className="p-5 border-b border-border">
-              <div className="flex items-baseline justify-between mb-3">
-                <div>
-                  <div className="text-[10px] font-bold tracking-[0.25em] text-muted uppercase mb-1">
-                    Event Stream
-                  </div>
-                  <div className="font-bold text-base">실시간 감독 이벤트</div>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-sm bg-danger-soft text-danger px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-                  Live
-                </span>
-              </div>
-              <div className="flex gap-1">
-                {(["all", "high", "warn", "info"] as SeverityFilter[]).map(
-                  (s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSeverityFilter(s)}
-                      className={cn(
-                        "px-3 h-7 rounded-sm text-[10px] font-bold tracking-widest transition uppercase",
-                        severityFilter === s
-                          ? "bg-primary text-white"
-                          : "bg-surface-soft text-muted-foreground hover:bg-subtle"
-                      )}
-                    >
-                      {s === "all" ? "ALL" : s}
-                    </button>
-                  )
+            <div className="grid grid-cols-2 border-b border-border bg-surface-soft">
+              <button
+                type="button"
+                onClick={() => setRightPanel("chat")}
+                className={cn(
+                  "h-12 text-xs font-bold transition",
+                  rightPanel === "chat"
+                    ? "border-b-2 border-primary bg-white text-primary"
+                    : "text-muted-foreground"
                 )}
-              </div>
+              >
+                채팅 {unreadChatCount > 0 ? `(${unreadChatCount})` : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRightPanel("events")}
+                className={cn(
+                  "h-12 text-xs font-bold transition",
+                  rightPanel === "events"
+                    ? "border-b-2 border-primary bg-white text-primary"
+                    : "text-muted-foreground"
+                )}
+              >
+                감독 이벤트
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              {filteredEvents.map((e) => (
-                <EventItem
-                  key={e.id}
-                  event={e}
-                  onClick={() => openApplicant(e.sessionId)}
-                  active={selectedSession === e.sessionId}
-                />
-              ))}
-              {filteredEvents.length === 0 && (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                  {events.length === 0
-                    ? "아직 감독 이벤트가 없습니다"
-                    : "해당 심각도의 이벤트가 없습니다"}
+
+            {rightPanel === "chat" ? (
+              <MonitorChatPanel
+                sessions={sessions}
+                onRead={handleChatRead}
+                onLatest={handleChatLatest}
+              />
+            ) : (
+              <>
+                <div className="p-4 border-b border-border">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="font-bold text-sm">실시간 감독 이벤트</div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-danger">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+                      LIVE
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    {(["all", "high", "warn", "info"] as SeverityFilter[]).map(
+                      (severity) => (
+                        <button
+                          key={severity}
+                          type="button"
+                          onClick={() => setSeverityFilter(severity)}
+                          className={cn(
+                            "h-7 px-3 rounded-sm text-[10px] font-bold tracking-widest transition uppercase",
+                            severityFilter === severity
+                              ? "bg-primary text-white"
+                              : "bg-surface-soft text-muted-foreground hover:bg-subtle"
+                          )}
+                        >
+                          {severity === "all" ? "ALL" : severity}
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+                <div className="flex-1 overflow-y-auto">
+                  {filteredEvents.map((event) => (
+                    <EventItem
+                      key={event.id}
+                      event={event}
+                      onClick={() => openApplicant(event.sessionId)}
+                      active={selectedSession === event.sessionId}
+                    />
+                  ))}
+                  {filteredEvents.length === 0 && (
+                    <div className="p-8 text-center text-xs text-muted-foreground">
+                      {events.length === 0
+                        ? "아직 감독 이벤트가 없습니다"
+                        : "해당 심각도의 이벤트가 없습니다"}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function MonitorChatPanel({
+  sessions,
+  onRead,
+  onLatest,
+}: {
+  sessions: Session[];
+  onRead: (sessionId: string) => void;
+  onLatest: (sessionId: string, message: ChatMessage) => void;
+}) {
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const selectedSession = sessions.find(
+    (session) => session.sessionId === selectedSessionId
+  );
+  const orderedSessions = [...sessions].sort((left, right) => {
+    if (left.unreadMessageCount !== right.unreadMessageCount) {
+      return right.unreadMessageCount - left.unreadMessageCount;
+    }
+    return (
+      new Date(right.latestMessage?.createdAt ?? 0).getTime() -
+      new Date(left.latestMessage?.createdAt ?? 0).getTime()
+    );
+  });
+
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    let cancelled = false;
+    const fetchMessages = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `/api/examiner/session/${selectedSessionId}/messages?t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        const data = await response.json();
+        if (!cancelled && response.ok) {
+          setMessages(data.messages ?? []);
+          onRead(selectedSessionId);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void fetchMessages();
+    const pollingId = setInterval(fetchMessages, 20_000);
+    const supabase = createClientSupabase();
+    const channel = supabase
+      .channel(`monitor-chat-${selectedSessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "session_messages",
+          filter: `session_id=eq.${selectedSessionId}`,
+        },
+        () => void fetchMessages()
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollingId);
+      void supabase.removeChannel(channel);
+    };
+  }, [onRead, selectedSessionId]);
+
+  async function sendMessage(event: React.FormEvent) {
+    event.preventDefault();
+    const content = input.trim();
+    if (!selectedSessionId || !content || busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/examiner/session/${selectedSessionId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.message) {
+        const message = data.message as ChatMessage;
+        setMessages((current) =>
+          current.some((item) => item.id === message.id)
+            ? current
+            : [...current, message]
+        );
+        onLatest(selectedSessionId, message);
+        setInput("");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (selectedSession) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-border p-4">
+          <button
+            type="button"
+            onClick={() => setSelectedSessionId(null)}
+            aria-label="대화방 목록으로 돌아가기"
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-soft"
+          >
+            ←
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-bold">
+              {selectedSession.applicantName}
+            </div>
+            <div className="truncate text-[10px] text-muted-foreground">
+              {selectedSession.organization}
+            </div>
+          </div>
+          <span className="h-2 w-2 rounded-full bg-success" />
+        </div>
+        <div className="flex-1 space-y-2 overflow-y-auto bg-[#b2c7d9]/35 p-4">
+          {loading && messages.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              대화를 불러오는 중…
+            </div>
+          )}
+          {!loading && messages.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              아직 대화가 없습니다
+            </div>
+          )}
+          {messages.map((message) => {
+            const isExaminer = message.sender_role === "examiner";
+            return (
+              <div
+                key={message.id}
+                className={cn("flex", isExaminer ? "justify-end" : "justify-start")}
+              >
+                <div
+                  className={cn(
+                    "max-w-[82%] rounded-xl px-3 py-2 shadow-sm",
+                    isExaminer ? "bg-[#fee500] text-black" : "bg-white"
+                  )}
+                >
+                  <div className="break-words text-sm">{message.content}</div>
+                  <div className="mt-1 text-right text-[9px] text-black/50">
+                    {new Date(message.created_at).toLocaleTimeString("ko-KR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <form onSubmit={sendMessage} className="flex gap-2 border-t border-border p-3">
+          <input
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            maxLength={500}
+            disabled={busy}
+            placeholder="메시지 입력"
+            aria-label="감독관 메시지"
+            className="h-10 min-w-0 flex-1 rounded-md border border-border px-3 text-sm focus:border-primary focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy || !input.trim()}
+            className="h-10 rounded-md bg-primary px-4 text-xs font-bold text-white disabled:opacity-40"
+          >
+            전송
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="border-b border-border px-4 py-3">
+        <div className="text-sm font-bold">응시자 대화</div>
+        <div className="text-[10px] text-muted-foreground">
+          안 읽은 메시지가 있는 대화가 위에 표시됩니다.
+        </div>
+      </div>
+      {orderedSessions.map((session) => (
+        <button
+          key={session.sessionId}
+          type="button"
+          onClick={() => setSelectedSessionId(session.sessionId)}
+          className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition hover:bg-surface-soft"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
+            {session.applicantName.slice(0, 1)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-bold">
+                {session.applicantName}
+              </span>
+              {session.latestMessage && (
+                <span className="shrink-0 text-[9px] text-muted">
+                  {new Date(session.latestMessage.createdAt).toLocaleTimeString(
+                    "ko-KR",
+                    { hour: "2-digit", minute: "2-digit" }
+                  )}
+                </span>
+              )}
+            </span>
+            <span className="mt-0.5 flex items-center justify-between gap-2">
+              <span className="truncate text-xs text-muted-foreground">
+                {session.latestMessage?.content ?? "대화를 시작하세요"}
+              </span>
+              {session.unreadMessageCount > 0 && (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                  {session.unreadMessageCount}
+                </span>
+              )}
+            </span>
+          </span>
+        </button>
+      ))}
+      {orderedSessions.length === 0 && (
+        <div className="p-8 text-center text-xs text-muted-foreground">
+          현재 입장한 응시자가 없습니다.
+        </div>
+      )}
     </div>
   );
 }

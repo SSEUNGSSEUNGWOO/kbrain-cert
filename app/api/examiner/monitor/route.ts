@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     { data: recentEvents },
     { data: eventCounts },
     { data: unreadMessages },
+    { data: latestMessages },
   ] =
     await Promise.all([
       invitationIds.length
@@ -89,6 +90,14 @@ export async function GET(request: Request) {
             .order("created_at", { ascending: false })
             .limit(500)
         : Promise.resolve({ data: [] as Array<{ id: number; session_id: string; content: string; created_at: string }> }),
+      sessionIds.length
+        ? admin
+            .from("session_messages")
+            .select("session_id, sender_role, content, created_at")
+            .in("session_id", sessionIds)
+            .order("created_at", { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [] as Array<{ session_id: string; sender_role: string; content: string; created_at: string }> }),
     ]);
 
   const invMap: Record<
@@ -142,6 +151,20 @@ export async function GET(request: Request) {
     }
   }
 
+  const latestBySession: Record<
+    string,
+    { senderRole: string; content: string; createdAt: string }
+  > = {};
+  for (const message of latestMessages ?? []) {
+    if (!latestBySession[message.session_id]) {
+      latestBySession[message.session_id] = {
+        senderRole: message.sender_role,
+        content: message.content,
+        createdAt: message.created_at,
+      };
+    }
+  }
+
   const enrichedSessions = (sessions ?? []).map((s) => {
     const inv = s.invitation_id ? invMap[s.invitation_id] : null;
     const counts = warnCount[s.id] ?? { high: 0, warn: 0 };
@@ -163,6 +186,7 @@ export async function GET(request: Request) {
             createdAt: unreadBySession[s.id].createdAt,
           }
         : null,
+      latestMessage: latestBySession[s.id] ?? null,
     };
   });
 
