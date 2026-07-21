@@ -104,13 +104,10 @@ export function AgoraWebcamPublisher({
   }, [active, sessionId, webcamStream, onFailure]);
 
   if (!active || !sessionId || !webcamStream) return null;
+  if (status === "live") return null;
   return (
     <div className="fixed right-6 bottom-[278px] z-40 rounded-sm bg-black/75 px-2 py-1 text-[10px] font-bold text-white">
-      {status === "live"
-        ? "● 감독관 웹캠 송출 중"
-        : status === "error"
-        ? "웹캠 송출 연결 실패"
-        : "웹캠 송출 연결 중…"}
+      {status === "error" ? "웹캠 송출 연결 실패" : "웹캠 송출 연결 중…"}
     </div>
   );
 }

@@ -68,9 +68,10 @@ export function ExamChat({
       {!visibleOpen && (
         <button
           onClick={() => setOpen(true)}
-          className="relative w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-white shadow-lg flex items-center justify-center text-xl transition"
+          className="relative h-12 pl-3 pr-4 rounded-full bg-primary hover:bg-primary-hover text-white shadow-lg flex items-center gap-2 text-sm font-bold transition"
         >
-          💬
+          <span className="text-lg leading-none" aria-hidden>💬</span>
+          <span>감독관 문의</span>
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center border-2 border-white animate-pulse font-tabular">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -80,7 +81,7 @@ export function ExamChat({
       )}
 
       {visibleOpen && (
-        <div className="w-80 rounded-md bg-white border border-border shadow-xl overflow-hidden flex flex-col max-h-[400px]">
+        <div className="absolute bottom-0 right-0 w-80 rounded-md bg-white border border-border shadow-xl overflow-hidden flex flex-col max-h-[400px]">
           <div className="px-4 py-3 border-b border-border bg-primary text-white flex items-center justify-between">
             <div>
               <div className="text-[10px] font-bold tracking-widest uppercase opacity-80">

@@ -104,13 +104,10 @@ export function AgoraScreenPublisher({
   }, [active, sessionId, screenStream, onFailure]);
 
   if (!active || !sessionId || !screenStream) return null;
+  if (status === "live") return null;
   return (
     <div className="fixed right-6 bottom-[250px] z-40 rounded-sm bg-black/75 px-2 py-1 text-[10px] font-bold text-white">
-      {status === "live"
-        ? "● 감독관 화면 송출 중"
-        : status === "error"
-        ? "화면 송출 연결 실패"
-        : "화면 송출 연결 중…"}
+      {status === "error" ? "화면 송출 연결 실패" : "화면 송출 연결 중…"}
     </div>
   );
 }
