@@ -45,11 +45,19 @@ export default async function ExamSessionTakePage({
   const { data: exam } = await admin
     .from("exams")
     .select(
-      "id, title, duration_minutes, pass_score, grade_id, exam_date, allow_no_screen_share"
+      "id, title, duration_minutes, pass_score, grade_id, exam_date, allow_no_screen_share, allow_dual_monitor"
     )
     .eq("id", session.exam_id)
     .single();
   if (!exam) notFound();
+
+  const { data: invitation } = session.invitation_id
+    ? await admin
+        .from("exam_invitations")
+        .select("allow_no_webcam, allow_no_screen_share, allow_dual_monitor")
+        .eq("id", session.invitation_id)
+        .maybeSingle()
+    : { data: null };
 
   const [{ data: grades }, { data: savedAnswers }] =
     await Promise.all([
@@ -74,7 +82,13 @@ export default async function ExamSessionTakePage({
         passScore: exam.pass_score,
         grade: gradeName ?? "",
         examDate: exam.exam_date,
-        allowNoScreenShare: exam.allow_no_screen_share ?? false,
+        allowNoWebcam: invitation?.allow_no_webcam ?? false,
+        allowNoScreenShare:
+          (exam.allow_no_screen_share ?? false) ||
+          (invitation?.allow_no_screen_share ?? false),
+        allowDualMonitor:
+          (exam.allow_dual_monitor ?? false) ||
+          (invitation?.allow_dual_monitor ?? false),
       }}
       sets={[]}
       questions={[]}

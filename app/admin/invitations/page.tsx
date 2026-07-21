@@ -25,7 +25,7 @@ export default async function InvitationsPage({
   const invitationQuery = supabase
       .from("exam_invitations")
       .select(
-        "id, name, phone, email, organization, status, sent_at, used_at, exam_id"
+        "id, name, phone, email, organization, status, sent_at, used_at, exam_id, allow_no_webcam, allow_no_screen_share, allow_dual_monitor"
       )
       .order("created_at", { ascending: false });
   const { data: invitations } = selectedExam
@@ -92,6 +92,9 @@ export default async function InvitationsPage({
     status: inv.status as "created" | "sent" | "used" | "expired",
     sentAt: inv.sent_at,
     usedAt: inv.used_at,
+    allowNoWebcam: inv.allow_no_webcam ?? false,
+    allowNoScreenShare: inv.allow_no_screen_share ?? false,
+    allowDualMonitor: inv.allow_dual_monitor ?? false,
     session: sessionByInv[inv.id] ?? null,
   }));
 

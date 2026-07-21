@@ -26,8 +26,16 @@ type Row = {
   status: Status;
   sentAt: string | null;
   usedAt: string | null;
+  allowNoWebcam: boolean;
+  allowNoScreenShare: boolean;
+  allowDualMonitor: boolean;
   session: SessionInfo | null;
 };
+
+type ExceptionKey =
+  | "allowNoWebcam"
+  | "allowNoScreenShare"
+  | "allowDualMonitor";
 
 type StatusFilter = "전체" | "미발송" | "발송됨" | "사용됨" | "만료";
 
@@ -50,6 +58,49 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<Row | null>(null);
+  const [exceptions, setExceptions] = useState(() =>
+    Object.fromEntries(
+      rows.map((row) => [
+        row.id,
+        {
+          allowNoWebcam: row.allowNoWebcam,
+          allowNoScreenShare: row.allowNoScreenShare,
+          allowDualMonitor: row.allowDualMonitor,
+        },
+      ])
+    ) as Record<string, Record<ExceptionKey, boolean>>
+  );
+  const [savingException, setSavingException] = useState<string | null>(null);
+  const [exceptionError, setExceptionError] = useState<string | null>(null);
+
+  async function toggleException(invitationId: string, key: ExceptionKey) {
+    const current = exceptions[invitationId]?.[key] ?? false;
+    const requestKey = `${invitationId}:${key}`;
+    setSavingException(requestKey);
+    setExceptionError(null);
+    try {
+      const response = await fetch("/api/admin/invitations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invitationId, [key]: !current }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "설정 저장 실패");
+      setExceptions((previous) => ({
+        ...previous,
+        [invitationId]: {
+          ...previous[invitationId],
+          [key]: !current,
+        },
+      }));
+    } catch (error) {
+      setExceptionError(
+        error instanceof Error ? error.message : "설정 저장 실패"
+      );
+    } finally {
+      setSavingException(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     return rows.filter((inv) => {
@@ -122,7 +173,14 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
         </div>
       )}
 
-      <table className="w-full text-sm">
+      {exceptionError && (
+        <div role="alert" className="border-b border-danger bg-danger-soft px-5 py-2 text-xs font-bold text-danger">
+          {exceptionError}
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[1180px] text-sm">
         <thead className="bg-surface-soft">
           <tr className="text-left text-[10px] font-bold tracking-widest text-muted uppercase">
             <th className="pl-5 pr-2 py-3 w-8">
@@ -138,6 +196,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
             <th className="px-3 py-3">시험</th>
             <th className="px-3 py-3">상태</th>
             <th className="px-3 py-3">준비 상태</th>
+            <th className="px-3 py-3">개별 예외</th>
             <th className="px-3 py-3">발송</th>
             <th className="px-5 py-3">사용</th>
           </tr>
@@ -183,6 +242,28 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                 <td className="px-3 py-3">
                   <PrecheckSummary session={inv.session} onOpen={() => setDetail(inv)} />
                 </td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-1 whitespace-nowrap">
+                    <ExceptionToggle
+                      label="웹캠 면제"
+                      active={exceptions[inv.id]?.allowNoWebcam ?? false}
+                      busy={savingException === `${inv.id}:allowNoWebcam`}
+                      onClick={() => void toggleException(inv.id, "allowNoWebcam")}
+                    />
+                    <ExceptionToggle
+                      label="화면공유 면제"
+                      active={exceptions[inv.id]?.allowNoScreenShare ?? false}
+                      busy={savingException === `${inv.id}:allowNoScreenShare`}
+                      onClick={() => void toggleException(inv.id, "allowNoScreenShare")}
+                    />
+                    <ExceptionToggle
+                      label="듀얼 허용"
+                      active={exceptions[inv.id]?.allowDualMonitor ?? false}
+                      busy={savingException === `${inv.id}:allowDualMonitor`}
+                      onClick={() => void toggleException(inv.id, "allowDualMonitor")}
+                    />
+                  </div>
+                </td>
                 <td className="px-3 py-3 text-xs text-muted-foreground font-tabular whitespace-nowrap">
                   {inv.sentAt ?? "-"}
                 </td>
@@ -195,7 +276,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           {filtered.length === 0 && (
             <tr>
               <td
-                colSpan={8}
+                colSpan={9}
                 className="px-5 py-16 text-center text-sm text-muted-foreground"
               >
                 <div className="font-bold text-foreground mb-1">
@@ -213,6 +294,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
           )}
         </tbody>
       </table>
+      </div>
 
       <div className="px-5 py-3 border-t border-border flex items-center justify-between text-xs">
         <div className="text-muted-foreground">
@@ -224,6 +306,35 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
         <PrecheckDetailModal row={detail} onClose={() => setDetail(null)} />
       )}
     </div>
+  );
+}
+
+function ExceptionToggle({
+  label,
+  active,
+  busy,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  busy: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      disabled={busy}
+      onClick={onClick}
+      className={cn(
+        "h-7 rounded-sm border px-2 text-[10px] font-bold transition disabled:opacity-50",
+        active
+          ? "border-warning bg-warning-soft text-warning"
+          : "border-border bg-white text-muted-foreground hover:border-primary"
+      )}
+    >
+      {busy ? "저장 중" : label}
+    </button>
   );
 }
 

@@ -568,10 +568,18 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
       sessionId: fixture.sessionId,
       questionId: fixture.fileQuestionId,
       slotId: fixture.fileSlotId,
-      fileName: "e2e-direct-upload.txt",
+      fileName: "e2e-direct-upload.csv",
       fileSize: 17,
-      mime: "text/plain",
+      mime: "text/csv",
     };
+    const rejected = await request.post("/api/exam/answers/upload", {
+      data: {
+        ...metadata,
+        fileName: "e2e-invalid.exe",
+        mime: "application/octet-stream",
+      },
+    });
+    expect(rejected.status()).toBe(400);
     const prepare = await request.post("/api/exam/answers/upload", {
       data: metadata,
     });
@@ -586,7 +594,7 @@ test.describe.serial("응시자 이름·전화번호 진입", () => {
     const { error: uploadError } = await anon.storage
       .from("answer-files")
       .uploadToSignedUrl(prepared.path, prepared.token, content, {
-        contentType: "text/plain",
+        contentType: "text/csv",
       });
     if (uploadError) throw uploadError;
 

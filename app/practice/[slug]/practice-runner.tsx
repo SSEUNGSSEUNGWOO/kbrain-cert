@@ -66,7 +66,9 @@ export function PracticeRunner({
     grade: string;
     /** 실 시험 예약 시각 · 실 시험이면 이 시각을 기준으로 카운트다운·자동 제출 */
     examDate?: string | null;
+    allowNoWebcam?: boolean;
     allowNoScreenShare?: boolean;
+    allowDualMonitor?: boolean;
   };
   sets: Set[];
   questions: Question[];
@@ -295,19 +297,20 @@ export function PracticeRunner({
 
   const showTimer = tab === "exam";
   const proctorActive = tab === "exam" && isRealExam;
+  const webcamRequired = isRealExam && !exam.allowNoWebcam;
   const screenRequired = isRealExam && !exam.allowNoScreenShare;
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [recoveryCameraId, setRecoveryCameraId] = useState("");
   const [webcamRecoveryBusy, setWebcamRecoveryBusy] = useState(false);
   const [screenRecoveryBusy, setScreenRecoveryBusy] = useState(false);
   useEffect(() => {
-    if (!proctorActive || webcamStream) return;
+    if (!proctorActive || !webcamRequired || webcamStream) return;
     void navigator.mediaDevices.enumerateDevices().then((devices) => {
       const cameras = devices.filter((device) => device.kind === "videoinput");
       setCameraDevices(cameras);
       setRecoveryCameraId((current) => current || cameras[0]?.deviceId || "");
     });
-  }, [proctorActive, webcamStream]);
+  }, [proctorActive, webcamRequired, webcamStream]);
   const recoverWebcam = useCallback(async () => {
     setWebcamRecoveryBusy(true);
     try {
@@ -407,13 +410,13 @@ export function PracticeRunner({
       <AgoraWebcamPublisher
         sessionId={sessionId ?? null}
         webcamStream={webcamStream}
-        active={proctorActive}
+        active={proctorActive && webcamRequired}
         onFailure={reportWebcamFailure}
       />
       <AgoraScreenPublisher
         sessionId={sessionId ?? null}
         screenStream={screenStream}
-        active={proctorActive}
+        active={proctorActive && screenRequired}
         onFailure={reportScreenFailure}
       />
 
@@ -475,7 +478,9 @@ export function PracticeRunner({
             setWebcamStream={setWebcamStream}
             screenStream={screenStream}
             setScreenStream={setScreenStream}
+            allowNoWebcam={isRealExam && exam.allowNoWebcam}
             allowNoScreenShare={isRealExam && exam.allowNoScreenShare}
+            allowDualMonitor={isRealExam && exam.allowDualMonitor}
             onEnterExam={(snapshot: EnvResultSnapshot) => {
               void savePrecheck("env", {
                 envResult: snapshot,
@@ -531,6 +536,8 @@ export function PracticeRunner({
         <MonitoringBadge
           webcamStream={webcamStream}
           screenActive={!!screenStream}
+          webcamExempt={!webcamRequired}
+          screenExempt={!screenRequired}
         />
 
         {/* 실 시험: 감독관 채팅 · Practice에서는 표시 X */}
@@ -649,6 +656,7 @@ export function PracticeRunner({
       )}
 
       {proctorActive &&
+        webcamRequired &&
         webcamStream?.getVideoTracks()[0]?.readyState !== "live" && (
           <div className="fixed inset-0 z-[101] flex items-center justify-center bg-slate-950/95 p-6">
             <div className="w-full max-w-md rounded-md bg-white p-8 text-center shadow-2xl">
@@ -818,9 +826,13 @@ function SubmitConfirmDialog({
 function MonitoringBadge({
   webcamStream,
   screenActive,
+  webcamExempt,
+  screenExempt,
 }: {
   webcamStream: MediaStream | null;
   screenActive: boolean;
+  webcamExempt: boolean;
+  screenExempt: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -848,19 +860,19 @@ function MonitoringBadge({
           <span
             className={cn(
               "w-1.5 h-1.5 rounded-full",
-              webcamStream ? "bg-success" : "bg-danger"
+              webcamExempt || webcamStream ? "bg-success" : "bg-danger"
             )}
           />
-          웹캠
+          웹캠{webcamExempt ? " 면제" : ""}
         </span>
         <span className="flex items-center gap-1">
           <span
             className={cn(
               "w-1.5 h-1.5 rounded-full",
-              screenActive ? "bg-success" : "bg-danger"
+              screenExempt || screenActive ? "bg-success" : "bg-danger"
             )}
           />
-          화면
+          화면{screenExempt ? " 면제" : ""}
         </span>
       </div>
     </div>

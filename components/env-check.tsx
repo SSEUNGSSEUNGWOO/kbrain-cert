@@ -35,14 +35,18 @@ export function EnvCheck({
   setWebcamStream,
   screenStream,
   setScreenStream,
+  allowNoWebcam = false,
   allowNoScreenShare = false,
+  allowDualMonitor = false,
 }: {
   onEnterExam?: (snapshot: EnvResultSnapshot) => void;
   webcamStream: MediaStream | null;
   setWebcamStream: (s: MediaStream | null) => void;
   screenStream: MediaStream | null;
   setScreenStream: (s: MediaStream | null) => void;
+  allowNoWebcam?: boolean;
   allowNoScreenShare?: boolean;
+  allowDualMonitor?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -52,12 +56,16 @@ export function EnvCheck({
     detail: "확인 중…",
   });
   const [webcam, setWebcam] = useState<CheckResult>(
-    webcamStream
+    allowNoWebcam
+      ? { status: "ok", detail: "관리자 승인 · 웹캠 면제" }
+      : webcamStream
       ? { status: "ok", detail: "웹캠 활성 · 시험까지 유지" }
       : { status: "pending", detail: "권한 요청 대기" }
   );
   const [screen, setScreen] = useState<CheckResult>(
-    screenStream
+    allowNoScreenShare
+      ? { status: "ok", detail: "관리자 승인 · 화면 공유 면제" }
+      : screenStream
       ? { status: "ok", detail: "화면 공유 활성 · 시험까지 유지" }
       : { status: "pending", detail: "테스트 버튼 클릭" }
   );
@@ -66,8 +74,10 @@ export function EnvCheck({
     detail: "측정 중…",
   });
   const [monitor, setMonitor] = useState<CheckResult>({
-    status: "pending",
-    detail: "감지 시작 버튼 클릭",
+    status: allowDualMonitor ? "ok" : "pending",
+    detail: allowDualMonitor
+      ? "관리자 승인 · 듀얼 모니터 허용"
+      : "감지 시작 버튼 클릭",
   });
   const [cpu, setCpu] = useState<CheckResult>({
     status: "pending",
@@ -188,11 +198,12 @@ export function EnvCheck({
 
   // 최초 진입 시 웹캠 자동 요청 · 이미 활성이면 프리뷰만 연결
   useEffect(() => {
+    if (allowNoWebcam) return;
     if (webcamStream) return;
     const timer = window.setTimeout(() => void requestWebcam(), 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [allowNoWebcam]);
 
   // 프리뷰 재연결 (탭 재진입 시)
   useEffect(() => {
@@ -255,6 +266,7 @@ export function EnvCheck({
 
   // 자동 시도 · 실패해도 사용자 재시도 가능
   useEffect(() => {
+    if (allowDualMonitor) return;
     const timer = window.setTimeout(() => void requestMonitorCheck(), 0);
     // 스크린 연결 변경 감지
     const anyScreen = window.screen as unknown as {
@@ -267,7 +279,7 @@ export function EnvCheck({
       window.clearTimeout(timer);
       anyScreen.removeEventListener?.("change", onChange);
     };
-  }, []);
+  }, [allowDualMonitor]);
 
   // CPU 벤치마크 · 웹캠+화면공유 인코딩 동시 처리 가능한지 대략 확인
   const runCpuBenchmark = async () => {
@@ -379,17 +391,17 @@ export function EnvCheck({
   };
 
   const requiredOk =
-    webcam.status === "ok" &&
+    (allowNoWebcam || webcam.status === "ok") &&
     (allowNoScreenShare || screen.status === "ok") &&
     browserInfo.status === "ok" &&
-    monitor.status !== "error" &&
+    (allowDualMonitor || monitor.status !== "error") &&
     cpu.status !== "error";
   const networkOk = network.status !== "error";
   const allGood = requiredOk && networkOk;
 
   const blockers: string[] = [];
-  if (monitor.status === "error") blockers.push("듀얼 모니터");
-  if (webcam.status !== "ok") blockers.push("웹캠");
+  if (!allowDualMonitor && monitor.status === "error") blockers.push("듀얼 모니터");
+  if (!allowNoWebcam && webcam.status !== "ok") blockers.push("웹캠");
   if (!allowNoScreenShare && screen.status !== "ok") blockers.push("화면 공유");
   if (network.status === "error") blockers.push("네트워크");
   if (cpu.status === "error") blockers.push("CPU");
@@ -407,19 +419,27 @@ export function EnvCheck({
       n: 1,
       title: "듀얼 모니터",
       result: monitor,
-      hint: "노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요. 시험 중 감지되면 응시가 중단됩니다.",
-      action: { label: "재감지", onClick: requestMonitorCheck },
+      hint: allowDualMonitor
+        ? "관리자가 이 응시자의 듀얼 모니터 사용을 허용했습니다."
+        : "노트북 외 외부 모니터 · TV · 프로젝터 연결을 모두 해제해주세요. 시험 중 감지되면 응시가 중단됩니다.",
+      action: allowDualMonitor
+        ? undefined
+        : { label: "재감지", onClick: requestMonitorCheck },
     },
     {
       n: 2,
       title: "웹캠",
       result: webcam,
-      hint: "시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다.",
-      action: {
-        label: "웹캠 다시 연결",
-        onClick: () => void requestWebcam(),
-      },
-      preview: (
+      hint: allowNoWebcam
+        ? "관리자가 이 응시자의 웹캠 사용을 면제했습니다."
+        : "시험 중 얼굴이 카메라 안에 계속 잡혀야 합니다.",
+      action: allowNoWebcam
+        ? undefined
+        : {
+            label: "웹캠 다시 연결",
+            onClick: () => void requestWebcam(),
+          },
+      preview: allowNoWebcam ? undefined : (
         <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-black p-4">
           {cameras.length > 1 && (
             <label className="mx-auto mb-3 block max-w-md text-xs font-bold text-white">
@@ -459,11 +479,14 @@ export function EnvCheck({
       hint: allowNoScreenShare
         ? "이 시험은 화면 공유 없이 응시할 수 있습니다."
         : "감독관이 응시자 화면을 실시간 관찰합니다. 팝업에서 반드시 '전체 화면'을 선택해주세요.",
-      action: {
-        label: screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트",
-        onClick: requestScreen,
-        primary: true,
-      },
+      action: allowNoScreenShare
+        ? undefined
+        : {
+            label:
+              screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트",
+            onClick: requestScreen,
+            primary: true,
+          },
     },
     {
       n: 4,
