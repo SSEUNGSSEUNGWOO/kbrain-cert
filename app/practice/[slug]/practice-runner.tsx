@@ -1560,7 +1560,7 @@ function FileSlot({
         />
         <div className="text-2xl">📎</div>
         <div className="font-bold">
-          {busy ? "업로드 중…" : "파일 선택 or 드래그"}
+          {busy ? "업로드 중…" : "파일 선택"}
         </div>
         {slot.accept && (
           <div className="text-[10px]">허용: {slot.accept}</div>

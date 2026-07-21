@@ -133,20 +133,46 @@ async function validateUploadRequest(request: Request, body: UploadBody | null) 
   const slots = (
     examQuestion as unknown as {
       questions: {
-        submission_slots: Array<{ id?: string; type?: string }>;
+        submission_slots: Array<{
+          id?: string;
+          type?: string;
+          accept?: string;
+        }>;
       } | null;
     } | null
   )?.questions?.submission_slots;
-  if (
-    !Array.isArray(slots) ||
-    !slots.some((slot) => slot.id === slotId && slot.type === "file")
-  ) {
+  const slot = Array.isArray(slots)
+    ? slots.find((candidate) => candidate.id === slotId && candidate.type === "file")
+    : undefined;
+  if (!slot) {
     return NextResponse.json(
       { error: "file slot not in exam question" },
       { status: 400 }
     );
   }
+  if (!matchesAcceptedFile(body.fileName, body.mime, slot.accept)) {
+    return NextResponse.json(
+      { error: `허용되지 않는 파일 형식입니다. 허용: ${slot.accept}` },
+      { status: 400 }
+    );
+  }
   return { admin, sessionId, questionId, slotId };
+}
+
+function matchesAcceptedFile(
+  fileName: string,
+  mime: string | undefined,
+  accept: string | undefined
+): boolean {
+  if (!accept?.trim()) return true;
+  const lowerName = fileName.toLowerCase();
+  const lowerMime = (mime ?? "").toLowerCase();
+  return accept.split(",").some((rawToken) => {
+    const token = rawToken.trim().toLowerCase();
+    if (token.startsWith(".")) return lowerName.endsWith(token);
+    if (token.endsWith("/*")) return lowerMime.startsWith(token.slice(0, -1));
+    return token === lowerMime;
+  });
 }
 
 async function validateSessionState(
