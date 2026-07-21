@@ -117,12 +117,7 @@ export function PracticeRunner({
   const currentAnswer = currentQ ? answers[currentQ.id] ?? {} : {};
 
   // 답안 auto-save · sessionId 없으면 no-op (Practice)
-  const {
-    status: saveStatus,
-    lastSavedAt,
-    flushCurrent,
-    prepareSubmit,
-  } = useAutoSaveAnswer(
+  const { flushCurrent, prepareSubmit } = useAutoSaveAnswer(
     sessionId,
     currentQ?.id,
     currentAnswer
@@ -597,10 +592,6 @@ export function PracticeRunner({
             />
           )}
 
-          {isRealExam && (
-            <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
-          )}
-
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => void moveToQuestion(currentIdx - 1)}
@@ -707,33 +698,6 @@ export function PracticeRunner({
           onConfirm={() => doSubmit(false)}
         />
       )}
-    </div>
-  );
-}
-
-function SaveIndicator({
-  status,
-  lastSavedAt,
-}: {
-  status: "idle" | "pending" | "saved" | "error";
-  lastSavedAt: Date | null;
-}) {
-  const style = {
-    idle: { color: "text-muted-foreground", label: "저장 대기" },
-    pending: { color: "text-info", label: "저장 중…" },
-    saved: {
-      color: "text-success",
-      label: lastSavedAt
-        ? `저장됨 · ${lastSavedAt.toLocaleTimeString("ko-KR", {
-            hour12: false,
-          })}`
-        : "저장됨",
-    },
-    error: { color: "text-danger", label: "저장 실패 · 네트워크 확인" },
-  }[status];
-  return (
-    <div className={cn("text-[11px] font-bold text-right", style.color)}>
-      · {style.label}
     </div>
   );
 }
@@ -1209,17 +1173,6 @@ function QuestionCard({
             문항 {question.set_order}
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-0.5">
-            배점
-          </div>
-          <div className="font-bold text-2xl text-primary font-tabular tabular-nums">
-            {question.max_score}
-            <span className="text-sm text-muted-foreground font-normal ml-0.5">
-              점
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* 문제 본문 · 읽기 편한 폭 · 큰 폰트 · 넓은 줄간격 */}
@@ -1238,7 +1191,7 @@ function QuestionCard({
               Answer · 답안 작성
             </div>
             <div className="text-xs text-muted-foreground">
-              {question.submission_slots.length}개 항목 · 자동 저장 (1.5초)
+              {question.submission_slots.length}개 항목
             </div>
           </div>
         </div>
@@ -1347,9 +1300,6 @@ function SlotEditor({
                 </span>
                 <span className="font-bold text-sm">{slot.label}</span>
               </div>
-              <span className="text-xs font-bold text-muted">
-                배점 {slot.max_score}
-              </span>
             </div>
             {slot.type === "long_text" && (
               <textarea
