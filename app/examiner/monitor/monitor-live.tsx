@@ -499,10 +499,7 @@ export function MonitorLive({
   const pageAlerts = alerts.filter(
     (session) => getAgoraShard(session.sessionId) === mediaPage
   );
-  const pageWarns = warns.filter(
-    (session) => getAgoraShard(session.sessionId) === mediaPage
-  );
-  const pageNormals = normals.filter(
+  const pageNormals = [...warns, ...normals].filter(
     (session) => getAgoraShard(session.sessionId) === mediaPage
   );
 
@@ -878,35 +875,9 @@ export function MonitorLive({
 
           <Section
             step="02"
-            titleKor="경고"
-            tag="WARN"
-            subtitle="WARN severity · 관찰 유지"
-            count={pageWarns.length}
-            tone="warning"
-          >
-            {pageWarns.length === 0 ? (
-              <EmptyRow message="현재 경고 응시자가 없습니다." />
-            ) : (
-              <div className="grid grid-cols-5 gap-3">
-                {pageWarns.map((app) => (
-                  <ApplicantCard
-                    key={app.sessionId}
-                    app={app}
-                    size="md"
-                    selected={selectedSession === app.sessionId}
-                    onSelect={() => openApplicant(app.sessionId)}
-                    videoTrack={videoTracks[app.sessionId]}
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
-
-          <Section
-            step="03"
             titleKor="정상"
             tag="NORMAL"
-            subtitle="INFO 이하 · 존재 확인"
+            subtitle="관찰 유지 · 존재 확인"
             count={pageNormals.length}
             tone="success"
           >
