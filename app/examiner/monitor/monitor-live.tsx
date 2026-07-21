@@ -490,11 +490,37 @@ export function MonitorLive({
   };
   const chatSessions = sessions.filter(
     (session) => session.unreadMessageCount > 0
+  ).sort(
+    (left, right) =>
+      new Date(right.latestUnreadMessage?.createdAt ?? 0).getTime() -
+      new Date(left.latestUnreadMessage?.createdAt ?? 0).getTime()
   );
   const unreadChatCount = chatSessions.reduce(
     (total, session) => total + session.unreadMessageCount,
     0
   );
+  const previousUnreadChatCount = useRef(0);
+  useEffect(() => {
+    if (unreadChatCount > previousUnreadChatCount.current) {
+      try {
+        const audio = new AudioContext();
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.22);
+        oscillator.connect(gain);
+        gain.connect(audio.destination);
+        oscillator.start();
+        oscillator.stop(audio.currentTime + 0.24);
+        oscillator.onended = () => void audio.close();
+      } catch {
+        // 브라우저 자동재생 정책으로 소리가 막혀도 고정 시각 알림은 유지한다.
+      }
+    }
+    previousUnreadChatCount.current = unreadChatCount;
+  }, [unreadChatCount]);
 
   const sendAnnouncement = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -533,6 +559,52 @@ export function MonitorLive({
         durationMinutes={exam.durationMinutes}
         examDate={exam.examDate}
       />
+
+      {unreadChatCount > 0 && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed right-6 top-20 z-[120] w-[min(420px,calc(100vw-3rem))] overflow-hidden rounded-md border-2 border-danger bg-white shadow-2xl"
+        >
+          <div className="flex items-center gap-3 bg-danger px-4 py-3 text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-lg animate-pulse">
+              💬
+            </span>
+            <div className="flex-1">
+              <div className="font-bold">새 응시자 채팅 {unreadChatCount}건</div>
+              <div className="text-xs text-white/80">
+                확인할 때까지 이 알림이 계속 표시됩니다.
+              </div>
+            </div>
+          </div>
+          <div className="divide-y divide-border">
+            {chatSessions.slice(0, 3).map((session) => (
+              <Link
+                key={session.sessionId}
+                href={`/examiner/session/${session.sessionId}`}
+                className="block bg-white px-4 py-3 transition hover:bg-danger-soft"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-bold text-sm">
+                    {session.applicantName}
+                  </span>
+                  <span className="rounded-full bg-danger px-2 py-0.5 text-[10px] font-bold text-white">
+                    {session.unreadMessageCount}건
+                  </span>
+                </div>
+                <div className="mt-1 truncate text-xs text-muted-foreground">
+                  {session.latestUnreadMessage?.content}
+                </div>
+              </Link>
+            ))}
+            {chatSessions.length > 3 && (
+              <div className="bg-surface-soft px-4 py-2 text-center text-xs font-bold text-danger">
+                그 외 {chatSessions.length - 3}명에게 새 메시지가 있습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {selectedApplicant && (
         <ExpandedMonitor
