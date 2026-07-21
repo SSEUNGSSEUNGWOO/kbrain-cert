@@ -88,7 +88,8 @@ export function MonitorLive({
     Record<string, IRemoteVideoTrack>
   >({});
   const sessionIdsRef = useRef<Set<string>>(new Set());
-  const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
+  const webcamClientRef = useRef<IAgoraRTCClient | null>(null);
+  const screenClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
   const webcamUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
   const webcamUidRef = useRef<Map<string, string>>(new Map());
@@ -122,7 +123,7 @@ export function MonitorLive({
       ordered.slice(0, MAX_LIVE_WEBCAMS).map((item) => item.sessionId)
     );
     desiredWebcamsRef.current = desired;
-    const client = agoraClientRef.current;
+    const client = webcamClientRef.current;
     if (!client) return;
     for (const [sessionId, user] of webcamUsersRef.current) {
       if (desired.has(sessionId) && !subscribedWebcamsRef.current.has(sessionId)) {
@@ -153,7 +154,7 @@ export function MonitorLive({
 
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
-    const client = agoraClientRef.current;
+    const client = screenClientRef.current;
     if (!client) return;
     const previousSession = subscribedScreenRef.current;
     if (previousSession && previousSession !== selectedSession) {
@@ -311,7 +312,7 @@ export function MonitorLive({
 
   useEffect(() => {
     let cancelled = false;
-    let leave: (() => Promise<void>) | undefined;
+    const leaveCallbacks: Array<() => Promise<void>> = [];
     const screenUsers = screenUsersRef.current;
     const webcamUsers = webcamUsersRef.current;
     const webcamUids = webcamUidRef.current;
@@ -320,106 +321,125 @@ export function MonitorLive({
 
     void (async () => {
       try {
-        const [AgoraRTC, response] = await Promise.all([
-          import("agora-rtc-sdk-ng").then((module) => module.default),
-          fetch("/api/agora/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "examiner", examId: exam.id }),
-          }),
-        ]);
-        const config = await response.json();
-        if (!response.ok) throw new Error(config.error ?? "Agora token failed");
+        const AgoraRTC = await import("agora-rtc-sdk-ng").then(
+          (module) => module.default
+        );
         if (cancelled) return;
 
-        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-        agoraClientRef.current = client;
-        const renewToken = () => {
-          void (async () => {
-            const response = await fetch("/api/agora/token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ mode: "examiner", examId: exam.id }),
+        const connect = async (media: "webcam" | "screen") => {
+          const response = await fetch("/api/agora/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: "examiner", examId: exam.id, media }),
+          });
+          const config = await response.json();
+          if (!response.ok) {
+            throw new Error(config.error ?? `Agora ${media} token failed`);
+          }
+          const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+          if (media === "screen") screenClientRef.current = client;
+          else webcamClientRef.current = client;
+
+          const renewToken = () => {
+            void (async () => {
+              const tokenResponse = await fetch("/api/agora/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mode: "examiner",
+                  examId: exam.id,
+                  media,
+                }),
+              });
+              const renewed = await tokenResponse.json();
+              if (!tokenResponse.ok) {
+                throw new Error(`Agora ${media} token renewal failed`);
+              }
+              await client.renewToken(renewed.token);
+            })().catch(() => {
+              if (!cancelled) setError(`Agora ${media} 토큰 갱신 실패`);
             });
-            const renewed = await response.json();
-            if (!response.ok) throw new Error("Agora token renewal failed");
-            await client.renewToken(renewed.token);
-          })().catch(() => {
-            if (!cancelled) setError("Agora 토큰 갱신 실패");
+          };
+          const onPublished = async (
+            user: IAgoraRTCRemoteUser,
+            mediaType: "audio" | "video"
+          ) => {
+            if (mediaType !== "video") return;
+            const uid = String(user.uid);
+            const prefix = media === "screen" ? "screen-" : "applicant-";
+            if (!uid.startsWith(prefix)) return;
+            const sessionId = uid.slice(prefix.length, prefix.length + 36);
+            if (media === "screen") {
+              screenUsersRef.current.set(sessionId, user);
+              screenUidRef.current.set(sessionId, uid);
+              if (selectedSessionRef.current !== sessionId) return;
+              subscribedScreenRef.current = sessionId;
+            } else {
+              webcamUsersRef.current.set(sessionId, user);
+              webcamUidRef.current.set(sessionId, uid);
+              if (!desiredWebcamsRef.current.has(sessionId)) return;
+              subscribedWebcamsRef.current.add(sessionId);
+            }
+            await client.subscribe(user, "video");
+            if (user.videoTrack) {
+              const setter =
+                media === "screen" ? setScreenTracks : setVideoTracks;
+              setter((current) => ({
+                ...current,
+                [sessionId]: user.videoTrack!,
+              }));
+            }
+          };
+          const onUnpublished = (user: IAgoraRTCRemoteUser) => {
+            const uid = String(user.uid);
+            const prefix = media === "screen" ? "screen-" : "applicant-";
+            if (!uid.startsWith(prefix)) return;
+            const sessionId = uid.slice(prefix.length, prefix.length + 36);
+            const activeUid =
+              media === "screen"
+                ? screenUidRef.current.get(sessionId)
+                : webcamUidRef.current.get(sessionId);
+            if (activeUid !== uid) return;
+            if (media === "screen") {
+              screenUsersRef.current.delete(sessionId);
+              screenUidRef.current.delete(sessionId);
+              if (subscribedScreenRef.current === sessionId) {
+                subscribedScreenRef.current = null;
+              }
+            } else {
+              webcamUsersRef.current.delete(sessionId);
+              webcamUidRef.current.delete(sessionId);
+              subscribedWebcamsRef.current.delete(sessionId);
+            }
+            const setter =
+              media === "screen" ? setScreenTracks : setVideoTracks;
+            setter((current) => {
+              const next = { ...current };
+              next[sessionId]?.stop();
+              delete next[sessionId];
+              return next;
+            });
+          };
+          client.on("token-privilege-will-expire", renewToken);
+          client.on("token-privilege-did-expire", renewToken);
+          client.on("user-published", onPublished);
+          client.on("user-unpublished", onUnpublished);
+          await client.join(
+            config.appId,
+            config.channel,
+            config.token,
+            config.uid
+          );
+          leaveCallbacks.push(async () => {
+            client.off("token-privilege-will-expire", renewToken);
+            client.off("token-privilege-did-expire", renewToken);
+            client.off("user-published", onPublished);
+            client.off("user-unpublished", onUnpublished);
+            await client.leave().catch(() => {});
           });
         };
-        client.on("token-privilege-will-expire", renewToken);
-        client.on("token-privilege-did-expire", renewToken);
-        const onPublished = async (
-          user: IAgoraRTCRemoteUser,
-          mediaType: "audio" | "video"
-        ) => {
-          if (mediaType !== "video") return;
-          const uid = String(user.uid);
-          const isScreen = uid.startsWith("screen-");
-          const sessionId = isScreen
-            ? uid.slice("screen-".length, "screen-".length + 36)
-            : uid.startsWith("applicant-")
-            ? uid.slice("applicant-".length, "applicant-".length + 36)
-            : null;
-          if (!sessionId) return;
-          if (isScreen) {
-            screenUsersRef.current.set(sessionId, user);
-            screenUidRef.current.set(sessionId, uid);
-            if (selectedSessionRef.current !== sessionId) return;
-            subscribedScreenRef.current = sessionId;
-          } else {
-            webcamUsersRef.current.set(sessionId, user);
-            webcamUidRef.current.set(sessionId, uid);
-            if (!desiredWebcamsRef.current.has(sessionId)) return;
-            subscribedWebcamsRef.current.add(sessionId);
-          }
-          await client.subscribe(user, "video");
-          if (sessionId && user.videoTrack) {
-            const setter = isScreen ? setScreenTracks : setVideoTracks;
-            setter((current) => ({ ...current, [sessionId]: user.videoTrack! }));
-          }
-        };
-        const onUnpublished = (user: IAgoraRTCRemoteUser) => {
-          const uid = String(user.uid);
-          const isScreen = uid.startsWith("screen-");
-          const sessionId = isScreen
-            ? uid.slice("screen-".length, "screen-".length + 36)
-            : uid.startsWith("applicant-")
-            ? uid.slice("applicant-".length, "applicant-".length + 36)
-            : null;
-          if (!sessionId) return;
-          const activeUid = isScreen
-            ? screenUidRef.current.get(sessionId)
-            : webcamUidRef.current.get(sessionId);
-          if (activeUid !== uid) return;
-          if (isScreen) {
-            screenUsersRef.current.delete(sessionId);
-            screenUidRef.current.delete(sessionId);
-          }
-          else {
-            webcamUsersRef.current.delete(sessionId);
-            webcamUidRef.current.delete(sessionId);
-            subscribedWebcamsRef.current.delete(sessionId);
-          }
-          const setter = isScreen ? setScreenTracks : setVideoTracks;
-          setter((current) => {
-            const next = { ...current };
-            next[sessionId]?.stop();
-            delete next[sessionId];
-            return next;
-          });
-        };
-        client.on("user-published", onPublished);
-        client.on("user-unpublished", onUnpublished);
-        await client.join(config.appId, config.channel, config.token, config.uid);
-        leave = async () => {
-          client.off("token-privilege-will-expire", renewToken);
-          client.off("token-privilege-did-expire", renewToken);
-          client.off("user-published", onPublished);
-          client.off("user-unpublished", onUnpublished);
-          await client.leave().catch(() => {});
-        };
+
+        await Promise.all([connect("webcam"), connect("screen")]);
       } catch (joinError) {
         if (!cancelled) {
           setError(
@@ -433,7 +453,8 @@ export function MonitorLive({
 
     return () => {
       cancelled = true;
-      agoraClientRef.current = null;
+      webcamClientRef.current = null;
+      screenClientRef.current = null;
       screenUsers.clear();
       webcamUsers.clear();
       webcamUids.clear();
@@ -448,7 +469,7 @@ export function MonitorLive({
         Object.values(current).forEach((track) => track.stop());
         return {};
       });
-      if (leave) void leave();
+      for (const leave of leaveCallbacks) void leave();
     };
   }, [exam.id]);
 

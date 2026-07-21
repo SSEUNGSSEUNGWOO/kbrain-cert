@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   let examId: string;
   let uid: string;
   let clientRole: "host" | "audience";
+  const media = body?.media === "screen" ? "screen" : "webcam";
 
   if (body?.mode === "applicant" && sessionId) {
     const { data: session } = await admin
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     }
     examId = session.exam_id;
     const uidPrefix =
-      body.media === "screen"
+      media === "screen"
         ? `screen-${session.id}-`
         : `applicant-${session.id}-`;
     uid =
@@ -76,17 +77,19 @@ export async function POST(request: Request) {
     if (!examId) {
       return NextResponse.json({ error: "examId required" }, { status: 400 });
     }
-    uid = `examiner-${user.id}`;
+    uid = `examiner-${media}-${user.id}`;
     clientRole = "audience";
   }
 
-  const channel = `exam-${examId}`;
+  // 웹캠과 화면공유를 분리해 응시자 100명일 때 한 채널에
+  // 200개의 송출 호스트가 몰리지 않도록 한다.
+  const channel = `exam-${examId}-${media}`;
   const token = RtcTokenBuilder.buildTokenWithUserAccount(
     appId,
     certificate,
     channel,
     uid,
-    RtcRole.PUBLISHER,
+    clientRole === "host" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
     TOKEN_TTL_SECONDS,
     TOKEN_TTL_SECONDS
   );
