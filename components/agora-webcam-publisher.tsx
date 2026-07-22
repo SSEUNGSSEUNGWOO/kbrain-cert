@@ -103,11 +103,7 @@ export function AgoraWebcamPublisher({
     };
   }, [active, sessionId, webcamStream, onFailure]);
 
-  if (!active || !sessionId || !webcamStream) return null;
-  if (status === "live") return null;
-  return (
-    <div className="fixed right-6 bottom-[278px] z-40 rounded-sm bg-black/75 px-2 py-1 text-[10px] font-bold text-white">
-      {status === "error" ? "웹캠 송출 연결 실패" : "웹캠 송출 연결 중…"}
-    </div>
-  );
+  // 응시자 화면에는 송출 상태 표시하지 않음 (감독관 측에서 스트림 유무로 판단)
+  void status;
+  return null;
 }
