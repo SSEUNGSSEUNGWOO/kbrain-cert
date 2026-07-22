@@ -264,17 +264,18 @@ export function PracticeRunner({
     }
   }
 
-  async function moveToQuestion(index: number) {
+  function moveToQuestion(index: number) {
     if (index === currentIdx || index < 0 || index >= questions.length) return;
-    const saved = await flushCurrent();
-    if (!saved) {
-      setSubmitError(
-        "현재 문항을 저장하지 못했습니다. 네트워크를 확인한 뒤 다시 이동해 주세요."
-      );
-      return;
-    }
     setSubmitError(null);
     setCurrentIdx(index);
+    // 저장은 백그라운드 · UI는 즉시 이동 · 실패 시 알림
+    void flushCurrent().then((saved) => {
+      if (!saved) {
+        setSubmitError(
+          "직전 문항 저장에 실패했습니다. 네트워크를 확인해 주세요. (자동 재시도 중)"
+        );
+      }
+    });
   }
   const questionsBySet = useMemo(() => {
     const map: Record<string, Question[]> = {};
