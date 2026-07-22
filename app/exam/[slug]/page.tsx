@@ -67,21 +67,13 @@ export default async function ExamEntryPage({
         .rise { animation: rise 800ms cubic-bezier(0.16, 1, 0.3, 1) both; }
       `}</style>
 
-      <div className="min-h-screen bg-[#0B1F3A] text-[#F4EFE2] relative overflow-hidden">
-        {/* Grain overlay */}
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0 opacity-[0.08] mix-blend-overlay"
-          style={{
-            backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>")`,
-          }}
-        />
-        {/* Column rules */}
+      <div className="min-h-screen bg-white text-[#0A0A0A] relative overflow-hidden">
+        {/* Subtle column rules · 편집지 감각 */}
         <div
           aria-hidden
           className="pointer-events-none fixed inset-0"
           style={{
-            backgroundImage: `linear-gradient(to right, rgba(244,239,226,0.045) 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(to right, rgba(11,31,58,0.04) 1px, transparent 1px)`,
             backgroundSize: `160px 100%`,
           }}
         />
@@ -91,31 +83,31 @@ export default async function ExamEntryPage({
           className="pointer-events-none fixed inset-0"
           style={{
             background:
-              "radial-gradient(1200px 600px at 90% -10%, rgba(198,156,78,0.08), transparent 60%)",
+              "radial-gradient(900px 500px at 92% -10%, rgba(198,156,78,0.08), transparent 60%)",
           }}
         />
 
-        <nav className="relative border-b border-[#F4EFE2]/12">
+        <nav className="relative border-b border-[#0A0A0A]/10">
           <div className="mx-auto max-w-6xl px-6 md:px-10 h-20 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative shrink-0">
-                <div className="w-11 h-11 bg-[#F4EFE2] flex items-center justify-center text-[#0B1F3A] font-black text-xl tracking-tighter">
+                <div className="w-11 h-11 bg-[#0B1F3A] flex items-center justify-center text-white font-black text-xl tracking-tighter">
                   k
                 </div>
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#C69C4E]" />
               </div>
               <div className="leading-tight">
-                <div className="font-mono text-[9px] font-bold tracking-[0.3em] uppercase text-[#C69C4E]">
+                <div className="font-mono text-[9px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/50">
                   National · Certified
                 </div>
-                <div className="font-bold text-base tracking-tight text-[#F4EFE2]">
+                <div className="font-bold text-base tracking-tight text-[#0A0A0A]">
                   AI 챔피언 역량평가
                 </div>
               </div>
             </Link>
-            <div className="hidden md:flex items-center gap-4 font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#F4EFE2]/50">
+            <div className="hidden md:flex items-center gap-4 font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
               <span>KBRAIN · CERT</span>
-              <span className="w-1 h-1 rounded-full bg-[#F4EFE2]/40" />
+              <span className="w-1 h-1 rounded-full bg-[#0A0A0A]/30" />
               <span>2026 Series</span>
             </div>
           </div>
@@ -128,34 +120,34 @@ export default async function ExamEntryPage({
               {/* Watermark number */}
               <div
                 aria-hidden
-                className="absolute -top-10 -left-2 md:-left-6 font-black text-[180px] md:text-[240px] leading-none text-[#F4EFE2]/[0.05] select-none pointer-events-none tracking-tighter"
+                className="absolute -top-10 -left-2 md:-left-6 font-black text-[180px] md:text-[240px] leading-none text-[#0B1F3A]/[0.05] select-none pointer-events-none tracking-tighter"
               >
                 01
               </div>
 
               <div className="relative rise" style={{ animationDelay: "0ms" }}>
                 <div className="flex items-center gap-3 mb-8">
-                  <span className="font-mono text-[10px] font-bold tracking-[0.35em] uppercase text-[#C69C4E]">
+                  <span className="font-mono text-[10px] font-bold tracking-[0.35em] uppercase text-[#8B2635]">
                     N˚ {shortId.slice(0, 4)}·{shortId.slice(4)}
                   </span>
-                  <span className="h-px flex-1 bg-[#F4EFE2]/15" />
-                  <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#F4EFE2]/55">
+                  <span className="h-px flex-1 bg-[#0A0A0A]/15" />
+                  <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/50">
                     응시자 로그인
                   </span>
                 </div>
 
-                <h1 className="font-black text-[40px] md:text-[56px] lg:text-[68px] leading-[1.02] tracking-[-0.025em] mb-6 text-[#F4EFE2]">
+                <h1 className="font-black text-[40px] md:text-[56px] lg:text-[68px] leading-[1.02] tracking-[-0.025em] mb-6 text-[#0A0A0A]">
                   {exam.title}
                 </h1>
 
                 <div className="flex items-center gap-3 mb-10 flex-wrap">
                   {exam.is_test_mode && (
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#E58B9E] border border-[#E58B9E]/70 px-2 py-1">
-                      <span className="w-1 h-1 rounded-full bg-[#E58B9E] animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#8B2635] border border-[#8B2635] px-2 py-1">
+                      <span className="w-1 h-1 rounded-full bg-[#8B2635] animate-pulse" />
                       Test Mode
                     </span>
                   )}
-                  <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#F4EFE2]/50">
+                  <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
                     CBT · Remote Proctored
                   </span>
                 </div>
@@ -163,7 +155,7 @@ export default async function ExamEntryPage({
 
               {/* Spec sheet */}
               <div
-                className="border-y border-[#F4EFE2]/15 py-6 space-y-3 rise"
+                className="border-y border-[#0A0A0A]/15 py-6 space-y-3 rise"
                 style={{ animationDelay: "150ms" }}
               >
                 <SpecRow
@@ -199,15 +191,15 @@ export default async function ExamEntryPage({
               </div>
 
               <div
-                className="mt-8 max-w-md text-[13.5px] leading-[1.75] text-[#F4EFE2]/70 rise"
+                className="mt-8 max-w-md text-[13.5px] leading-[1.75] text-[#0A0A0A]/70 rise"
                 style={{ animationDelay: "250ms" }}
               >
                 본 시험은{" "}
-                <span className="font-bold text-[#C69C4E]">
+                <span className="font-bold text-[#0B1F3A]">
                   공공기관 공식 인증 시험
                 </span>
                 입니다. 응시 전 명단에 등록된{" "}
-                <span className="font-semibold text-[#F4EFE2]">
+                <span className="font-semibold text-[#0A0A0A]">
                   이름과 전화번호 뒷 4자리
                 </span>
                 를 확인해 주세요. 시험 시작 후 모든 화면은 감독관에게 실시간
@@ -227,24 +219,24 @@ export default async function ExamEntryPage({
           </div>
 
           <footer
-            className="mt-24 pt-8 border-t border-[#F4EFE2]/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rise"
+            className="mt-24 pt-8 border-t border-[#0A0A0A]/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rise"
             style={{ animationDelay: "500ms" }}
           >
-            <div className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#F4EFE2]/45">
+            <div className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
               © 2026 KBrain Cert
-              <span className="mx-2 text-[#F4EFE2]/25">·</span>
+              <span className="mx-2 text-[#0A0A0A]/25">·</span>
               Official Assessment Platform
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#F4EFE2]/45">
+              <span className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
                 Support
               </span>
-              <span className="w-3 h-px bg-[#F4EFE2]/25" />
-              <span className="font-mono font-bold text-[#F4EFE2]">
+              <span className="w-3 h-px bg-[#0A0A0A]/25" />
+              <span className="font-mono font-bold text-[#0A0A0A]">
                 databus@nia.or.kr
               </span>
-              <span className="text-[#F4EFE2]/25">/</span>
-              <span className="font-mono font-bold text-[#F4EFE2]">
+              <span className="text-[#0A0A0A]/25">/</span>
+              <span className="font-mono font-bold text-[#0A0A0A]">
                 010-0000-0000
               </span>
             </div>
@@ -266,11 +258,11 @@ function SpecRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,180px)_1fr] gap-6 items-baseline">
-      <div className="font-mono text-[10px] font-bold tracking-[0.25em] uppercase text-[#F4EFE2]/55">
+      <div className="font-mono text-[10px] font-bold tracking-[0.25em] uppercase text-[#0A0A0A]/55">
         {label}
       </div>
       <div
-        className={`text-[15px] font-medium text-[#F4EFE2] ${
+        className={`text-[15px] font-medium text-[#0A0A0A] ${
           tabular ? "font-mono tabular-nums" : ""
         }`}
       >
