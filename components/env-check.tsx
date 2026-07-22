@@ -561,10 +561,11 @@ export function EnvCheck({
             {item.action && (
               <button
                 onClick={item.action.onClick}
+                disabled={item.result.status === "ok"}
                 className={cn(
                   "h-8 px-3 rounded-sm text-xs font-bold transition shrink-0",
                   item.result.status === "ok"
-                    ? "bg-transparent text-muted-foreground hover:text-primary underline underline-offset-2"
+                    ? "bg-surface-soft text-muted cursor-not-allowed opacity-50"
                     : item.action.primary
                     ? "bg-primary hover:bg-primary-hover text-white"
                     : "bg-white border border-border hover:border-primary text-foreground"
