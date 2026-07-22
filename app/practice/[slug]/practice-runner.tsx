@@ -431,38 +431,45 @@ export function PracticeRunner({
               </div>
             </div>
           ) : (
-            <>
-              <TabButton
-                active={tab === "env"}
-                onClick={() => setTab("env")}
-                label="1. 환경 체크"
-                hint="6개 항목 자동 검사"
-                done={envPassed}
-              />
-              <TabButton
-                active={tab === "pledge"}
-                onClick={() => envPassed && setTab("pledge")}
-                label="2. 보안 서약"
-                hint={envPassed ? "6개 유의사항 동의" : "환경 체크 후 이용"}
-                done={pledgePassed}
-                disabled={!envPassed}
-              />
-              <TabButton
-                active={tab === "waiting"}
-                onClick={() => pledgePassed && setTab("waiting")}
-                label="3. 대기실"
-                hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
-                done={waitingReady}
-                disabled={!pledgePassed}
-              />
-              <TabButton
-                active={false}
-                onClick={() => waitingReady && enterExam()}
-                label="4. 시험창"
-                hint={waitingReady ? "입장 준비 완료" : "대기실에서 입장"}
-                disabled={!waitingReady}
-              />
-            </>
+            (() => {
+              const order = ["env", "pledge", "waiting", "exam"] as const;
+              const currentIdx = order.indexOf(tab);
+              return (
+                <>
+                  <TabButton
+                    active={tab === "env"}
+                    onClick={() => setTab("env")}
+                    label="1. 환경 체크"
+                    hint="6개 항목 자동 검사"
+                    done={envPassed}
+                    disabled={currentIdx > 0}
+                  />
+                  <TabButton
+                    active={tab === "pledge"}
+                    onClick={() => envPassed && setTab("pledge")}
+                    label="2. 보안 서약"
+                    hint={envPassed ? "6개 유의사항 동의" : "환경 체크 후 이용"}
+                    done={pledgePassed}
+                    disabled={!envPassed || currentIdx > 1}
+                  />
+                  <TabButton
+                    active={tab === "waiting"}
+                    onClick={() => pledgePassed && setTab("waiting")}
+                    label="3. 대기실"
+                    hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
+                    done={waitingReady}
+                    disabled={!pledgePassed || currentIdx > 2}
+                  />
+                  <TabButton
+                    active={false}
+                    onClick={() => waitingReady && enterExam()}
+                    label="4. 시험창"
+                    hint={waitingReady ? "입장 준비 완료" : "대기실에서 입장"}
+                    disabled={!waitingReady}
+                  />
+                </>
+              );
+            })()
           )}
         </div>
       </div>
