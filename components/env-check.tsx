@@ -482,8 +482,7 @@ export function EnvCheck({
       action: allowNoScreenShare
         ? undefined
         : {
-            label:
-              screen.status === "ok" ? "다시 테스트" : "화면 공유 테스트",
+            label: "화면 공유",
             onClick: requestScreen,
             primary: true,
           },
