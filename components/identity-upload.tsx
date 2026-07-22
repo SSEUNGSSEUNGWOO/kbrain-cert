@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export type IdentityStatus = "none" | "editing" | "uploading" | "uploaded" | "error";
+export type IdentityStatus =
+  | "none"
+  | "selected"
+  | "editing"
+  | "uploading"
+  | "uploaded"
+  | "error";
 
 type Mask = { x: number; y: number; w: number; h: number };
 
@@ -57,7 +63,7 @@ export function IdentityUpload({
     setMasks([]);
     setNaturalSize(null);
     setError(null);
-    setStatus("editing");
+    setStatus("selected");
   }
 
   function resetToChooser() {
@@ -150,9 +156,9 @@ export function IdentityUpload({
       const outFile = new File([blob], "identity.jpg", { type: "image/jpeg" });
 
       if (!sessionId) {
-        // Practice · 저장하지 않고 편집만 미리보기
+        // Practice · 저장하지 않고 미리보기만
         setError("Practice에서는 신분증이 저장되지 않습니다");
-        setStatus("editing");
+        setStatus("selected");
         return;
       }
 
@@ -205,23 +211,28 @@ export function IdentityUpload({
       </div>
 
       <div className="p-5 space-y-4">
-        {status === "editing" && previewUrl && (
+        {(status === "selected" || status === "editing") && previewUrl && (
           <div className="space-y-3">
-            <div className="rounded-md border border-warning bg-warning-soft/60 text-warning text-[11px] font-bold px-3 py-2 leading-relaxed">
-              주민등록번호 뒷자리 등 가리고 싶은 부분을 마우스로 드래그하면 검정 사각형으로 덮입니다. 마스킹은 선택 사항입니다.
-            </div>
+            {status === "editing" && (
+              <div className="rounded-md border border-warning bg-warning-soft/60 text-warning text-[11px] font-bold px-3 py-2 leading-relaxed">
+                주민등록번호 뒷자리 등 가리고 싶은 부분을 마우스로 드래그하면 검정 사각형으로 덮입니다.
+              </div>
+            )}
             <div
               ref={wrapperRef}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              className="relative overflow-hidden rounded-md border border-border bg-black select-none touch-none cursor-crosshair mx-auto max-h-96"
+              onPointerDown={status === "editing" ? onPointerDown : undefined}
+              onPointerMove={status === "editing" ? onPointerMove : undefined}
+              onPointerUp={status === "editing" ? onPointerUp : undefined}
+              onPointerCancel={status === "editing" ? onPointerUp : undefined}
+              className={cn(
+                "relative overflow-hidden rounded-md border border-border bg-black select-none touch-none mx-auto max-h-96",
+                status === "editing" ? "cursor-crosshair" : "cursor-default"
+              )}
               style={{ width: "fit-content" }}
             >
               <img
                 src={previewUrl}
-                alt="신분증 편집"
+                alt="신분증 미리보기"
                 draggable={false}
                 onLoad={(e) => {
                   const el = e.currentTarget;
@@ -241,18 +252,20 @@ export function IdentityUpload({
                       height: `${(m.h / naturalSize.h) * 100}%`,
                     }}
                   >
-                    <button
-                      type="button"
-                      onPointerDown={(ev) => ev.stopPropagation()}
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        setMasks((prev) => prev.filter((_, j) => j !== i));
-                      }}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white text-danger border border-danger text-[10px] font-bold flex items-center justify-center shadow"
-                      aria-label="마스크 삭제"
-                    >
-                      ×
-                    </button>
+                    {status === "editing" && (
+                      <button
+                        type="button"
+                        onPointerDown={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setMasks((prev) => prev.filter((_, j) => j !== i));
+                        }}
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white text-danger border border-danger text-[10px] font-bold flex items-center justify-center shadow"
+                        aria-label="마스크 삭제"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 ))}
               {drag && (
@@ -267,39 +280,81 @@ export function IdentityUpload({
                 />
               )}
             </div>
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>마스크 {masks.length}개</span>
-              <div className="flex items-center gap-2">
-                {masks.length > 0 && (
+
+            {status === "selected" ? (
+              <>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>
+                    {masks.length > 0
+                      ? `마스크 ${masks.length}개 적용됨`
+                      : "마스킹 없음 · 필요시 편집을 눌러주세요"}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setMasks([])}
-                    className="h-7 px-2 rounded-sm border border-border text-[11px] font-bold text-muted-foreground hover:text-danger hover:border-danger"
+                    onClick={resetToChooser}
+                    className="h-7 px-2 rounded-sm border border-border text-[11px] font-bold text-muted-foreground hover:text-primary hover:border-primary"
                   >
-                    모두 지우기
+                    다른 사진 선택
                   </button>
-                )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatus("editing")}
+                    className="h-11 rounded-md border border-primary bg-white text-primary text-sm font-bold hover:bg-primary-soft transition"
+                  >
+                    🖊 마스킹 편집
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveAndUpload}
+                    disabled={!naturalSize}
+                    className="h-11 rounded-md bg-primary text-white text-sm font-bold hover:bg-primary-hover disabled:opacity-50 transition"
+                  >
+                    ✓ 완료
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>마스크 {masks.length}개</span>
+                  <div className="flex items-center gap-2">
+                    {masks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setMasks([])}
+                        className="h-7 px-2 rounded-sm border border-border text-[11px] font-bold text-muted-foreground hover:text-danger hover:border-danger"
+                      >
+                        모두 지우기
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDrag(null);
+                        setStatus("selected");
+                      }}
+                      className="h-7 px-2 rounded-sm border border-border text-[11px] font-bold text-muted-foreground hover:text-primary hover:border-primary"
+                    >
+                      ← 뒤로
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={resetToChooser}
-                  className="h-7 px-2 rounded-sm border border-border text-[11px] font-bold text-muted-foreground hover:text-primary hover:border-primary"
+                  onClick={saveAndUpload}
+                  disabled={!naturalSize}
+                  className="w-full h-11 rounded-md bg-primary text-white text-sm font-bold hover:bg-primary-hover disabled:opacity-50 transition"
                 >
-                  다른 사진 선택
+                  저장하고 업로드 →
                 </button>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={saveAndUpload}
-              disabled={!naturalSize}
-              className="w-full h-11 rounded-md bg-primary text-white text-sm font-bold hover:bg-primary-hover disabled:opacity-50 transition"
-            >
-              저장하고 업로드 →
-            </button>
+              </>
+            )}
           </div>
         )}
 
-        {status !== "editing" && savedSrc && (
+        {status !== "selected" && status !== "editing" && savedSrc && (
           <div className="rounded-md border border-border overflow-hidden bg-black flex items-center justify-center">
             <img
               src={savedSrc}
@@ -309,7 +364,7 @@ export function IdentityUpload({
           </div>
         )}
 
-        {status !== "editing" && (
+        {status !== "selected" && status !== "editing" && (
           <label
             className={cn(
               "rounded-md border-2 border-dashed py-6 px-4 text-center text-xs flex flex-col items-center justify-center gap-2 cursor-pointer transition",
