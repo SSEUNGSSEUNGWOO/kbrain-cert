@@ -39,8 +39,13 @@ export function EntryFlow({ examId }: { examId: string }) {
   return (
     <form
       onSubmit={submit}
-      className="relative bg-white border border-[#111]/12 shadow-[0_1px_0_rgba(11,31,58,0.04),0_30px_60px_-30px_rgba(11,31,58,0.28)]"
+      className="relative bg-[#F4EFE2] shadow-[0_2px_0_rgba(0,0,0,0.15),0_40px_80px_-20px_rgba(0,0,0,0.55)]"
     >
+      {/* 상단 골드 액센트 라인 · 공식 씰 감각 */}
+      <div
+        aria-hidden
+        className="absolute -top-1 left-0 right-0 h-1 bg-[#C69C4E]"
+      />
       {/* Corner marks · 시험지 모서리 감각 */}
       <span
         aria-hidden
