@@ -87,7 +87,6 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
     <tr>
       <td style="background:#ffffff;padding:28px 40px 24px 40px;border-radius:0 0 8px 8px;">
         <div style="color:#333;font-size:12px;line-height:2;">
-          <div>- 평가는 기간 내 1회 응시 가능합니다.</div>
           <div>- 안정적인 네트워크 환경에서 PC로 접속해 주세요.</div>
           <div>- 문의: ${escapeHtml(contact)}</div>
         </div>
