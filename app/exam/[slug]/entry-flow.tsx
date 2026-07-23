@@ -60,65 +60,12 @@ export function EntryFlow({ examId }: { examId: string }) {
       />
 
       {/* Card header */}
-      <div className="flex items-center justify-between border-b border-[#111]/12 px-8 py-5">
-        <div>
-          <div className="font-mono text-[9px] font-bold tracking-[0.4em] uppercase text-[#111]/50">
-            Certificate · Login
-          </div>
-          <div className="font-bold text-base tracking-tight mt-1">
-            응시자 확인
-          </div>
+      <div className="border-b border-[#111]/12 px-8 py-5">
+        <div className="font-mono text-[9px] font-bold tracking-[0.4em] uppercase text-[#111]/50">
+          Certificate · Login
         </div>
-        {/* Official stamp */}
-        <div className="w-14 h-14 relative shrink-0">
-          <svg viewBox="0 0 56 56" className="w-full h-full">
-            <circle
-              cx="28"
-              cy="28"
-              r="26"
-              fill="none"
-              stroke="#0B1F3A"
-              strokeWidth="0.7"
-            />
-            <circle
-              cx="28"
-              cy="28"
-              r="21"
-              fill="none"
-              stroke="#0B1F3A"
-              strokeWidth="0.4"
-            />
-            <text
-              x="28"
-              y="24"
-              textAnchor="middle"
-              fontSize="7"
-              fontWeight="800"
-              fill="#0B1F3A"
-              letterSpacing="1.2"
-              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-            >
-              KBRAIN
-            </text>
-            <text
-              x="28"
-              y="33"
-              textAnchor="middle"
-              fontSize="4.5"
-              fontWeight="700"
-              fill="#0B1F3A"
-              letterSpacing="0.6"
-              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-            >
-              CERT · 2026
-            </text>
-            <path
-              d="M18 40 L38 40"
-              stroke="#0B1F3A"
-              strokeWidth="0.4"
-              strokeDasharray="1 2"
-            />
-          </svg>
+        <div className="font-bold text-base tracking-tight mt-1">
+          응시자 확인
         </div>
       </div>
 

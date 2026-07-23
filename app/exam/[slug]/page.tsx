@@ -105,11 +105,6 @@ export default async function ExamEntryPage({
                 </div>
               </div>
             </Link>
-            <div className="hidden md:flex items-center gap-4 font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
-              <span>KBRAIN · CERT</span>
-              <span className="w-1 h-1 rounded-full bg-[#0A0A0A]/30" />
-              <span>2026 Series</span>
-            </div>
           </div>
         </nav>
 
@@ -223,8 +218,6 @@ export default async function ExamEntryPage({
             style={{ animationDelay: "500ms" }}
           >
             <div className="font-mono text-[10px] font-bold tracking-[0.3em] uppercase text-[#0A0A0A]/45">
-              © 2026 KBrain Cert
-              <span className="mx-2 text-[#0A0A0A]/25">·</span>
               Official Assessment Platform
             </div>
             <div className="flex items-center gap-3 text-xs">
