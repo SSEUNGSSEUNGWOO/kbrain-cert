@@ -175,10 +175,21 @@ export function EnvCheck({
       );
       setCameras(videoDevices);
       setSelectedCameraId(settings.deviceId ?? deviceId ?? "");
-      setWebcam({
-        status: "ok",
-        detail: `${track.label || "웹캠"} · ${settings.width}×${settings.height} · 시험까지 유지`,
-      });
+      const label = track.label || "웹캠";
+      const isVirtual = /virtual|obs |snap camera|xsplit|manycam|droidcam|mirametrix/i.test(
+        label
+      );
+      if (isVirtual) {
+        setWebcam({
+          status: "warn",
+          detail: `가상 카메라 감지: ${label} · 실제 웹캠 선택 필요`,
+        });
+      } else {
+        setWebcam({
+          status: "ok",
+          detail: `${label} · ${settings.width}×${settings.height} · 시험까지 유지`,
+        });
+      }
       // 트랙이 예상치 못하게 끝나면 (사용자가 OS에서 카메라 강제 해제) 상태 반영
       track.onended = () => {
         setWebcamStream(null);
@@ -221,8 +232,8 @@ export function EnvCheck({
     }
   }, [webcamStream]);
 
-  // 검정 프레임 감지 · 5초 간격 프레임 밝기 샘플링
-  // 원격 세션·렌즈 셔터·다른 앱 점유 등으로 스트림이 검정일 때 경고
+  // 웹캠 실사 검증 · 3초 간격 프레임 샘플링
+  // 검정 프레임(원격 세션·렌즈 셔터), 정적 이미지(가상 카메라 아이콘), 프레임 정지 모두 감지
   useEffect(() => {
     if (allowNoWebcam || !webcamStream) return;
     const video = videoRef.current;
@@ -231,41 +242,87 @@ export function EnvCheck({
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
-    let consecutiveDark = 0;
-    const DARK_STRIKES = 2;
-    const DARK_THRESHOLD = 10;
+    let consecutiveBad = 0;
+    let prevPixels: Uint8ClampedArray | null = null;
+    const STRIKES = 2;
+    const DARK_AVG = 10; // 매우 어두운 프레임 (검정)
+    const FLAT_STDDEV = 8; // 픽셀 밝기 편차 낮음 = 단조로운 프레임
+    const STATIC_DIFF = 3; // 이전 프레임과 거의 동일 = 정지 이미지
+
+    const W = 32;
+    const H = 24;
+    const PIXEL_COUNT = W * H;
 
     const sample = () => {
-      if (!video.videoWidth || !video.videoHeight) return;
-      canvas.width = 32;
-      canvas.height = 24;
+      if (!video.videoWidth || !video.videoHeight) {
+        // 프레임 자체가 없음 = 검정 취급
+        consecutiveBad += 1;
+        if (consecutiveBad >= STRIKES) {
+          setWebcam({
+            status: "warn",
+            detail: "웹캠 프레임 없음 · 카메라 연결 상태 확인 필요",
+          });
+        }
+        return;
+      }
+      canvas.width = W;
+      canvas.height = H;
       try {
-        ctx.drawImage(video, 0, 0, 32, 24);
-        const data = ctx.getImageData(0, 0, 32, 24).data;
+        ctx.drawImage(video, 0, 0, W, H);
+        const data = ctx.getImageData(0, 0, W, H).data;
+
+        // 밝기 평균 (Rec.709 luma)
         let sum = 0;
-        let n = 0;
         for (let i = 0; i < data.length; i += 4) {
           sum +=
             0.2126 * data[i] +
             0.7152 * data[i + 1] +
             0.0722 * data[i + 2];
-          n += 1;
         }
-        const avg = sum / n;
+        const avg = sum / PIXEL_COUNT;
 
-        if (avg < DARK_THRESHOLD) {
-          consecutiveDark += 1;
-          if (consecutiveDark >= DARK_STRIKES) {
-            setWebcam({
-              status: "warn",
-              detail:
-                "웹캠 프레임이 검정 · 렌즈 셔터·다른 앱 점유·원격 세션 여부 확인",
-            });
+        // 표준편차 · 정적/단조 프레임 판별
+        let variance = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const lum =
+            0.2126 * data[i] +
+            0.7152 * data[i + 1] +
+            0.0722 * data[i + 2];
+          variance += (lum - avg) ** 2;
+        }
+        const stddev = Math.sqrt(variance / PIXEL_COUNT);
+
+        // 이전 프레임과 diff · 정지 이미지 판별
+        let frameDiff = Infinity;
+        if (prevPixels) {
+          let diffSum = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            diffSum +=
+              Math.abs(data[i] - prevPixels[i]) +
+              Math.abs(data[i + 1] - prevPixels[i + 1]) +
+              Math.abs(data[i + 2] - prevPixels[i + 2]);
+          }
+          frameDiff = diffSum / (PIXEL_COUNT * 3);
+        }
+        prevPixels = new Uint8ClampedArray(data);
+
+        const isDark = avg < DARK_AVG;
+        const isFlat = stddev < FLAT_STDDEV;
+        const isStatic = frameDiff < STATIC_DIFF;
+        const bad = isDark || (isFlat && isStatic);
+
+        if (bad) {
+          consecutiveBad += 1;
+          if (consecutiveBad >= STRIKES) {
+            const reason = isDark
+              ? "웹캠 프레임이 검정 · 렌즈 셔터·다른 앱 점유·원격 세션 여부 확인"
+              : "웹캠 프레임이 정지 이미지 · 실제 웹캠 선택 필요 (가상 카메라 사용 금지)";
+            setWebcam({ status: "warn", detail: reason });
           }
         } else {
-          const wasDark = consecutiveDark >= DARK_STRIKES;
-          consecutiveDark = 0;
-          if (wasDark) {
+          const wasBad = consecutiveBad >= STRIKES;
+          consecutiveBad = 0;
+          if (wasBad) {
             setWebcam({
               status: "ok",
               detail: "웹캠 활성 · 시험까지 유지",
@@ -278,7 +335,7 @@ export function EnvCheck({
     };
 
     const initialId = window.setTimeout(sample, 1500);
-    const intervalId = window.setInterval(sample, 5000);
+    const intervalId = window.setInterval(sample, 3000);
     return () => {
       window.clearTimeout(initialId);
       window.clearInterval(intervalId);
