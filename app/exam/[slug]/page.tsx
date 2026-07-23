@@ -186,7 +186,7 @@ export default async function ExamEntryPage({
                 />
                 <SpecRow
                   label="Issuer · 시행 기관"
-                  value="한국지능정보사회진흥원 NIA"
+                  value="행정안전부, NIA"
                 />
               </div>
 
