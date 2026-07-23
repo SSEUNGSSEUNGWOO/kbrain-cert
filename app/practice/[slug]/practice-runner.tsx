@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { AttachmentViewer, type Attachment } from "@/components/attachment-viewer";
 import { EnvCheck, type EnvResultSnapshot } from "@/components/env-check";
 import { SecurityPledge } from "@/components/security-pledge";
@@ -411,7 +410,6 @@ export function PracticeRunner({
         slug={slug}
         timer={showTimer ? timer : null}
         isRealExam={isRealExam}
-        isInExam={tab === "exam"}
       />
       <AgoraWebcamPublisher
         sessionId={sessionId ?? null}
@@ -962,7 +960,6 @@ function TopBar({
   slug,
   timer,
   isRealExam,
-  isInExam,
 }: {
   exam: {
     title: string;
@@ -973,36 +970,15 @@ function TopBar({
   slug: string;
   timer: { remainingMs: number; totalMs: number; expired: boolean } | null;
   isRealExam: boolean;
-  isInExam: boolean;
 }) {
   const minutes = timer ? timer.remainingMs / 60000 : Number.POSITIVE_INFINITY;
   const dangerZone = minutes < 3;
   const warnZone = !dangerZone && minutes < 10;
-  const logo = (
-    <>
-      <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
-        k
-      </div>
-      <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
-    </>
-  );
   return (
     <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/90 border-b border-border">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-4">
-        {isInExam ? (
-          <div
-            className="flex items-center gap-2 shrink-0 cursor-not-allowed opacity-70"
-            title="시험 중에는 홈으로 이동할 수 없습니다"
-          >
-            {logo}
-          </div>
-        ) : (
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            {logo}
-          </Link>
-        )}
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-sm truncate">{exam.title}</div>
+          <div className="font-bold text-base truncate">{exam.title}</div>
         </div>
         {timer && (
           <div

@@ -67,15 +67,8 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
 
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:48px;">
           <tr>
-            <td>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td style="width:32px;height:32px;background:#0B1B3D;color:#ffffff;text-align:center;vertical-align:middle;font-weight:900;font-size:14px;line-height:32px;border-radius:6px;">k</td>
-                  <td style="padding-left:10px;color:#0B1B3D;font-size:15px;font-weight:700;letter-spacing:-0.2px;">
-                    kbrain-cert
-                  </td>
-                </tr>
-              </table>
+            <td style="color:#0B1B3D;font-size:14px;font-weight:700;letter-spacing:-0.2px;">
+              ${escapeHtml(data.examTitle)}
             </td>
             <td style="text-align:right;color:#8892A6;font-size:12px;font-weight:500;">
               응시 안내
@@ -83,8 +76,8 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
           </tr>
         </table>
 
-        <div style="color:#0B1B3D;font-size:36px;font-weight:800;letter-spacing:-1px;line-height:1.2;margin-bottom:20px;">
-          AI 챔피언<br>역량평가 안내
+        <div style="color:#0B1B3D;font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.25;margin-bottom:20px;">
+          ${escapeHtml(data.examTitle)} 안내
         </div>
         <p style="color:#6B7280;font-size:15px;line-height:1.75;margin:0 0 48px 0;">
           그동안 갈고닦은 AI 역량을 확인하는 시간입니다.<br>
