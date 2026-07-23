@@ -209,20 +209,22 @@ export function PracticeRunner({
     exam.durationMinutes + (isRealExam ? sessionLive.timeExtensionMinutes : 0);
   const timer = useExamTimer(effectiveStartTime, effectiveDurationMinutes);
 
-  // 타이머 만료 시 자동 제출 (실 시험만 · 1회 발화)
-  const autoSubmittedRef = useRef(false);
+  // 타이머 만료 시 자동 제출 (실 시험만) · 실패 시 5초마다 재시도
+  const submittingRef = useRef(false);
   useEffect(() => {
-    if (
-      timer.expired &&
-      isRealExam &&
-      !submitting &&
-      !autoSubmittedRef.current
-    ) {
-      autoSubmittedRef.current = true;
+    submittingRef.current = submitting;
+  }, [submitting]);
+  useEffect(() => {
+    if (!timer.expired || !isRealExam) return;
+    const attempt = () => {
+      if (submittingRef.current) return;
       void doSubmit(true);
-    }
+    };
+    attempt();
+    const retryId = window.setInterval(attempt, 5000);
+    return () => window.clearInterval(retryId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timer.expired, isRealExam, submitting]);
+  }, [timer.expired, isRealExam]);
   const answeredQuestionIds = useMemo(
     () =>
       new Set(
