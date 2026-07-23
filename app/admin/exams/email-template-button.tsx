@@ -18,7 +18,7 @@ export function EmailTemplateButton({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [contact, setContact] = useState("databus@nia.or.kr / 010-0000-0000");
+  const [contact, setContact] = useState("databus@nia.or.kr / 010-6263-6574");
   const [targetAudience, setTargetAudience] = useState(
     "AI 챔피언 그린(초급) 종합과정 특화"
   );

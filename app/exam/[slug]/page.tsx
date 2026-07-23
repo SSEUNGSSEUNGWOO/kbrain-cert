@@ -230,7 +230,7 @@ export default async function ExamEntryPage({
               </span>
               <span className="text-[#0A0A0A]/25">/</span>
               <span className="font-mono font-bold text-[#0A0A0A]">
-                010-0000-0000
+                010-6263-6574
               </span>
             </div>
           </footer>
