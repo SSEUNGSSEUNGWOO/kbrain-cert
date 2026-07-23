@@ -6,6 +6,7 @@ import { AttachmentViewer, type Attachment } from "@/components/attachment-viewe
 import { EnvCheck, type EnvResultSnapshot } from "@/components/env-check";
 import { SecurityPledge } from "@/components/security-pledge";
 import { WaitingRoom } from "@/components/waiting-room";
+import { IdentityUpload } from "@/components/identity-upload";
 import { useSavePrecheck } from "@/lib/hooks/use-save-precheck";
 import { useAutoSaveAnswer } from "@/lib/hooks/use-auto-save-answer";
 import { useExamTimer, formatHms } from "@/lib/hooks/use-exam-timer";
@@ -45,7 +46,7 @@ type Set = {
   attachments: Attachment[];
 };
 
-type Tab = "env" | "pledge" | "waiting" | "exam";
+type Tab = "env" | "identity" | "pledge" | "waiting" | "exam";
 
 export function PracticeRunner({
   slug,
@@ -84,6 +85,12 @@ export function PracticeRunner({
   const savePrecheck = useSavePrecheck(sessionId);
   const [tab, setTab] = useState<Tab>(skipToExam ? "exam" : "env");
   const [envPassed, setEnvPassed] = useState(skipToExam);
+  const [identityReady, setIdentityReady] = useState(
+    skipToExam || sessionId == null || !!initialIdentityPath
+  );
+  const [identityPath, setIdentityPath] = useState<string | null>(
+    initialIdentityPath
+  );
   const [pledgePassed, setPledgePassed] = useState(skipToExam);
   const [waitingReady, setWaitingReady] = useState(skipToExam);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -435,7 +442,13 @@ export function PracticeRunner({
             </div>
           ) : (
             (() => {
-              const order = ["env", "pledge", "waiting", "exam"] as const;
+              const order = [
+                "env",
+                "identity",
+                "pledge",
+                "waiting",
+                "exam",
+              ] as const;
               const currentIdx = order.indexOf(tab);
               return (
                 <>
@@ -448,25 +461,33 @@ export function PracticeRunner({
                     disabled={currentIdx > 0}
                   />
                   <TabButton
-                    active={tab === "pledge"}
-                    onClick={() => envPassed && setTab("pledge")}
-                    label="2. 보안 서약"
-                    hint={envPassed ? "6개 유의사항 동의" : "환경 체크 후 이용"}
-                    done={pledgePassed}
+                    active={tab === "identity"}
+                    onClick={() => envPassed && setTab("identity")}
+                    label="2. 신분증 확인"
+                    hint={envPassed ? "신분증 이미지 업로드" : "환경 체크 후 이용"}
+                    done={identityReady}
                     disabled={!envPassed || currentIdx > 1}
+                  />
+                  <TabButton
+                    active={tab === "pledge"}
+                    onClick={() => identityReady && setTab("pledge")}
+                    label="3. 보안 서약"
+                    hint={identityReady ? "6개 유의사항 동의" : "신분증 확인 후 이용"}
+                    done={pledgePassed}
+                    disabled={!identityReady || currentIdx > 2}
                   />
                   <TabButton
                     active={tab === "waiting"}
                     onClick={() => pledgePassed && setTab("waiting")}
-                    label="3. 대기실"
+                    label="4. 대기실"
                     hint={pledgePassed ? "시험 시작 대기" : "서약 완료 후 이용"}
                     done={waitingReady}
-                    disabled={!pledgePassed || currentIdx > 2}
+                    disabled={!pledgePassed || currentIdx > 3}
                   />
                   <TabButton
                     active={false}
                     onClick={() => waitingReady && enterExam()}
-                    label="4. 시험창"
+                    label="5. 시험창"
                     hint={waitingReady ? "입장 준비 완료" : "대기실에서 입장"}
                     disabled={!waitingReady}
                   />
@@ -494,9 +515,42 @@ export function PracticeRunner({
                   typeof navigator !== "undefined" ? navigator.userAgent : "",
               });
               setEnvPassed(true);
-              setTab("pledge");
+              setTab("identity");
             }}
           />
+        </div>
+      )}
+
+      {tab === "identity" && (
+        <div className="flex-1 mx-auto max-w-3xl w-full px-6 py-6 space-y-5">
+          <div className="rounded-md bg-white border border-border p-6">
+            <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
+              Step 2 · 신분증 확인
+            </div>
+            <h2>본인 확인용 신분증 업로드</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              사진이 부착된 신분증(주민등록증 · 운전면허증 · 여권 등) 이미지를
+              업로드해주세요. 주민등록번호 뒷자리 등 개인정보는 마스킹 후
+              업로드하세요.
+            </p>
+          </div>
+          <IdentityUpload
+            sessionId={sessionId ?? null}
+            initialPath={identityPath}
+            onUploaded={(p) => {
+              setIdentityPath(p);
+              setIdentityReady(true);
+            }}
+          />
+          <button
+            onClick={() => setTab("pledge")}
+            disabled={!identityReady}
+            className="w-full h-12 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold disabled:opacity-50 transition"
+          >
+            {identityReady
+              ? "다음 (보안 서약) →"
+              : "신분증 업로드 완료 후 진행 가능"}
+          </button>
         </div>
       )}
 
@@ -520,8 +574,6 @@ export function PracticeRunner({
             scheduledAt={
               isRealExam && exam.examDate ? new Date(exam.examDate) : undefined
             }
-            sessionId={sessionId ?? null}
-            initialIdentityPath={initialIdentityPath}
             onEnter={() => {
               void savePrecheck("waiting");
               setWaitingReady(true);

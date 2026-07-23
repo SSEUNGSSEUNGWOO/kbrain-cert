@@ -23,7 +23,7 @@ export function SecurityPledge({ onProceed }: { onProceed: () => void }) {
     <div className="space-y-5">
       <div className="rounded-md bg-white border border-border p-6">
         <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
-          Step 2 · 보안 서약 및 유의사항
+          Step 3 · 보안 서약 및 유의사항
         </div>
         <h2>시험 응시 전 필독</h2>
         <p className="text-sm text-muted-foreground mt-2">

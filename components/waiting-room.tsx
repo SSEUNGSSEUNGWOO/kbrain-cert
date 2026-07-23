@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { IdentityUpload } from "@/components/identity-upload";
+import { useEffect } from "react";
 import { useServerClock } from "@/lib/hooks/use-server-clock";
 import { cn } from "@/lib/utils";
 
 /**
- * 대기실 · 환경 체크 + 보안 서약 완료 후 진입
+ * 대기실 · 환경 체크 + 신분증 확인 + 보안 서약 완료 후 진입
  * - 실 시험: scheduledAt까지 카운트다운 · 시간되면 자동 입장
  * - 테스트 링크(isPractice): 즉시 "입장하기" 버튼 · 시간 무관
- * - 신분증 이미지 업로드 필수 (실 시험만) · 미업로드 시 진입 차단
  */
 export function WaitingRoom({
   exam,
   isPractice,
   scheduledAt,
-  sessionId,
-  initialIdentityPath,
   onEnter,
 }: {
   exam: {
@@ -27,14 +23,8 @@ export function WaitingRoom({
   };
   isPractice: boolean;
   scheduledAt?: Date;
-  sessionId: string | null;
-  initialIdentityPath: string | null;
   onEnter: () => void;
 }) {
-  const [identityPath, setIdentityPath] = useState<string | null>(
-    initialIdentityPath
-  );
-  const identityReady = isPractice || !!identityPath;
   const canEnterImmediately = isPractice || scheduledAt == null;
   const { nowMs, synchronized } = useServerClock(
     !isPractice && scheduledAt != null
@@ -47,8 +37,7 @@ export function WaitingRoom({
     !isPractice &&
     scheduledAt != null &&
     synchronized &&
-    remainingMs === 0 &&
-    identityReady;
+    remainingMs === 0;
 
   useEffect(() => {
     if (shouldAutoEnter) onEnter();
@@ -59,7 +48,7 @@ export function WaitingRoom({
     <div className="space-y-5">
       <div className="rounded-md bg-white border border-border p-6">
         <div className="text-[10px] font-bold tracking-widest text-primary uppercase mb-2">
-          Step 3 · 대기실
+          Step 4 · 대기실
         </div>
         <h2>시험 준비 완료</h2>
         <p className="text-sm text-muted-foreground mt-2">
@@ -79,11 +68,16 @@ export function WaitingRoom({
         />
         <ReadyRow
           n={2}
+          label="신분증 확인"
+          detail="본인 확인용 이미지 업로드 완료"
+        />
+        <ReadyRow
+          n={3}
           label="보안 서약"
           detail="6개 유의사항 모두 동의"
         />
         <ReadyRow
-          n={3}
+          n={4}
           label="시험 정보 확인"
           detail={`${exam.title} · ${exam.durationMinutes}분`}
         />
@@ -101,13 +95,6 @@ export function WaitingRoom({
         </div>
       </div>
 
-      {/* 신분증 이미지 업로드 · 실 시험이면 필수 */}
-      <IdentityUpload
-        sessionId={sessionId}
-        initialPath={initialIdentityPath}
-        onUploaded={(p) => setIdentityPath(p)}
-      />
-
       {/* 입장 CTA · Practice면 즉시 · 실 시험이면 카운트다운 */}
       {canEnterImmediately ? (
         <div className="rounded-md bg-gradient-to-br from-primary to-primary-hover text-white p-6">
@@ -122,24 +109,16 @@ export function WaitingRoom({
           </div>
           <button
             onClick={onEnter}
-            disabled={!identityReady}
-            className="w-full h-14 rounded-md bg-white text-primary font-bold text-base hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 transition"
+            className="w-full h-14 rounded-md bg-white text-primary font-bold text-base hover:bg-white/90 transition"
           >
-            {identityReady ? "시험 입장하기 →" : "신분증 업로드 후 입장 가능"}
+            시험 입장하기 →
           </button>
         </div>
       ) : (
-        <>
-          <ScheduledCountdown
-            remainingMs={remainingMs}
-            scheduledAt={scheduledAt}
-          />
-          {!identityReady && (
-            <div className="rounded-md bg-warning-soft border border-warning p-4 text-xs text-warning font-bold text-center">
-              ⚠ 신분증 이미지를 먼저 업로드해야 시험이 시작됩니다
-            </div>
-          )}
-        </>
+        <ScheduledCountdown
+          remainingMs={remainingMs}
+          scheduledAt={scheduledAt}
+        />
       )}
     </div>
   );
