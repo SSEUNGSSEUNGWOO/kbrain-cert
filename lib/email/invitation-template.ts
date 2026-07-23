@@ -2,17 +2,17 @@
  * 응시 안내 이메일 HTML 템플릿
  * - 관리자가 발송 전 미리보기 + 복사해서 Outlook/Gmail 등에 붙여넣기용
  * - Table 기반 · Inline CSS · Outlook/Naver/Gmail/Daum 호환
- * - {평가 대상} 은 응시자별 발송 시 관리자가 개별로 치환
+ * - 편집 디자인 럭셔리 인증서 톤 · 골드 프레임 · 로마 숫자 넘버링
  */
 
 export type InvitationEmailData = {
   examTitle: string;
-  examPeriod: string; // "2026.07.25 (금) 14:00" 등 자유 문자열
+  examPeriod: string;
   durationMinutes: number;
-  entryUrl: string; // 응시 진입 절대 URL · https://.../exam/{slug}
-  contact?: string; // 담당자 및 연락처 · 없으면 플레이스홀더 유지
-  format?: string; // 평가 방식 · 기본값 "CBT · 원격 감독"
-  targetAudience?: string; // 평가 대상 · 예: "AI 챔피언 그린(초급) 종합과정 특화" · 비우면 행 미표시
+  entryUrl: string;
+  contact?: string;
+  format?: string;
+  targetAudience?: string;
 };
 
 export function renderInvitationEmail(data: InvitationEmailData): string {
@@ -20,12 +20,56 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
   const format = data.format ?? "CBT · 원격 감독";
   const entryUrl = data.entryUrl;
   const targetAudience = data.targetAudience?.trim();
-  const targetRow = targetAudience
-    ? `<tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 대상</td>
-                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(targetAudience)}</td>
-                </tr>`
-    : "";
+
+  const specs: Array<{ roman: string; enLabel: string; koLabel: string; value: string }> = [];
+  if (targetAudience) {
+    specs.push({
+      roman: "I",
+      enLabel: "TARGET",
+      koLabel: "평가 대상",
+      value: targetAudience,
+    });
+  }
+  specs.push({
+    roman: romanize(specs.length + 1),
+    enLabel: "SCHEDULE",
+    koLabel: "평가 기간",
+    value: data.examPeriod,
+  });
+  specs.push({
+    roman: romanize(specs.length + 1),
+    enLabel: "DURATION",
+    koLabel: "소요 시간",
+    value: `${data.durationMinutes}분`,
+  });
+  specs.push({
+    roman: romanize(specs.length + 1),
+    enLabel: "FORMAT",
+    koLabel: "평가 방식",
+    value: format,
+  });
+
+  const specRows = specs
+    .map(
+      (spec) => `
+          <tr>
+            <td style="padding:18px 0;border-top:1px solid rgba(201,164,94,0.22);">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="width:68px;vertical-align:top;">
+                    <div style="color:#C9A45E;font-size:11px;font-weight:700;letter-spacing:3px;font-family:'Courier New',Courier,monospace;">— ${spec.roman}</div>
+                  </td>
+                  <td style="vertical-align:top;">
+                    <div style="color:#8A8DBF;font-size:10px;font-weight:700;letter-spacing:2.5px;margin-bottom:4px;">${spec.enLabel} · ${escapeHtml(spec.koLabel)}</div>
+                    <div style="color:#ffffff;font-size:15px;font-weight:600;line-height:1.5;">${escapeHtml(spec.value)}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+    )
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -33,81 +77,129 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(data.examTitle)} 안내</title>
 </head>
-<body style="margin:0;padding:24px;background:#EDEEF2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:600px;margin:0 auto;">
+<body style="margin:0;padding:32px 16px;background:#050B1D;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:620px;margin:0 auto;">
+
     <tr>
-      <td style="background:#0B1B3D;padding:40px 40px 32px 40px;border-radius:8px 8px 0 0;">
+      <td style="height:4px;background:#C9A45E;line-height:0;font-size:0;">&nbsp;</td>
+    </tr>
+
+    <tr>
+      <td style="background:#0B1B3D;padding:44px 48px 40px 48px;">
+
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
           <tr>
-            <td style="color:#C9A45E;font-size:12px;font-weight:700;letter-spacing:3px;">DAEASY</td>
-            <td style="text-align:right;color:#8A8DBF;font-size:12px;font-weight:700;letter-spacing:3px;">AI CHAMPION</td>
+            <td style="vertical-align:middle;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="width:34px;height:34px;background:#C9A45E;color:#0B1B3D;text-align:center;vertical-align:middle;font-weight:900;font-size:16px;line-height:34px;">D</td>
+                  <td style="padding-left:12px;color:#C9A45E;font-size:11px;font-weight:700;letter-spacing:4px;font-family:'Courier New',Courier,monospace;">DAEASY · CERT</td>
+                </tr>
+              </table>
+            </td>
+            <td style="text-align:right;color:#8A8DBF;font-size:10px;font-weight:700;letter-spacing:3px;font-family:'Courier New',Courier,monospace;">N˚ AI · 2026</td>
           </tr>
         </table>
-        <div style="border-top:1px solid rgba(201,164,94,0.3);margin:16px 0 40px 0;line-height:0;font-size:0;">&nbsp;</div>
+
+        <div style="border-top:1px solid rgba(201,164,94,0.25);margin:24px 0 52px 0;line-height:0;font-size:0;">&nbsp;</div>
 
         <div style="text-align:center;">
-          <div style="color:#C9A45E;font-size:11px;letter-spacing:4px;margin-bottom:12px;font-weight:600;">COMPETENCY ASSESSMENT</div>
-          <div style="color:#ffffff;font-size:30px;font-weight:800;margin:0 0 20px 0;letter-spacing:-0.5px;line-height:1.3;">
-            AI 챔피언 역량평가 안내
+          <div style="color:#C9A45E;font-size:10px;letter-spacing:6px;margin-bottom:18px;font-weight:700;font-family:'Courier New',Courier,monospace;">
+            ◆ &nbsp; COMPETENCY ASSESSMENT &nbsp; ◆
           </div>
-          <p style="color:#A8B0C4;font-size:14px;line-height:1.7;margin:0 0 32px 0;">
+          <div style="color:#ffffff;font-size:34px;font-weight:900;margin:0 0 24px 0;letter-spacing:-0.8px;line-height:1.2;">
+            AI 챔피언<br>역량평가 안내
+          </div>
+          <p style="color:#A8B0C4;font-size:14px;line-height:1.85;margin:0 0 48px 0;">
             그동안 갈고닦은 AI 역량을 확인하는 시간입니다.<br>
             아래 정보를 확인하신 후 평가에 참여해 주세요.
           </p>
         </div>
 
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#0A1730;border:1px solid rgba(201,164,94,0.3);border-radius:6px;margin-bottom:36px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:52px;">
+          ${specRows}
           <tr>
-            <td style="padding:24px 32px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                ${targetRow}
-                <tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 기간</td>
-                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(data.examPeriod)}</td>
-                </tr>
-                <tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;font-weight:600;">소요 시간</td>
-                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">${data.durationMinutes}분</td>
-                </tr>
-                <tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;font-weight:600;">평가 방식</td>
-                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(format)}</td>
-                </tr>
-              </table>
-            </td>
+            <td style="border-top:1px solid rgba(201,164,94,0.22);height:0;line-height:0;font-size:0;">&nbsp;</td>
           </tr>
         </table>
 
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
           <tr>
             <td align="center">
-              <a href="${escapeAttr(entryUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#C9A45E;color:#0B1B3D;padding:16px 48px;text-decoration:none;font-size:15px;font-weight:700;border-radius:4px;letter-spacing:0.5px;">
-                역량평가 바로가기 →
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="background:#C9A45E;">
+                    <a href="${escapeAttr(entryUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:#0B1B3D;padding:20px 60px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:0.5px;">
+                      역량평가 바로가기 &nbsp;→
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <div style="color:#C9A45E;font-size:10px;margin:18px 0 0 0;font-family:'Courier New',Courier,monospace;letter-spacing:4px;font-weight:700;">
+                — &nbsp; CLICK TO START &nbsp; —
+              </div>
             </td>
           </tr>
         </table>
-        <p style="text-align:center;color:#7B85A0;font-size:11px;margin:12px 0 0 0;">
-          이미지를 클릭해도 평가 페이지로 이동합니다.
-        </p>
+
       </td>
     </tr>
 
     <tr>
-      <td style="background:#ffffff;padding:28px 40px 24px 40px;border-radius:0 0 8px 8px;">
-        <div style="color:#333;font-size:12px;line-height:2;">
-          <div>- 안정적인 네트워크 환경에서 PC로 접속해 주세요.</div>
-          <div>- 문의: ${escapeHtml(contact)}</div>
-        </div>
-        <div style="border-top:1px solid #E5E7EB;margin:20px 0 14px 0;line-height:0;font-size:0;">&nbsp;</div>
-        <div style="color:#9CA3AF;font-size:11px;">
-          ㈜케이브레인컴퍼니 - DAEASY | 본 메일은 발신 전용입니다.
-        </div>
+      <td style="background:#ffffff;padding:36px 48px 28px 48px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+          <tr>
+            <td style="width:22px;vertical-align:top;padding:6px 0 0 0;">
+              <div style="width:6px;height:6px;background:#C9A45E;">&nbsp;</div>
+            </td>
+            <td style="color:#111;font-size:12.5px;line-height:1.85;padding:2px 0 12px 0;">
+              안정적인 네트워크 환경에서 PC로 접속해 주세요.
+            </td>
+          </tr>
+          <tr>
+            <td style="width:22px;vertical-align:top;padding:6px 0 0 0;">
+              <div style="width:6px;height:6px;background:#C9A45E;">&nbsp;</div>
+            </td>
+            <td style="color:#111;font-size:12.5px;line-height:1.85;padding:2px 0;">
+              문의: <span style="font-weight:700;">${escapeHtml(contact)}</span>
+            </td>
+          </tr>
+        </table>
+        <div style="border-top:1px solid #E5E7EB;margin:26px 0 16px 0;line-height:0;font-size:0;">&nbsp;</div>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+          <tr>
+            <td style="color:#6B7280;font-size:10px;letter-spacing:2.5px;font-weight:700;font-family:'Courier New',Courier,monospace;">
+              KBRAINC · DAEASY
+            </td>
+            <td style="text-align:right;color:#9CA3AF;font-size:10.5px;">
+              본 메일은 발신 전용입니다.
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
+
+    <tr>
+      <td style="height:4px;background:#C9A45E;line-height:0;font-size:0;">&nbsp;</td>
+    </tr>
+
   </table>
 </body>
 </html>`;
+}
+
+function romanize(n: number): string {
+  const map: Record<number, string> = {
+    1: "I",
+    2: "II",
+    3: "III",
+    4: "IV",
+    5: "V",
+    6: "VI",
+    7: "VII",
+    8: "VIII",
+  };
+  return map[n] ?? String(n);
 }
 
 function escapeHtml(s: string): string {
