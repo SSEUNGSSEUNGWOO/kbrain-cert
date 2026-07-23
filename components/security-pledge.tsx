@@ -68,7 +68,7 @@ export function SecurityPledge({ onProceed }: { onProceed: () => void }) {
               />
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-bold text-muted mb-0.5 font-tabular tracking-widest">
-                  ITEM {String(i + 1).padStart(2, "0")}
+                  유의사항 {String(i + 1).padStart(2, "0")}
                 </div>
                 <div className="text-sm text-foreground leading-relaxed">
                   {item}
