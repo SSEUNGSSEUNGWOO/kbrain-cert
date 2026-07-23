@@ -12,12 +12,20 @@ export type InvitationEmailData = {
   entryUrl: string; // 응시 진입 절대 URL · https://.../exam/{slug}
   contact?: string; // 담당자 및 연락처 · 없으면 플레이스홀더 유지
   format?: string; // 평가 방식 · 기본값 "CBT · 원격 감독"
+  targetAudience?: string; // 평가 대상 · 예: "AI 챔피언 그린(초급) 종합과정 특화" · 비우면 행 미표시
 };
 
 export function renderInvitationEmail(data: InvitationEmailData): string {
   const contact = data.contact ?? "{담당자 및 연락처}";
   const format = data.format ?? "CBT · 원격 감독";
   const entryUrl = data.entryUrl;
+  const targetAudience = data.targetAudience?.trim();
+  const targetRow = targetAudience
+    ? `<tr>
+                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 대상</td>
+                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(targetAudience)}</td>
+                </tr>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -52,6 +60,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
           <tr>
             <td style="padding:24px 32px;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                ${targetRow}
                 <tr>
                   <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 기간</td>
                   <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(data.examPeriod)}</td>

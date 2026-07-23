@@ -19,6 +19,9 @@ export function EmailTemplateButton({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState("databus@nia.or.kr / 010-0000-0000");
+  const [targetAudience, setTargetAudience] = useState(
+    "AI 챔피언 그린(초급) 종합과정 특화"
+  );
 
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
@@ -41,6 +44,7 @@ export function EmailTemplateButton({
     durationMinutes,
     entryUrl,
     contact,
+    targetAudience,
   });
 
   async function copyHtml() {
@@ -101,6 +105,17 @@ export function EmailTemplateButton({
             </div>
 
             <div className="px-6 py-4 border-b border-border shrink-0 grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1">
+                  평가 대상 (교육 과정명)
+                </label>
+                <input
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  placeholder="비워두면 표시 안 됨"
+                  className="w-full h-9 rounded-md border border-border bg-white px-3 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1">
                   문의처 (담당자 및 연락처)
