@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "kbrain-cert · 공식 자격 검정",
-  description:
-    "kbrain-cert는 승우님(daeasy) 소유의 공식 자격 검정 CBT 플랫폼입니다.",
+  title: "AI 챔피언 역량평가",
+  description: "AI 챔피언 역량평가 · 공식 인증 시험 CBT 플랫폼",
 };
 
 export default function RootLayout({

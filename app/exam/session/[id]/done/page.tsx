@@ -44,6 +44,7 @@ export default async function ExamDonePage({
     .select("title, duration_minutes")
     .eq("id", session.exam_id)
     .single();
+  if (!exam) notFound();
 
   const { count: answeredCount } = await admin
     .from("answers")
@@ -82,9 +83,7 @@ export default async function ExamDonePage({
         </div>
 
         <div className="rounded-md bg-white border border-border p-6 space-y-3">
-          {exam && (
-            <Row label="시험" value={exam.title} />
-          )}
+          <Row label="시험" value={exam.title} />
           <Row label="답변한 문항" value={`${answeredCount ?? 0}개`} />
           {durationMs > 0 && (
             <Row
