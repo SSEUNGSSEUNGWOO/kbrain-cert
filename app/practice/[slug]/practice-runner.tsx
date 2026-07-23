@@ -1002,14 +1002,6 @@ function TopBar({
           </Link>
         )}
         <div className="flex-1 min-w-0">
-          <div
-            className={cn(
-              "text-[10px] font-bold tracking-widest uppercase mb-0.5",
-              isRealExam ? "text-danger" : "text-info"
-            )}
-          >
-            {isRealExam ? "REAL · 실 응시" : "Practice · 테스트 링크"}
-          </div>
           <div className="font-bold text-sm truncate">{exam.title}</div>
         </div>
         {timer && (
