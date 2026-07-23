@@ -873,7 +873,7 @@ function MonitoringBadge({
       <div className="px-3 py-2 border-b border-border bg-surface-soft flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
         <span className="text-[10px] font-bold tracking-widest text-danger uppercase">
-          감시 중
+          모니터링 중
         </span>
       </div>
       <video
@@ -1534,7 +1534,7 @@ function FileSlot({
         </div>
         <a
           href={downloadUrl}
-          className="h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-[11px] font-bold transition"
+          className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-sm bg-white border border-border hover:border-primary text-[11px] font-bold whitespace-nowrap transition"
         >
           다운로드
         </a>
