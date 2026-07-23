@@ -215,7 +215,7 @@ export function IdentityUpload({
           <div className="space-y-3">
             {status === "editing" && (
               <div className="rounded-md border border-warning bg-warning-soft/60 text-warning text-[11px] font-bold px-3 py-2 leading-relaxed">
-                주민등록번호 뒷자리 등 가리고 싶은 부분을 마우스로 드래그하면 검정 사각형으로 덮입니다.
+                생년월일, 사진을 제외한 개인정보에 해당하는 부분은 마우스로 드래그하면 검정 사각형으로 덮입니다.
               </div>
             )}
             <div
