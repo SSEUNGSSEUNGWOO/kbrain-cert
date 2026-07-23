@@ -81,7 +81,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
           <tr>
             <td align="center">
-              <a href="${escapeAttr(entryUrl)}" style="display:inline-block;background:#C9A45E;color:#0B1B3D;padding:16px 48px;text-decoration:none;font-size:15px;font-weight:700;border-radius:4px;letter-spacing:0.5px;">
+              <a href="${escapeAttr(entryUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#C9A45E;color:#0B1B3D;padding:16px 48px;text-decoration:none;font-size:15px;font-weight:700;border-radius:4px;letter-spacing:0.5px;">
                 역량평가 바로가기 →
               </a>
             </td>

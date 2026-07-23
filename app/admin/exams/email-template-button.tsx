@@ -141,7 +141,7 @@ export function EmailTemplateButton({
                 title="이메일 미리보기"
                 srcDoc={html}
                 className="w-full min-h-[720px] bg-white rounded-md border border-border"
-                sandbox=""
+                sandbox="allow-popups allow-popups-to-escape-sandbox"
               />
             </div>
 
