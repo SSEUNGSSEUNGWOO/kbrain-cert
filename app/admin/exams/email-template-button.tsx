@@ -130,10 +130,7 @@ export function EmailTemplateButton({
               />
             </div>
 
-            <div className="border-t border-border px-6 py-3 shrink-0 flex items-center justify-between gap-4">
-              <div className="text-[11px] text-muted-foreground">
-                {`"{평가 대상}" 자리는 응시자 이름으로 개별 치환하여 발송하세요.`}
-              </div>
+            <div className="border-t border-border px-6 py-3 shrink-0 flex items-center justify-end gap-4">
               <div className="flex items-center gap-2">
                 <button
                   type="button"

@@ -53,11 +53,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
             <td style="padding:24px 32px;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 대상</td>
-                  <td style="color:#ffffff;font-size:13px;padding:8px 0;">{평가 대상}</td>
-                </tr>
-                <tr>
-                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;font-weight:600;">평가 기간</td>
+                  <td style="color:#C9A45E;font-size:13px;padding:8px 0;width:100px;font-weight:600;">평가 기간</td>
                   <td style="color:#ffffff;font-size:13px;padding:8px 0;">${escapeHtml(data.examPeriod)}</td>
                 </tr>
                 <tr>
