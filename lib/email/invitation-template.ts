@@ -119,7 +119,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
 
     <tr>
       <td style="padding:24px 8px 0 8px;text-align:center;color:#8892A6;font-size:11.5px;line-height:1.7;">
-        KBRAINC&nbsp; &nbsp; 본 메일은 발신 전용입니다.
+        본 메일은 발신 전용입니다.
       </td>
     </tr>
 
