@@ -56,7 +56,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(data.examTitle)} 안내</title>
 </head>
-<body style="margin:0;padding:40px 16px;background:#F5F5F2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
+<body style="margin:0;padding:40px 16px;background:#F0F4FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:560px;margin:0 auto;">
 
     <tr>
