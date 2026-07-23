@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { mockExam, mockWaitingChecks } from "@/lib/mock";
 import { formatTime } from "@/lib/utils";
 
@@ -87,12 +86,9 @@ function TopBar() {
   return (
     <nav className="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-border">
       <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
-            k
-          </div>
-          <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
-        </Link>
+        <div className="font-bold text-base tracking-tight truncate">
+          {mockExam.title}
+        </div>
         <div className="text-[10px] font-bold tracking-[0.2em] text-primary bg-primary-soft px-2.5 py-1 rounded-sm">
           APPLICANT
         </div>

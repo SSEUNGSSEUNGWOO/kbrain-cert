@@ -62,12 +62,9 @@ export default async function ExamDonePage({
     <div className="min-h-screen bg-surface-soft flex flex-col">
       <nav className="border-b border-border bg-white">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center font-bold text-sm">
-              k
-            </div>
-            <div className="font-bold text-lg tracking-tight">kbrain-cert</div>
-          </Link>
+          <div className="font-bold text-base tracking-tight truncate">
+            {exam.title}
+          </div>
         </div>
       </nav>
 
