@@ -7,6 +7,7 @@ import { SlugEditor } from "./slug-editor";
 import { TestModeToggle } from "./test-mode-toggle";
 import { TitleEditor } from "./title-editor";
 import { EmailTemplateButton } from "./email-template-button";
+import { StatusEditor } from "./status-editor";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -25,17 +26,6 @@ type ExamRow = {
   isTestMode: boolean;
   allowNoScreenShare: boolean;
 };
-
-const statusStyle = {
-  open: { text: "text-danger", bg: "bg-danger-soft", label: "OPEN", pulse: true },
-  draft: { text: "text-info", bg: "bg-info-soft", label: "DRAFT", pulse: false },
-  closed: {
-    text: "text-muted-foreground",
-    bg: "bg-surface-soft",
-    label: "CLOSED",
-    pulse: false,
-  },
-} as const;
 
 export function ExamsFilter({ rows }: { rows: ExamRow[] }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -107,7 +97,6 @@ function StatusButton({
 }
 
 function ExamAdminCard({ exam }: { exam: ExamRow }) {
-  const status = statusStyle[exam.status];
   const examDate = exam.examDate
     ? new Date(exam.examDate).toISOString().slice(0, 10).replace(/-/g, ".")
     : "미정";
@@ -116,14 +105,7 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-sm ${status.bg} ${status.text}`}
-            >
-              {status.pulse && (
-                <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-              )}
-              {status.label}
-            </span>
+            <StatusEditor examId={exam.id} status={exam.status} />
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               {exam.grade}
             </span>
