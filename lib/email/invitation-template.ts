@@ -77,7 +77,7 @@ export function renderInvitationEmail(data: InvitationEmailData): string {
         </table>
 
         <div style="color:#0B1B3D;font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.25;margin-bottom:20px;">
-          ${escapeHtml(data.examTitle)} 안내
+          ${escapeHtml(data.examTitle)}<br>응시 안내
         </div>
         <p style="color:#6B7280;font-size:15px;line-height:1.75;margin:0 0 48px 0;">
           그동안 갈고닦은 AI 역량을 확인하는 시간입니다.<br>
