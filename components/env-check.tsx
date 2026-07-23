@@ -775,7 +775,7 @@ export function EnvCheck({
             )}
           >
             {allGood
-              ? "보안 서약으로 이동 →"
+              ? "신분증 확인으로 이동 →"
               : "위 항목을 모두 통과해야 진행 가능"}
           </button>
         )}
