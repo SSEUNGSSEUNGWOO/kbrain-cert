@@ -15,6 +15,7 @@ type ExamRow = {
   title: string;
   status: "open" | "draft" | "closed";
   grade: string;
+  gradeId: string | null;
   examDate: string | null;
   durationMinutes: number;
   maxParticipants: number | null;
@@ -62,6 +63,7 @@ export default async function ExamsPage() {
     title: e.title,
     status: e.status,
     grade: e.grade_id ? gradeMap[e.grade_id] ?? "-" : "-",
+    gradeId: e.grade_id ?? null,
     examDate: e.exam_date,
     durationMinutes: e.duration_minutes,
     maxParticipants: e.max_participants,
@@ -72,6 +74,7 @@ export default async function ExamsPage() {
     isTestMode: e.is_test_mode,
     allowNoScreenShare: e.allow_no_screen_share,
   }));
+  const gradeOptions = (grades ?? []).map((g) => ({ id: g.id, name: g.name }));
 
   const stats = {
     total: rows.length,
@@ -100,7 +103,7 @@ export default async function ExamsPage() {
         <StatBox label="Closed" value={stats.closed} unit="개" tone="success" />
       </div>
 
-      <ExamsFilter rows={rows} />
+      <ExamsFilter rows={rows} grades={gradeOptions} />
     </AdminShell>
   );
 }

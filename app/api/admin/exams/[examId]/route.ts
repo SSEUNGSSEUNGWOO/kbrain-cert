@@ -96,6 +96,15 @@ export async function PATCH(
     }
     patch.allow_no_screen_share = body.allowNoScreenShare;
   }
+  if ("gradeId" in body) {
+    if (body.gradeId !== null && typeof body.gradeId !== "string") {
+      return NextResponse.json(
+        { error: "gradeId must be a string or null" },
+        { status: 400 }
+      );
+    }
+    patch.grade_id = body.gradeId;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 });

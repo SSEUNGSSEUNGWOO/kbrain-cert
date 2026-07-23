@@ -8,6 +8,7 @@ import { TestModeToggle } from "./test-mode-toggle";
 import { TitleEditor } from "./title-editor";
 import { EmailTemplateButton } from "./email-template-button";
 import { StatusEditor } from "./status-editor";
+import { GradeEditor, type GradeOption } from "./grade-editor";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -16,6 +17,7 @@ type ExamRow = {
   title: string;
   status: "open" | "draft" | "closed";
   grade: string;
+  gradeId: string | null;
   examDate: string | null;
   durationMinutes: number;
   maxParticipants: number | null;
@@ -27,7 +29,13 @@ type ExamRow = {
   allowNoScreenShare: boolean;
 };
 
-export function ExamsFilter({ rows }: { rows: ExamRow[] }) {
+export function ExamsFilter({
+  rows,
+  grades,
+}: {
+  rows: ExamRow[];
+  grades: GradeOption[];
+}) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const filtered =
     statusFilter === "all"
@@ -61,7 +69,7 @@ export function ExamsFilter({ rows }: { rows: ExamRow[] }) {
 
       <div className="grid grid-cols-2 gap-4">
         {filtered.map((e) => (
-          <ExamAdminCard key={e.id} exam={e} />
+          <ExamAdminCard key={e.id} exam={e} grades={grades} />
         ))}
         {filtered.length === 0 && (
           <div className="col-span-2 rounded-md border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
@@ -96,7 +104,13 @@ function StatusButton({
   );
 }
 
-function ExamAdminCard({ exam }: { exam: ExamRow }) {
+function ExamAdminCard({
+  exam,
+  grades,
+}: {
+  exam: ExamRow;
+  grades: GradeOption[];
+}) {
   const examDate = exam.examDate
     ? new Date(exam.examDate).toISOString().slice(0, 10).replace(/-/g, ".")
     : "미정";
@@ -106,9 +120,11 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <StatusEditor examId={exam.id} status={exam.status} />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              {exam.grade}
-            </span>
+            <GradeEditor
+              examId={exam.id}
+              gradeId={exam.gradeId}
+              grades={grades}
+            />
             {exam.isTestMode && (
               <span className="text-[10px] font-bold text-warning bg-warning-soft px-2 py-0.5 rounded-sm">
                 TEST
