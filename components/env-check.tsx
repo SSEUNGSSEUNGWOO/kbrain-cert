@@ -221,6 +221,70 @@ export function EnvCheck({
     }
   }, [webcamStream]);
 
+  // 검정 프레임 감지 · 5초 간격 프레임 밝기 샘플링
+  // 원격 세션·렌즈 셔터·다른 앱 점유 등으로 스트림이 검정일 때 경고
+  useEffect(() => {
+    if (allowNoWebcam || !webcamStream) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    let consecutiveDark = 0;
+    const DARK_STRIKES = 2;
+    const DARK_THRESHOLD = 10;
+
+    const sample = () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      canvas.width = 32;
+      canvas.height = 24;
+      try {
+        ctx.drawImage(video, 0, 0, 32, 24);
+        const data = ctx.getImageData(0, 0, 32, 24).data;
+        let sum = 0;
+        let n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          sum +=
+            0.2126 * data[i] +
+            0.7152 * data[i + 1] +
+            0.0722 * data[i + 2];
+          n += 1;
+        }
+        const avg = sum / n;
+
+        if (avg < DARK_THRESHOLD) {
+          consecutiveDark += 1;
+          if (consecutiveDark >= DARK_STRIKES) {
+            setWebcam({
+              status: "warn",
+              detail:
+                "웹캠 프레임이 검정 · 렌즈 셔터·다른 앱 점유·원격 세션 여부 확인",
+            });
+          }
+        } else {
+          const wasDark = consecutiveDark >= DARK_STRIKES;
+          consecutiveDark = 0;
+          if (wasDark) {
+            setWebcam({
+              status: "ok",
+              detail: "웹캠 활성 · 시험까지 유지",
+            });
+          }
+        }
+      } catch {
+        /* CORS·SecurityError 등 · 다음 회차에서 재시도 */
+      }
+    };
+
+    const initialId = window.setTimeout(sample, 1500);
+    const intervalId = window.setInterval(sample, 5000);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(intervalId);
+    };
+  }, [webcamStream, allowNoWebcam]);
+
   // 듀얼 모니터 감지 · getScreenDetails 우선(복제 모드도 감지) · isExtended fallback
   const requestMonitorCheck = async () => {
     setMonitor({ status: "pending", detail: "감지 중…" });
