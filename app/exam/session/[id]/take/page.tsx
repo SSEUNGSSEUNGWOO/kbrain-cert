@@ -22,10 +22,6 @@ export default async function ExamSessionTakePage({
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const cookieSessionId = verifySessionCookieValue(cookieValue);
-  if (!cookieSessionId || cookieSessionId !== id) {
-    // 쿠키 없거나 세션 id 불일치 · 응시자 진입 재시작 유도
-    redirect("/");
-  }
 
   const admin = createAdminSupabase();
   const { data: session } = await admin
@@ -37,19 +33,28 @@ export default async function ExamSessionTakePage({
     .maybeSingle();
   if (!session) notFound();
 
-  if (session.submit_time) {
-    // 이미 제출됨 · 재응시 방지 · 결과 페이지로 (M3 후속) or 홈으로
-    redirect("/");
-  }
-
   const { data: exam } = await admin
     .from("exams")
     .select(
-      "id, title, duration_minutes, pass_score, grade_id, exam_date, allow_no_screen_share, allow_dual_monitor"
+      "id, title, slug, is_test_mode, duration_minutes, pass_score, grade_id, exam_date, allow_no_screen_share, allow_dual_monitor"
     )
     .eq("id", session.exam_id)
     .single();
   if (!exam) notFound();
+
+  const entryPath = `/exam/${exam.slug ?? exam.id}`;
+
+  if (!cookieSessionId || cookieSessionId !== id) {
+    // 쿠키 없거나 세션 id 불일치 · 응시자 진입 페이지로 (관리자 로그인 X)
+    redirect(entryPath);
+  }
+
+  if (session.submit_time) {
+    // 이미 제출됨
+    // - Test 시험: 재응시 유도 (응시자 진입 페이지 → 새 세션)
+    // - 본 시험: 완료 페이지로
+    redirect(exam.is_test_mode ? entryPath : `/exam/session/${session.id}/done`);
+  }
 
   const { data: invitation } = session.invitation_id
     ? await admin
