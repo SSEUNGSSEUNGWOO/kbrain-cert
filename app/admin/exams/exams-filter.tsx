@@ -7,6 +7,7 @@ import { SlugEditor } from "./slug-editor";
 import { TestModeToggle } from "./test-mode-toggle";
 import { ScreenShareToggle } from "./screen-share-toggle";
 import { TitleEditor } from "./title-editor";
+import { EmailTemplateButton } from "./email-template-button";
 
 type StatusFilter = "all" | "open" | "draft" | "closed";
 
@@ -179,6 +180,15 @@ function ExamAdminCard({ exam }: { exam: ExamRow }) {
         >
           응시자 관리
         </Link>
+        <div className="flex-1">
+          <EmailTemplateButton
+            examTitle={exam.title}
+            examDate={exam.examDate}
+            durationMinutes={exam.durationMinutes}
+            slug={exam.slug}
+            examId={exam.id}
+          />
+        </div>
         <Link
           href={`/admin/exams/${exam.id}/results`}
           className="flex-1 h-9 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center justify-center transition"
