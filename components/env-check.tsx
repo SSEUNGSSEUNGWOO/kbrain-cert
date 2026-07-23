@@ -83,6 +83,14 @@ export function EnvCheck({
     status: "pending",
     detail: "측정 대기",
   });
+  // 사용자가 X로 닫은 detail을 기억 · 재감지 후 결과가 바뀌면 모달 다시 자동 오픈
+  const [dismissedMonitorDetail, setDismissedMonitorDetail] = useState<
+    string | null
+  >(null);
+  const monitorModalOpen =
+    !allowDualMonitor &&
+    monitor.status === "error" &&
+    dismissedMonitorDetail !== monitor.detail;
 
   // 브라우저 정보 · Fullscreen 지원
   useEffect(() => {
@@ -213,40 +221,45 @@ export function EnvCheck({
     }
   }, [webcamStream]);
 
-  // 듀얼 모니터 감지 (Window Management API · Chrome 100+)
+  // 듀얼 모니터 감지 · getScreenDetails 우선(복제 모드도 감지) · isExtended fallback
   const requestMonitorCheck = async () => {
     setMonitor({ status: "pending", detail: "감지 중…" });
     try {
-      // isExtended 우선 시도 (권한 불필요 · Chrome 100+)
+      const anyWin = window as unknown as {
+        getScreenDetails?: () => Promise<{ screens: unknown[] }>;
+      };
+      // 1순위 · Window Management API로 물리 모니터 개수 확인 (복제 모드 포함)
+      if (typeof anyWin.getScreenDetails === "function") {
+        try {
+          const details = await anyWin.getScreenDetails();
+          const count = details.screens.length;
+          if (count > 1) {
+            setMonitor({
+              status: "error",
+              detail: `${count}개의 모니터가 연결됨`,
+            });
+            return;
+          }
+          setMonitor({ status: "ok", detail: "단일 모니터 · 정상" });
+          return;
+        } catch {
+          // 권한 거부 · fallback
+        }
+      }
+      // 2순위 · isExtended (확장만 감지 · 복제는 놓칠 수 있음)
       const anyScreen = window.screen as unknown as { isExtended?: boolean };
       if (typeof anyScreen.isExtended === "boolean") {
         if (anyScreen.isExtended) {
-          // 여러 모니터 · 정확한 개수는 권한 요청
-          try {
-            const anyWin = window as unknown as {
-              getScreenDetails?: () => Promise<{ screens: unknown[] }>;
-            };
-            if (anyWin.getScreenDetails) {
-              const details = await anyWin.getScreenDetails();
-              setMonitor({
-                status: "error",
-                detail: `듀얼 모니터 감지 · ${details.screens.length}개 연결 · 하나만 사용하도록 나머지 분리 필요`,
-              });
-              return;
-            }
-          } catch {
-            /* fallthrough */
-          }
           setMonitor({
             status: "error",
-            detail:
-              "듀얼 모니터 감지 (isExtended=true) · 시험 중 단일 모니터만 사용 가능",
+            detail: "확장 모니터 감지 (isExtended=true)",
           });
           return;
         }
         setMonitor({
-          status: "ok",
-          detail: "단일 모니터 · 정상",
+          status: "warn",
+          detail:
+            "확장 모니터 미감지 · 화면 복제 모드는 감지 불가 · 반드시 단일 모니터만 사용",
         });
         return;
       }
@@ -513,6 +526,7 @@ export function EnvCheck({
   const total = items.length;
 
   return (
+    <>
     <div className="space-y-5">
       {/* 헤더 · 진행 상태 */}
       <div className="rounded-md bg-white border border-border p-6">
@@ -647,6 +661,74 @@ export function EnvCheck({
       </div>
 
     </div>
+
+    {/* 듀얼 모니터 감지 시 자동 팝업 · 사용자가 X로 닫아도 재감지 후 여전히 감지되면 재오픈 */}
+    {monitorModalOpen && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="monitor-modal-title"
+      >
+        <div className="relative w-full max-w-md rounded-lg bg-white shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setDismissedMonitorDetail(monitor.detail)}
+            aria-label="닫기"
+            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground text-lg"
+          >
+            ×
+          </button>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl" aria-hidden>⚠</span>
+              <h3
+                id="monitor-modal-title"
+                className="font-bold text-lg text-danger"
+              >
+                듀얼 모니터 감지
+              </h3>
+            </div>
+            <p className="text-sm text-foreground mb-3">
+              {monitor.detail}
+            </p>
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+              시험의 공정성을 위해{" "}
+              <strong className="text-foreground">단일</strong> 모니터만
+              사용해야 합니다. 추가 모니터의 연결을 해제한 후 다시 시도해 주세요.
+            </p>
+            <div className="rounded-md bg-surface-soft border border-border p-4 mb-6">
+              <div className="text-xs font-bold text-foreground mb-2">
+                해결 방법:
+              </div>
+              <ul className="text-xs space-y-1.5 text-muted-foreground list-disc pl-4">
+                <li>추가 모니터의 케이블을 분리하세요</li>
+                <li>
+                  Windows 디스플레이 설정에서{" "}
+                  <strong className="text-foreground">1에만 표시</strong> 또는{" "}
+                  <strong className="text-foreground">2에만 표시</strong>로 변경
+                  (복제·확장 모드는 모두 금지됩니다)
+                </li>
+                <li>노트북의 경우 외부 모니터 연결을 해제하세요</li>
+              </ul>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setDismissedMonitorDetail(null);
+                  void requestMonitorCheck();
+                }}
+                className="h-10 px-5 rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-bold transition"
+              >
+                다시 확인
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
