@@ -47,19 +47,31 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => null)) as UploadBody | null;
-  const validated = await validateUploadRequest(request, body);
+  const validated = await validateUploadRequest(request, body, {
+    skipDeadline: true,
+  });
   if (validated instanceof NextResponse) return validated;
   if (!body?.path || !isOwnedPath(body.path, validated)) {
     return NextResponse.json({ error: "invalid upload path" }, { status: 400 });
   }
 
-  const stateError = await validateSessionState(
-    validated.admin,
-    validated.sessionId
-  );
-  if (stateError) {
+  // POST prepare 시점에 이미 서버가 signed URL 발급 (=승인) 했으므로 마감 검증 스킵
+  // 제출 완료된 세션 (submit_time) 만 방지 · 마감 후에도 진행 중이던 업로드는 성공 처리
+  const { data: session } = await validated.admin
+    .from("exam_sessions")
+    .select("submit_time, status")
+    .eq("id", validated.sessionId)
+    .maybeSingle();
+  if (
+    !session ||
+    session.submit_time ||
+    session.status === "submitted"
+  ) {
     await validated.admin.storage.from("answer-files").remove([body.path]);
-    return stateError;
+    return NextResponse.json(
+      { error: "already submitted" },
+      { status: 409 }
+    );
   }
 
   return NextResponse.json({
@@ -89,7 +101,11 @@ export async function DELETE(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-async function validateUploadRequest(request: Request, body: UploadBody | null) {
+async function validateUploadRequest(
+  request: Request,
+  body: UploadBody | null,
+  options?: { skipDeadline?: boolean }
+) {
   const cookieStore = await cookies();
   const cookieSessionId = verifySessionCookieValue(
     cookieStore.get(SESSION_COOKIE_NAME)?.value
@@ -116,7 +132,7 @@ async function validateUploadRequest(request: Request, body: UploadBody | null) 
   }
 
   const admin = createAdminSupabase();
-  const stateError = await validateSessionState(admin, sessionId);
+  const stateError = await validateSessionState(admin, sessionId, options);
   if (stateError) return stateError;
 
   const { data: session } = await admin
@@ -177,7 +193,8 @@ function matchesAcceptedFile(
 
 async function validateSessionState(
   admin: ReturnType<typeof createAdminSupabase>,
-  sessionId: string
+  sessionId: string,
+  options?: { skipDeadline?: boolean }
 ) {
   const { data: session } = await admin
     .from("exam_sessions")
@@ -192,6 +209,7 @@ async function validateSessionState(
   if (session.submit_time || session.status === "submitted") {
     return NextResponse.json({ error: "already submitted" }, { status: 409 });
   }
+  if (options?.skipDeadline) return null;
   const { data: exam } = await admin
     .from("exams")
     .select("exam_date, duration_minutes")
