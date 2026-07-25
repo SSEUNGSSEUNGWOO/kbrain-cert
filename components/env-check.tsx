@@ -341,10 +341,45 @@ export function EnvCheck({
       }
     };
 
+    // 페이지 로드 후 1회 얼굴 감지 (Chrome/Edge Native FaceDetector · Firefox 미지원 시 skip)
+    const faceCheckId = window.setTimeout(async () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const anyWin = window as unknown as {
+        FaceDetector?: new (options?: {
+          maxDetectedFaces?: number;
+          fastMode?: boolean;
+        }) => { detect: (source: HTMLCanvasElement) => Promise<unknown[]> };
+      };
+      const FaceDetectorCtor = anyWin.FaceDetector;
+      if (!FaceDetectorCtor) return;
+      try {
+        const detector = new FaceDetectorCtor({
+          maxDetectedFaces: 1,
+          fastMode: true,
+        });
+        const faceCanvas = document.createElement("canvas");
+        faceCanvas.width = video.videoWidth;
+        faceCanvas.height = video.videoHeight;
+        const faceCtx = faceCanvas.getContext("2d");
+        if (!faceCtx) return;
+        faceCtx.drawImage(video, 0, 0);
+        const faces = await detector.detect(faceCanvas);
+        if (faces.length === 0) {
+          setWebcam({
+            status: "warn",
+            detail: "얼굴이 감지되지 않음 · 카메라 앞에 얼굴을 두고 재감지 필요",
+          });
+        }
+      } catch {
+        /* API 사용 불가 · skip */
+      }
+    }, 2500);
+
     const initialId = window.setTimeout(sample, 700);
     const intervalId = window.setInterval(sample, 2000);
     return () => {
       window.clearTimeout(initialId);
+      window.clearTimeout(faceCheckId);
       window.clearInterval(intervalId);
     };
   }, [webcamStream, allowNoWebcam]);
