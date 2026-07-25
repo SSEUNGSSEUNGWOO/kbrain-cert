@@ -64,11 +64,14 @@ export function useMonitorEvents(sessionId: string | null | undefined) {
   useEffect(() => {
     if (!sessionId) return;
     intervalRef.current = setInterval(() => void flush(), BATCH_INTERVAL_MS);
-    const onBeforeUnload = () => void flush(true);
-    window.addEventListener("beforeunload", onBeforeUnload);
+    const onLeave = () => void flush(true);
+    // pagehide 는 브라우저 강제 종료·모바일 백그라운드·크래시에서도 발동
+    window.addEventListener("beforeunload", onLeave);
+    window.addEventListener("pagehide", onLeave);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onLeave);
+      window.removeEventListener("pagehide", onLeave);
       void flush(true);
     };
   }, [sessionId, flush]);

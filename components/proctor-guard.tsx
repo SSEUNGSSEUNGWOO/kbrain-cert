@@ -137,5 +137,58 @@ export function ProctorGuard({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [active, onEvent]);
 
+  // 탭 hidden/visible 감지 · 다른 프로그램/탭으로 이탈
+  useEffect(() => {
+    if (!active) return;
+    const onVisibility = () => {
+      onEvent({
+        eventType:
+          document.visibilityState === "hidden" ? "tab_hidden" : "tab_visible",
+        severity: document.visibilityState === "hidden" ? "warn" : "info",
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibility);
+  }, [active, onEvent]);
+
+  // 창 focus 잃음 · 다른 앱으로 alt-tab
+  useEffect(() => {
+    if (!active) return;
+    const onBlur = () => onEvent({ eventType: "window_blur", severity: "warn" });
+    const onFocus = () => onEvent({ eventType: "window_focus", severity: "info" });
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [active, onEvent]);
+
+  // 네트워크 상태 감지 · 오프라인/온라인
+  useEffect(() => {
+    if (!active) return;
+    const onOffline = () =>
+      onEvent({ eventType: "network_offline", severity: "high" });
+    const onOnline = () =>
+      onEvent({ eventType: "network_online", severity: "info" });
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [active, onEvent]);
+
+  // 페이지 실제 unload · 브라우저 강제 종료 · 크래시 감지 (severity high · sendBeacon 발송)
+  useEffect(() => {
+    if (!active) return;
+    const onPageHide = () => {
+      onEvent({ eventType: "page_unloaded", severity: "high" });
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [active, onEvent]);
+
   return null;
 }
