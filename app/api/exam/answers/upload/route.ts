@@ -57,11 +57,15 @@ export async function PATCH(request: Request) {
 
   // POST prepare 시점에 이미 서버가 signed URL 발급 (=승인) 했으므로 마감 검증 스킵
   // 제출 완료된 세션 (submit_time) 만 방지 · 마감 후에도 진행 중이던 업로드는 성공 처리
-  const { data: session } = await validated.admin
+  const { data: session, error: sessionError } = await validated.admin
     .from("exam_sessions")
     .select("submit_time, status")
     .eq("id", validated.sessionId)
     .maybeSingle();
+  // 조회 자체가 실패한 경우 (일시적 DB 오류) 파일을 삭제하면 안 됨 · 업로드는 유효
+  if (sessionError) {
+    return NextResponse.json({ error: sessionError.message }, { status: 500 });
+  }
   if (
     !session ||
     session.submit_time ||

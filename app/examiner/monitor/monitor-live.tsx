@@ -294,7 +294,8 @@ export function MonitorLive({
       }
     };
     const scheduleFetch = () => {
-      if (refreshId) clearTimeout(refreshId);
+      // debounce (타이머 리셋) 방식은 이벤트가 연속 유입되면 refetch 가 기아 상태가 됨 · throttle 로 예약 1회 보장
+      if (refreshId) return;
       refreshId = setTimeout(() => {
         refreshId = null;
         void fetchData();
@@ -418,6 +419,8 @@ export function MonitorLive({
           if (!response.ok) {
             throw new Error(config.error ?? `Agora ${media} token failed`);
           }
+          // 탭 전환 등으로 effect 가 이미 정리됐으면 새 effect 의 client ref 를 덮어쓰지 않음
+          if (cancelled) return;
           const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
           if (media === "screen") screenClientRef.current = client;
           else webcamClientRef.current = client;
@@ -463,7 +466,19 @@ export function MonitorLive({
               if (!desiredWebcamsRef.current.has(sessionId)) return;
               subscribedWebcamsRef.current.add(sessionId);
             }
-            await client.subscribe(user, "video");
+            try {
+              await client.subscribe(user, "video");
+            } catch {
+              // 구독 실패 시 "구독됨" 상태 롤백 · 이후 재시도가 차단되지 않도록
+              if (media === "screen") {
+                if (subscribedScreenRef.current === sessionId) {
+                  subscribedScreenRef.current = null;
+                }
+              } else {
+                subscribedWebcamsRef.current.delete(sessionId);
+              }
+              return;
+            }
             if (user.videoTrack) {
               const setter =
                 media === "screen" ? setScreenTracks : setVideoTracks;
@@ -513,6 +528,17 @@ export function MonitorLive({
             config.token,
             config.uid
           );
+          // join 대기 중 cleanup 이 이미 실행된 경우 · leaveCallbacks 루프가 지나갔으므로 직접 leave
+          if (cancelled) {
+            await client.leave().catch(() => {});
+            if (media === "screen" && screenClientRef.current === client) {
+              screenClientRef.current = null;
+            }
+            if (media === "webcam" && webcamClientRef.current === client) {
+              webcamClientRef.current = null;
+            }
+            return;
+          }
           leaveCallbacks.push(async () => {
             client.off("token-privilege-will-expire", renewToken);
             client.off("token-privilege-did-expire", renewToken);
@@ -656,7 +682,8 @@ export function MonitorLive({
         gain.connect(audio.destination);
         oscillator.start();
         oscillator.stop(audio.currentTime + 0.24);
-        oscillator.onended = () => void audio.close();
+        // onended 는 컨텍스트가 suspended 면 발화하지 않아 AudioContext 가 누적됨 · 시간 기반으로 확실히 close
+        window.setTimeout(() => void audio.close().catch(() => {}), 400);
       } catch {
         // 브라우저 자동재생 정책으로 소리가 막혀도 고정 시각 알림은 유지한다.
       }
@@ -1883,15 +1910,26 @@ function playAlertBeep(kind: "high" | "chat" = "high") {
 }
 
 // 탭 hidden 상태에서 감독관 유도 · 6회 blink 후 원복
+let titleFlashId: number | null = null;
+let titleFlashOriginal: string | null = null;
 function flashDocumentTitle(alertLabel: string) {
   if (typeof document === "undefined") return;
-  const original = document.title;
+  // 이미 깜빡이는 중이면 기존 것을 중단 · 알림 문구가 original 로 캡처돼 title 이 고착되는 것 방지
+  if (titleFlashId != null) {
+    window.clearInterval(titleFlashId);
+    titleFlashId = null;
+    if (titleFlashOriginal != null) document.title = titleFlashOriginal;
+  }
+  const original = titleFlashOriginal ?? document.title;
+  titleFlashOriginal = original;
   let flashes = 0;
-  const id = window.setInterval(() => {
+  titleFlashId = window.setInterval(() => {
     document.title = flashes % 2 === 0 ? alertLabel : original;
     flashes += 1;
     if (flashes >= 12 || document.visibilityState === "visible") {
-      window.clearInterval(id);
+      if (titleFlashId != null) window.clearInterval(titleFlashId);
+      titleFlashId = null;
+      titleFlashOriginal = null;
       document.title = original;
     }
   }, 700);

@@ -29,17 +29,33 @@ export function useMonitorEvents(sessionId: string | null | undefined) {
       const body = JSON.stringify({ sessionId, events });
       try {
         if (useBeacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
-          navigator.sendBeacon(
+          const accepted = navigator.sendBeacon(
             "/api/exam/monitoring",
             new Blob([body], { type: "application/json" })
           );
+          // beacon 큐 초과 (64KB 한도) 시 keepalive fetch 로 fallback
+          if (!accepted) {
+            void fetch("/api/exam/monitoring", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body,
+              keepalive: true,
+            }).catch(() => {});
+          }
         } else {
-          await fetch("/api/exam/monitoring", {
+          const res = await fetch("/api/exam/monitoring", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body,
             keepalive: true,
           });
+          // 일시적 서버 오류는 재큐 · 영구 4xx 는 무한 재시도 방지 위해 폐기
+          if (
+            !res.ok &&
+            (res.status >= 500 || [408, 425, 429].includes(res.status))
+          ) {
+            queueRef.current.unshift(...events);
+          }
         }
       } catch (err) {
         console.warn("[monitor] flush failed", err);

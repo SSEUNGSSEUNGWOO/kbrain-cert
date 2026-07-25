@@ -70,18 +70,19 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
           }),
         ]);
         if (cancelled) return;
-        const msgData = msgRes.ok ? await msgRes.json() : { messages: [] };
-        const sesData = sesRes.ok
-          ? await sesRes.json()
-          : { timeExtensionMinutes: 0, isSubmitted: false };
+        // API 일시 실패 시 이전 값 유지 · 특히 시간연장을 0으로 덮어쓰면 타이머가 조기 만료됨
+        const msgData = msgRes.ok ? await msgRes.json() : null;
+        const sesData = sesRes.ok ? await sesRes.json() : null;
         setLive((prev) => {
-          const msgs: SessionMessage[] = msgData.messages ?? [];
+          const msgs: SessionMessage[] = msgData?.messages ?? prev.messages;
           const unread = msgs.filter(
             (m) => m.sender_role !== "applicant" && m.id > lastReadIdRef.current
           ).length;
           return {
-            timeExtensionMinutes: sesData.timeExtensionMinutes ?? 0,
-            isSubmitted: !!sesData.isSubmitted,
+            timeExtensionMinutes: sesData
+              ? sesData.timeExtensionMinutes ?? 0
+              : prev.timeExtensionMinutes,
+            isSubmitted: sesData ? !!sesData.isSubmitted : prev.isSubmitted,
             messages: msgs,
             unreadCount: unread,
           };

@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 
 type CheckStatus = "pending" | "ok" | "warn" | "error";
 
+// 웹캠 요청 동시 실행 가드 · ref 로 두면 렌더 중 접근 lint 에 걸려 모듈 스코프 사용 (페이지당 인스턴스 1개)
+let webcamRequestInFlight = false;
+
 type CheckResult = {
   status: CheckStatus;
   detail: string;
@@ -150,6 +153,9 @@ export function EnvCheck({
 
   // 웹캠 요청 · 스트림은 부모가 유지 (시험 종료까지)
   const requestWebcam = async (deviceId?: string) => {
+    // 연타 시 첫 요청의 스트림이 stop 되지 않고 고아가 됨 (카메라 점유 지속) · 동시 1회만
+    if (webcamRequestInFlight) return;
+    webcamRequestInFlight = true;
     setWebcam({ status: "pending", detail: "권한 요청 중…" });
     const previousStream = webcamStream;
     try {
@@ -219,6 +225,8 @@ export function EnvCheck({
         status: "error",
         detail: `${message} · 브라우저 주소창 오른쪽 카메라 아이콘에서 허용 후 재시도`,
       });
+    } finally {
+      webcamRequestInFlight = false;
     }
   };
 

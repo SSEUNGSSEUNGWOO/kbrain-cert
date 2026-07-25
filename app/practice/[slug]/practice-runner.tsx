@@ -47,6 +47,8 @@ type Set = {
 
 type Tab = "env" | "identity" | "pledge" | "waiting" | "exam";
 
+const EMPTY_ANSWER: Record<string, unknown> = {};
+
 export function PracticeRunner({
   slug,
   exam,
@@ -120,7 +122,8 @@ export function PracticeRunner({
 
   const currentQ = questions[currentIdx];
   const currentSet = sets.find((s) => s.id === currentQ?.set_id);
-  const currentAnswer = currentQ ? answers[currentQ.id] ?? {} : {};
+  // 매 렌더마다 새 {} 를 만들면 auto-save effect 가 타이머 리렌더 (1초) 마다 재실행됨
+  const currentAnswer = currentQ ? answers[currentQ.id] ?? EMPTY_ANSWER : EMPTY_ANSWER;
 
   // 답안 auto-save · sessionId 없으면 no-op (Practice)
   const { flushCurrent, prepareSubmit, queuedCount } = useAutoSaveAnswer(
@@ -289,6 +292,8 @@ export function PracticeRunner({
             ([questionId, slotValues]) => ({ questionId, slotValues })
           ),
         }),
+        // 요청 hang 시 자동 제출 재시도 루프가 멈추지 않도록 타임아웃
+        signal: AbortSignal.timeout(20_000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "제출 실패");
@@ -1617,14 +1622,16 @@ function FileSlot({
         body: JSON.stringify({ ...metadata, path: finalPath }),
       })
         .then(async (res) => {
-          if (!res.ok) {
+          // 409 (이미 제출됨) 만 롤백 · 서버가 파일을 삭제한 유일한 경우
+          // 5xx 등 일시 오류는 파일이 스토리지에 정상 존재하므로 답안 유지
+          if (res.status === 409) {
             const data = await res.json().catch(() => ({}));
-            setError(data.error ?? "업로드 확인 실패 · 파일이 무효화되었습니다");
+            setError(data.error ?? "이미 제출된 세션입니다 · 파일이 저장되지 않았습니다");
             onChange(null);
           }
         })
         .catch(() => {
-          setError("업로드 확인 요청 실패 · 네트워크를 확인하세요");
+          // 네트워크 일시 오류 · 파일은 이미 업로드 완료 상태이므로 답안 유지
         });
     } catch (err) {
       if (preparedPath) {

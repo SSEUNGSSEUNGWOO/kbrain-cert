@@ -48,6 +48,11 @@ export function useAutoSaveAnswer(
     }): Promise<boolean> => {
       if (!sessionId) return true;
 
+      const payload = JSON.stringify({ sessionId, ...body });
+      // keepalive fetch 는 브라우저가 본문을 64KB로 제한 · 긴 서술형 답안은 즉시 거부됨
+      // 큰 답안은 keepalive 없이 전송 (페이지 이탈 시엔 오프라인 큐가 백업)
+      const useKeepalive = new TextEncoder().encode(payload).length < 60_000;
+
       for (const baseDelay of RETRY_BASE_DELAYS_MS) {
         const delay = jitter(baseDelay);
         if (delay > 0) {
@@ -57,8 +62,8 @@ export function useAutoSaveAnswer(
           const response = await fetch("/api/exam/answers/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId, ...body }),
-            keepalive: true,
+            body: payload,
+            keepalive: useKeepalive,
           });
           if (response.ok) return true;
           if (
@@ -102,6 +107,13 @@ export function useAutoSaveAnswer(
           }),
         });
         if (response.ok) {
+          await removeFromQueue(item.id);
+        } else if (
+          response.status >= 400 &&
+          response.status < 500 &&
+          ![408, 425, 429].includes(response.status)
+        ) {
+          // 재시도해도 성공할 수 없는 응답 (이미 제출됨 등) · 큐에 영구 잔류 방지
           await removeFromQueue(item.id);
         }
       } catch {
