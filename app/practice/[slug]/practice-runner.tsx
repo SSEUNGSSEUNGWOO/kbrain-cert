@@ -424,6 +424,45 @@ export function PracticeRunner({
         onFailure={reportScreenFailure}
       />
 
+      {/* 감독관 공지 상시 배너 · 시험창에서만 · 최근 공지 상단 sticky 노출 */}
+      {tab === "exam" && isRealExam && (() => {
+        const announcements = sessionLive.messages
+          .filter((m) => m.is_announcement && m.sender_role === "examiner")
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime()
+          );
+        const latest = announcements[0];
+        if (!latest) return null;
+        return (
+          <div className="sticky top-16 z-30 bg-danger text-white shadow-md">
+            <div className="mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
+              <span className="text-lg shrink-0" aria-hidden>📢</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-0.5">
+                  감독관 공지
+                </div>
+                <div className="text-sm font-bold leading-snug">
+                  {latest.content}
+                </div>
+              </div>
+              <div className="text-[10px] font-tabular opacity-75 shrink-0 text-right">
+                {new Date(latest.created_at).toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {announcements.length > 1 && (
+                  <div className="mt-0.5">
+                    이전 공지 {announcements.length - 1}개
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="border-b border-border bg-white">
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-6">
           {tab === "exam" ? (
