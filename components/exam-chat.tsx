@@ -175,7 +175,9 @@ function MessageBubble({ message }: { message: SessionMessage }) {
           )}
         >
           {isSelf ? "나" : "감독관"} ·{" "}
-          {new Date(message.created_at).toLocaleTimeString("ko-KR")}
+          {new Date(message.created_at).toLocaleTimeString("ko-KR", {
+            timeZone: "Asia/Seoul",
+          })}
         </div>
       </div>
     </div>

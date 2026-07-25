@@ -175,14 +175,21 @@ export function EnvCheck({
       );
       setCameras(videoDevices);
       setSelectedCameraId(settings.deviceId ?? deviceId ?? "");
-      const label = track.label || "웹캠";
-      const isVirtual = /virtual|obs |snap camera|xsplit|manycam|droidcam|mirametrix/i.test(
-        label
+      const rawLabel = (track.label ?? "").trim();
+      const label = rawLabel || "웹캠";
+      const isVirtual = /virtual|obs |snap camera|xsplit|manycam|droidcam|mirametrix|elgato|iriun|epoccam/i.test(
+        rawLabel
       );
+      const labelUnknown = rawLabel.length === 0;
       if (isVirtual) {
         setWebcam({
           status: "warn",
           detail: `가상 카메라 감지: ${label} · 실제 웹캠 선택 필요`,
+        });
+      } else if (labelUnknown) {
+        setWebcam({
+          status: "warn",
+          detail: "카메라 이름 확인 불가 · 실제 웹캠인지 다시 선택 필요",
         });
       } else {
         setWebcam({
@@ -244,8 +251,8 @@ export function EnvCheck({
 
     let consecutiveBad = 0;
     let prevPixels: Uint8ClampedArray | null = null;
-    const STRIKES = 2;
-    const DARK_AVG = 10; // 매우 어두운 프레임 (검정)
+    const STRIKES = 1;
+    const DARK_AVG = 15; // 매우 어두운 프레임 (검정) · 임계값 상향으로 감지 폭 확대
     const FLAT_STDDEV = 8; // 픽셀 밝기 편차 낮음 = 단조로운 프레임
     const STATIC_DIFF = 3; // 이전 프레임과 거의 동일 = 정지 이미지
 
@@ -334,8 +341,8 @@ export function EnvCheck({
       }
     };
 
-    const initialId = window.setTimeout(sample, 1500);
-    const intervalId = window.setInterval(sample, 3000);
+    const initialId = window.setTimeout(sample, 700);
+    const intervalId = window.setInterval(sample, 2000);
     return () => {
       window.clearTimeout(initialId);
       window.clearInterval(intervalId);

@@ -464,6 +464,7 @@ export function PracticeRunner({
                 {new Date(latest.created_at).toLocaleTimeString("ko-KR", {
                   hour: "2-digit",
                   minute: "2-digit",
+                  timeZone: "Asia/Seoul",
                 })}
                 {announcements.length > 1 && (
                   <div className="mt-0.5">

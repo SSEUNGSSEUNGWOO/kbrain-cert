@@ -170,6 +170,7 @@ export default async function ExamEntryPage({
                           hour: "2-digit",
                           minute: "2-digit",
                           hour12: false,
+                          timeZone: "Asia/Seoul",
                         })
                       : "개별 시작 · Test 상시 개방"
                   }

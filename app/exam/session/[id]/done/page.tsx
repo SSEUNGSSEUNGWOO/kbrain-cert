@@ -94,7 +94,9 @@ export default async function ExamDonePage({
           {session.submit_time && (
             <Row
               label="제출 시각"
-              value={new Date(session.submit_time).toLocaleString("ko-KR")}
+              value={new Date(session.submit_time).toLocaleString("ko-KR", {
+                timeZone: "Asia/Seoul",
+              })}
             />
           )}
         </div>
