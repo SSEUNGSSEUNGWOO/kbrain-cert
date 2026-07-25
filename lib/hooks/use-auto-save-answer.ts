@@ -158,7 +158,9 @@ export function useAutoSaveAnswer(
       timeoutRef.current = null;
     }
     await requestChainRef.current;
-  }, []);
+    // 제출 전 오프라인 큐도 완전히 flush · 큐에 남은 답안이 서버에 반영되도록
+    await flushOfflineQueue();
+  }, [flushOfflineQueue]);
 
   useEffect(() => {
     if (!sessionId || !questionId) return;
