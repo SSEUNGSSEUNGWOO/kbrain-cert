@@ -133,6 +133,20 @@ export function PracticeRunner({
   const [activeUploads, setActiveUploads] = useState(0);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // 응시자 네트워크 오프라인 감지 · 답안 오프라인 큐로 백업되고 있음을 명시적으로 안내
+  const [isOffline, setIsOffline] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const check = () => setIsOffline(!navigator.onLine);
+    check();
+    window.addEventListener("online", check);
+    window.addEventListener("offline", check);
+    return () => {
+      window.removeEventListener("online", check);
+      window.removeEventListener("offline", check);
+    };
+  }, []);
   const [serverStartTime, setServerStartTime] = useState<string | null>(null);
 
   const isRealExam = sessionId != null;
@@ -437,45 +451,64 @@ export function PracticeRunner({
         onFailure={reportScreenFailure}
       />
 
-      {/* 감독관 공지 상시 배너 · 시험창에서만 · 최근 공지 상단 sticky 노출 */}
-      {tab === "exam" && isRealExam && (() => {
-        const announcements = sessionLive.messages
-          .filter((m) => m.is_announcement && m.sender_role === "examiner")
-          .sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-          );
-        const latest = announcements[0];
-        if (!latest) return null;
-        return (
-          <div className="sticky top-16 z-30 bg-danger text-white shadow-md">
-            <div className="mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
-              <span className="text-lg shrink-0" aria-hidden>📢</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-0.5">
-                  감독관 공지
-                </div>
-                <div className="text-sm font-bold leading-snug">
-                  {latest.content}
-                </div>
-              </div>
-              <div className="text-[10px] font-tabular opacity-75 shrink-0 text-right">
-                {new Date(latest.created_at).toLocaleTimeString("ko-KR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZone: "Asia/Seoul",
-                })}
-                {announcements.length > 1 && (
-                  <div className="mt-0.5">
-                    이전 공지 {announcements.length - 1}개
+      {/* 상단 배너 stack · 시험창에서만 · 오프라인 상태 + 감독관 공지 */}
+      {tab === "exam" && (
+        <div className="sticky top-16 z-30">
+          {isOffline && (
+            <div className="bg-warning text-white shadow-md">
+              <div className="mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
+                <span className="text-lg shrink-0" aria-hidden>⚠</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-0.5">
+                    오프라인 상태
                   </div>
-                )}
+                  <div className="text-sm font-bold leading-snug">
+                    답안은 자동 백업 중 · 인터넷 연결이 복구되면 자동으로 저장됩니다
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          )}
+          {isRealExam && (() => {
+            const announcements = sessionLive.messages
+              .filter((m) => m.is_announcement && m.sender_role === "examiner")
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime()
+              );
+            const latest = announcements[0];
+            if (!latest) return null;
+            return (
+              <div className="bg-danger text-white shadow-md">
+                <div className="mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
+                  <span className="text-lg shrink-0" aria-hidden>📢</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-0.5">
+                      감독관 공지
+                    </div>
+                    <div className="text-sm font-bold leading-snug">
+                      {latest.content}
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-tabular opacity-75 shrink-0 text-right">
+                    {new Date(latest.created_at).toLocaleTimeString("ko-KR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Asia/Seoul",
+                    })}
+                    {announcements.length > 1 && (
+                      <div className="mt-0.5">
+                        이전 공지 {announcements.length - 1}개
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       <div className="border-b border-border bg-white">
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-6">
