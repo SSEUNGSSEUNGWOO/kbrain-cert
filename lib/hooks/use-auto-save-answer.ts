@@ -224,10 +224,13 @@ export function useAutoSaveAnswer(
   // 오프라인 큐 flush · mount 시 1회 + 재연결 이벤트 (online)
   useEffect(() => {
     if (!sessionId) return;
-    void flushOfflineQueue();
+    const initialId = window.setTimeout(() => void flushOfflineQueue(), 0);
     const onOnline = () => void flushOfflineQueue();
     window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
+    return () => {
+      window.clearTimeout(initialId);
+      window.removeEventListener("online", onOnline);
+    };
   }, [flushOfflineQueue, sessionId]);
 
   return { status, lastSavedAt, queuedCount, flushCurrent, prepareSubmit };
