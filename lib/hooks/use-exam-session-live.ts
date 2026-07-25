@@ -92,7 +92,19 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
     };
 
     void fetchAll();
-    const polling = setInterval(fetchAll, 15_000);
+
+    // Realtime 정상 구독 중이면 polling 완전 stop · 실패/재연결 시에만 60초 fallback polling
+    let pollingId: ReturnType<typeof setInterval> | null = null;
+    const startFallbackPoll = () => {
+      if (pollingId) return;
+      pollingId = setInterval(fetchAll, 60_000);
+    };
+    const stopFallbackPoll = () => {
+      if (pollingId) {
+        clearInterval(pollingId);
+        pollingId = null;
+      }
+    };
 
     const supabase = createClientSupabase();
     const channel = supabase
@@ -117,11 +129,15 @@ export function useExamSessionLive(sessionId: string | null | undefined): {
         },
         () => void fetchAll()
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === "SUBSCRIBED") stopFallbackPoll();
+        else startFallbackPoll();
+      });
 
     return () => {
       cancelled = true;
-      clearInterval(polling);
+      stopFallbackPoll();
       void supabase.removeChannel(channel);
     };
   }, [addMessage, sessionId]);

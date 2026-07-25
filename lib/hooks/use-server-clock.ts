@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const RESYNC_INTERVAL_MS = 5 * 60 * 1000;
-const SAMPLE_COUNT = 3;
+const RESYNC_INTERVAL_MS = 15 * 60 * 1000;
+// 100명 동시 응시 시 서버 요청 3배 절감 · 시각 오차 <100ms 는 시험 타이머에 무관
+const SAMPLE_COUNT = 1;
 
 type ClockAnchor = {
   serverMs: number;
