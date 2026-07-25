@@ -5,7 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type SaveStatus = "idle" | "pending" | "saved" | "error";
 
 const DEBOUNCE_MS = 1500;
-const RETRY_DELAYS_MS = [0, 500, 1500];
+// 지수 백오프 + jitter · 100명 동시 응시 시 서버 폭탄 방지
+// 첫 시도는 즉시 · 실패 시 500ms → 2000ms → 8000ms (각각 ±25% jitter)
+const RETRY_BASE_DELAYS_MS = [0, 500, 2000, 8000];
+const jitter = (base: number) =>
+  base === 0 ? 0 : base + (Math.random() - 0.5) * base * 0.5;
 
 type AnswerValues = Record<string, unknown>;
 /**
@@ -35,7 +39,8 @@ export function useAutoSaveAnswer(
     async (body: Record<string, unknown>): Promise<boolean> => {
       if (!sessionId) return true;
 
-      for (const delay of RETRY_DELAYS_MS) {
+      for (const baseDelay of RETRY_BASE_DELAYS_MS) {
+        const delay = jitter(baseDelay);
         if (delay > 0) {
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
