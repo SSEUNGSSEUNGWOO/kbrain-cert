@@ -97,8 +97,17 @@ export function AgoraScreenPublisher({
       }
     })();
 
+    // 브라우저 탭 강제 close/새로고침 시 Agora client 즉시 leave (Agora minute 소진 방지)
+    const onUnload = () => {
+      if (cleanup) void cleanup();
+    };
+    window.addEventListener("pagehide", onUnload);
+    window.addEventListener("beforeunload", onUnload);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("pagehide", onUnload);
+      window.removeEventListener("beforeunload", onUnload);
       if (cleanup) void cleanup();
     };
   }, [active, sessionId, screenStream, onFailure]);
