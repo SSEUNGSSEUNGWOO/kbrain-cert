@@ -1493,16 +1493,30 @@ function FileSlot({
           contentType: metadata.mime,
         });
       if (uploadError) throw uploadError;
-      const complete = await fetch("/api/exam/answers/upload", {
+      // UI 즉시 반영 · PATCH complete 는 백그라운드로 검증 (사용자 대기 시간 절감)
+      onChange({
+        path: prepared.path,
+        name: file.name,
+        size: file.size,
+        mime: metadata.mime,
+        uploadedAt: new Date().toISOString(),
+      });
+      const finalPath = prepared.path;
+      void fetch("/api/exam/answers/upload", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...metadata, path: prepared.path }),
-      });
-      const completed = await complete.json();
-      if (!complete.ok) {
-        throw new Error(completed.error ?? "업로드 확인 실패");
-      }
-      onChange(completed.file);
+        body: JSON.stringify({ ...metadata, path: finalPath }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            setError(data.error ?? "업로드 확인 실패 · 파일이 무효화되었습니다");
+            onChange(null);
+          }
+        })
+        .catch(() => {
+          setError("업로드 확인 요청 실패 · 네트워크를 확인하세요");
+        });
     } catch (err) {
       if (preparedPath) {
         void fetch("/api/exam/answers/upload", {
