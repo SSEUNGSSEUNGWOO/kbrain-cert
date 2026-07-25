@@ -31,6 +31,7 @@ export function useAutoSaveAnswer(
 ) {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [queuedCount, setQueuedCount] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const latestRef = useRef({ questionId, slotValues });
@@ -87,6 +88,7 @@ export function useAutoSaveAnswer(
   const flushOfflineQueue = useCallback(async () => {
     if (!sessionId) return;
     const items = await listQueue(sessionId);
+    setQueuedCount(items.length);
     for (const item of items) {
       // 각 항목을 순차적으로 재시도 · 성공한 것만 제거
       try {
@@ -107,6 +109,25 @@ export function useAutoSaveAnswer(
         break;
       }
     }
+    // flush 후 잔여 개수 재계산
+    const remaining = await listQueue(sessionId);
+    setQueuedCount(remaining.length);
+  }, [sessionId]);
+
+  // 오프라인 상태에서 enqueue 될 때마다 queued count 재계산
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    const tick = async () => {
+      const items = await listQueue(sessionId);
+      if (!cancelled) setQueuedCount(items.length);
+    };
+    void tick();
+    const id = window.setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, [sessionId]);
 
   const enqueueSave = useCallback(
@@ -209,5 +230,5 @@ export function useAutoSaveAnswer(
     return () => window.removeEventListener("online", onOnline);
   }, [flushOfflineQueue, sessionId]);
 
-  return { status, lastSavedAt, flushCurrent, prepareSubmit };
+  return { status, lastSavedAt, queuedCount, flushCurrent, prepareSubmit };
 }

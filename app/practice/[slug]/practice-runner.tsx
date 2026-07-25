@@ -123,7 +123,7 @@ export function PracticeRunner({
   const currentAnswer = currentQ ? answers[currentQ.id] ?? {} : {};
 
   // 답안 auto-save · sessionId 없으면 no-op (Practice)
-  const { flushCurrent, prepareSubmit } = useAutoSaveAnswer(
+  const { flushCurrent, prepareSubmit, queuedCount } = useAutoSaveAnswer(
     sessionId,
     currentQ?.id,
     currentAnswer
@@ -461,10 +461,21 @@ export function PracticeRunner({
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-0.5">
                     오프라인 상태
+                    {queuedCount > 0 && ` · 저장 대기 ${queuedCount}개`}
                   </div>
                   <div className="text-sm font-bold leading-snug">
                     답안은 자동 백업 중 · 인터넷 연결이 복구되면 자동으로 저장됩니다
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isOffline && queuedCount > 0 && (
+            <div className="bg-info text-white shadow-md">
+              <div className="mx-auto max-w-7xl px-6 py-2 flex items-center gap-3">
+                <span className="text-sm shrink-0" aria-hidden>↻</span>
+                <div className="text-xs font-bold flex-1 min-w-0">
+                  저장 대기 중 답안 {queuedCount}개 · 자동 전송 중…
                 </div>
               </div>
             </div>
