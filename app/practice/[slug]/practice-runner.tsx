@@ -1514,7 +1514,20 @@ function FileSlot({
   onUploadStateChange: (busy: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [uploadingName, setUploadingName] = useState<string | null>(null);
+  const [uploadingSize, setUploadingSize] = useState<number>(0);
+  const [uploadStartedAt, setUploadStartedAt] = useState<number>(0);
+  const [elapsedSec, setElapsedSec] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+
+  // 업로드 중 경과 시간 tick
+  useEffect(() => {
+    if (!busy || !uploadStartedAt) return;
+    const id = window.setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - uploadStartedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [busy, uploadStartedAt]);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -1523,7 +1536,19 @@ function FileSlot({
       setError("Practice에서는 파일 업로드가 저장되지 않습니다");
       return;
     }
+    // 클라이언트 pre-validation · 서버 왕복 없이 즉시 안내
+    const MAX_MB = 10;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setError(
+        `파일이 너무 큽니다 (${(file.size / 1024 / 1024).toFixed(1)}MB). 최대 ${MAX_MB}MB 까지 업로드 가능합니다.`
+      );
+      return;
+    }
     setBusy(true);
+    setUploadingName(file.name);
+    setUploadingSize(file.size);
+    setUploadStartedAt(Date.now());
+    setElapsedSec(0);
     onUploadStateChange(true);
     setError(null);
     let preparedPath: string | null = null;
@@ -1620,6 +1645,10 @@ function FileSlot({
       setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
       setBusy(false);
+      setUploadingName(null);
+      setUploadingSize(0);
+      setUploadStartedAt(0);
+      setElapsedSec(0);
       onUploadStateChange(false);
     }
   }
@@ -1689,12 +1718,24 @@ function FileSlot({
 
   return (
     <div>
+      {busy && uploadingName ? (
+        <div className="rounded-md border-2 border-primary bg-primary-soft/40 py-4 px-4 flex items-center gap-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm text-primary truncate">
+              업로드 중 · {uploadingName}
+            </div>
+            <div className="text-[11px] text-muted-foreground font-tabular mt-0.5">
+              {(uploadingSize / 1024 / 1024).toFixed(2)}MB · 경과 {elapsedSec}초
+              {elapsedSec > 8 && " · 파일이 크면 시간이 걸릴 수 있어요"}
+            </div>
+          </div>
+        </div>
+      ) : (
       <label
         className={cn(
           "rounded-md border-2 border-dashed py-6 px-4 text-center text-xs flex flex-col items-center justify-center gap-2 cursor-pointer transition",
-          busy
-            ? "border-border bg-surface-soft text-muted"
-            : "border-border-strong bg-surface-soft text-muted-foreground hover:border-primary hover:text-primary"
+          "border-border-strong bg-surface-soft text-muted-foreground hover:border-primary hover:text-primary"
         )}
       >
         <input
@@ -1705,19 +1746,18 @@ function FileSlot({
           className="hidden"
         />
         <div className="text-2xl">📎</div>
-        <div className="font-bold">
-          {busy ? "업로드 중…" : "파일 선택"}
-        </div>
+        <div className="font-bold">파일 선택</div>
         {slot.accept && (
           <div className="text-[10px]">허용: {slot.accept}</div>
         )}
-        <div className="text-[10px]">최대 20MB · 슬롯당 1개</div>
+        <div className="text-[10px]">최대 10MB · 슬롯당 1개</div>
         {!sessionId && (
           <div className="text-[10px] text-warning font-bold">
             Practice 링크에서는 저장되지 않습니다
           </div>
         )}
       </label>
+      )}
       {error && (
         <div className="mt-2 text-[11px] text-danger font-bold">{error}</div>
       )}

@@ -8,7 +8,7 @@ import {
 } from "@/lib/exam/session-cookie";
 import { getSessionDeadlineMs } from "@/lib/exam/deadline";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 type UploadBody = {
   sessionId?: string;
