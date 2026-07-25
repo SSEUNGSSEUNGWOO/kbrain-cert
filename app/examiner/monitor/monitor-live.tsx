@@ -1687,6 +1687,22 @@ function ApplicantCard({
             {app.highCount}
           </div>
         )}
+        {app.isFlagged && (
+          <div
+            className={cn(
+              "absolute top-1.5 left-1.5 rounded-sm bg-danger text-white font-bold flex items-center gap-1 px-1.5",
+              size === "lg"
+                ? "text-[10px] h-6 tracking-widest"
+                : size === "md"
+                ? "text-[9px] h-5 tracking-wider"
+                : "text-[8px] h-4"
+            )}
+            title="자동 flag · 이탈·부정 의심 이벤트 감지"
+          >
+            <span aria-hidden>🚩</span>
+            {size !== "sm" && "FLAG"}
+          </div>
+        )}
         {size === "lg" && lastEventLabel && (
           <div
             className={cn(
