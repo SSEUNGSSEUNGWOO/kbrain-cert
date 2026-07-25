@@ -1491,30 +1491,56 @@ function FileSlot({
         fileSize: file.size,
         mime: file.type || "application/octet-stream",
       };
-      const prepare = await fetch("/api/exam/answers/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(metadata),
-      });
-      const prepared = await prepare.json();
-      if (!prepare.ok) throw new Error(prepared.error ?? "업로드 준비 실패");
-      preparedPath = prepared.path;
+      // Storage 업로드 재시도 로직 · 최대 3회 · 매 시도마다 새 signed URL 요청 (만료 대비)
       const supabase = createClientSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from("answer-files")
-        .uploadToSignedUrl(prepared.path, prepared.token, file, {
-          contentType: metadata.mime,
-        });
-      if (uploadError) throw uploadError;
+      const MAX_ATTEMPTS = 3;
+      const backoffMs = [0, 800, 2500];
+      let uploadedPath: string | null = null;
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (backoffMs[attempt] > 0) {
+          await new Promise((r) => setTimeout(r, backoffMs[attempt]));
+        }
+        try {
+          const prepare = await fetch("/api/exam/answers/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(metadata),
+          });
+          const prepared = await prepare.json();
+          if (!prepare.ok) {
+            throw new Error(prepared.error ?? "업로드 준비 실패");
+          }
+          preparedPath = prepared.path;
+          const { error: uploadError } = await supabase.storage
+            .from("answer-files")
+            .uploadToSignedUrl(prepared.path, prepared.token, file, {
+              contentType: metadata.mime,
+            });
+          if (uploadError) throw uploadError;
+          uploadedPath = prepared.path;
+          break;
+        } catch (uploadErr) {
+          lastError =
+            uploadErr instanceof Error
+              ? uploadErr
+              : new Error("업로드 실패");
+        }
+      }
+      if (!uploadedPath) {
+        throw lastError ?? new Error("업로드 실패 · 다시 시도해 주세요");
+      }
+
       // UI 즉시 반영 · PATCH complete 는 백그라운드로 검증 (사용자 대기 시간 절감)
       onChange({
-        path: prepared.path,
+        path: uploadedPath,
         name: file.name,
         size: file.size,
         mime: metadata.mime,
         uploadedAt: new Date().toISOString(),
       });
-      const finalPath = prepared.path;
+      const finalPath = uploadedPath;
       void fetch("/api/exam/answers/upload", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
