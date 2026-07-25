@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  enqueueAnswer,
+  listQueue,
+  removeFromQueue,
+} from "@/lib/offline-queue";
 
 export type SaveStatus = "idle" | "pending" | "saved" | "error";
 
@@ -36,7 +41,10 @@ export function useAutoSaveAnswer(
   }, [questionId, slotValues]);
 
   const postWithRetry = useCallback(
-    async (body: Record<string, unknown>): Promise<boolean> => {
+    async (body: {
+      questionId: string;
+      slotValues: AnswerValues;
+    }): Promise<boolean> => {
       if (!sessionId) return true;
 
       for (const baseDelay of RETRY_BASE_DELAYS_MS) {
@@ -63,10 +71,43 @@ export function useAutoSaveAnswer(
           // 다음 재시도에서 처리
         }
       }
+      // 모든 재시도 실패 · IndexedDB 오프라인 큐에 백업 (재연결 시 자동 flush)
+      await enqueueAnswer({
+        sessionId,
+        questionId: body.questionId,
+        slotValues: body.slotValues,
+        savedAt: Date.now(),
+      });
       return false;
     },
     [sessionId]
   );
+
+  // 큐 flush · 재연결·mount·저장 성공 후 호출
+  const flushOfflineQueue = useCallback(async () => {
+    if (!sessionId) return;
+    const items = await listQueue(sessionId);
+    for (const item of items) {
+      // 각 항목을 순차적으로 재시도 · 성공한 것만 제거
+      try {
+        const response = await fetch("/api/exam/answers/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: item.sessionId,
+            questionId: item.questionId,
+            slotValues: item.slotValues,
+          }),
+        });
+        if (response.ok) {
+          await removeFromQueue(item.id);
+        }
+      } catch {
+        // 아직도 오프라인 · 다음 재연결 때 다시 시도
+        break;
+      }
+    }
+  }, [sessionId]);
 
   const enqueueSave = useCallback(
     (
@@ -156,6 +197,15 @@ export function useAutoSaveAnswer(
       document.removeEventListener("visibilitychange", flushWhenHidden);
     };
   }, [flushCurrent, sessionId]);
+
+  // 오프라인 큐 flush · mount 시 1회 + 재연결 이벤트 (online)
+  useEffect(() => {
+    if (!sessionId) return;
+    void flushOfflineQueue();
+    const onOnline = () => void flushOfflineQueue();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flushOfflineQueue, sessionId]);
 
   return { status, lastSavedAt, flushCurrent, prepareSubmit };
 }
