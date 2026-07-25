@@ -58,9 +58,11 @@ export async function GET(request: Request) {
       invitationIds.length
         ? admin
             .from("exam_invitations")
-            .select("id, name, email, organization")
+            .select(
+              "id, name, email, organization, allow_no_webcam, allow_no_screen_share, allow_dual_monitor"
+            )
             .in("id", invitationIds)
-        : Promise.resolve({ data: [] as Array<{ id: string; name: string | null; email: string; organization: string | null }> }),
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string | null; email: string; organization: string | null; allow_no_webcam: boolean | null; allow_no_screen_share: boolean | null; allow_dual_monitor: boolean | null }> }),
       sessionIds.length
         ? admin
             .from("monitoring_events")
@@ -103,13 +105,23 @@ export async function GET(request: Request) {
 
   const invMap: Record<
     string,
-    { name: string | null; email: string; organization: string | null }
+    {
+      name: string | null;
+      email: string;
+      organization: string | null;
+      allowNoWebcam: boolean;
+      allowNoScreenShare: boolean;
+      allowDualMonitor: boolean;
+    }
   > = {};
   for (const inv of invitations ?? []) {
     invMap[inv.id] = {
       name: inv.name,
       email: inv.email,
       organization: inv.organization,
+      allowNoWebcam: !!inv.allow_no_webcam,
+      allowNoScreenShare: !!inv.allow_no_screen_share,
+      allowDualMonitor: !!inv.allow_dual_monitor,
     };
   }
 
@@ -172,6 +184,9 @@ export async function GET(request: Request) {
       applicantName: inv?.name ?? (inv?.email ? inv.email.split("@")[0] : "-"),
       applicantEmail: inv?.email ?? "-",
       organization: inv?.organization ?? "-",
+      allowNoWebcam: inv?.allowNoWebcam ?? false,
+      allowNoScreenShare: inv?.allowNoScreenShare ?? false,
+      allowDualMonitor: inv?.allowDualMonitor ?? false,
       highCount: highCount[s.id] ?? 0,
       lastEvent: lastEventBySession[s.id] ?? null,
       unreadMessageCount: unreadBySession[s.id]?.count ?? 0,

@@ -19,6 +19,9 @@ type Session = {
   applicantName: string;
   applicantEmail: string;
   organization: string;
+  allowNoWebcam: boolean;
+  allowNoScreenShare: boolean;
+  allowDualMonitor: boolean;
   highCount: number;
   unreadMessageCount: number;
   latestUnreadMessage: {
@@ -1666,9 +1669,7 @@ function ApplicantCard({
           <div className="text-[10px] font-bold truncate">
             {app.applicantName}
           </div>
-          <div className="text-[9px] font-tabular text-muted">
-            {app.status === "in_progress" ? "응시 중" : "대기"}
-          </div>
+          <StatusBadge status={app.status} compact />
         </div>
       ) : (
         <div className="px-4 py-3">
@@ -1681,10 +1682,27 @@ function ApplicantCard({
             >
               {app.applicantName}
             </div>
-            <div className="text-[10px] font-tabular text-primary font-bold">
-              {app.status}
-            </div>
+            <StatusBadge status={app.status} />
           </div>
+          {(app.allowNoWebcam || app.allowNoScreenShare || app.allowDualMonitor) && (
+            <div className="flex flex-wrap items-center gap-1 mb-2">
+              {app.allowNoWebcam && (
+                <span className="text-[9px] font-bold tracking-widest uppercase text-warning bg-warning-soft px-1.5 py-0.5 rounded-sm">
+                  웹캠 면제
+                </span>
+              )}
+              {app.allowNoScreenShare && (
+                <span className="text-[9px] font-bold tracking-widest uppercase text-warning bg-warning-soft px-1.5 py-0.5 rounded-sm">
+                  화면 면제
+                </span>
+              )}
+              {app.allowDualMonitor && (
+                <span className="text-[9px] font-bold tracking-widest uppercase text-warning bg-warning-soft px-1.5 py-0.5 rounded-sm">
+                  듀얼 허용
+                </span>
+              )}
+            </div>
+          )}
           {size === "lg" && (
             <div className="text-[11px] text-muted-foreground truncate mb-2">
               {app.organization} · {app.applicantEmail}
@@ -1771,5 +1789,46 @@ function EventItem({
         </div>
       </div>
     </button>
+  );
+}
+
+function StatusBadge({
+  status,
+  compact = false,
+}: {
+  status: string;
+  compact?: boolean;
+}) {
+  const style = (() => {
+    switch (status) {
+      case "in_progress":
+        return { label: "진행중", cls: "bg-success text-white", dot: true };
+      case "waiting":
+        return { label: "대기중", cls: "bg-info-soft text-info", dot: false };
+      case "submitted":
+        return {
+          label: "제출완료",
+          cls: "bg-surface-soft text-muted-foreground",
+          dot: false,
+        };
+      default:
+        return { label: status, cls: "bg-surface-soft text-muted", dot: false };
+    }
+  })();
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 font-bold tracking-widest uppercase rounded-sm",
+        compact
+          ? "text-[8px] px-1 py-[1px]"
+          : "text-[9px] px-1.5 py-0.5",
+        style.cls
+      )}
+    >
+      {style.dot && (
+        <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+      )}
+      {style.label}
+    </span>
   );
 }
