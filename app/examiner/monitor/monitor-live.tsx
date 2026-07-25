@@ -104,6 +104,28 @@ export function MonitorLive({
     Record<string, IRemoteVideoTrack>
   >({});
   const sessionIdsRef = useRef<Set<string>>(new Set());
+  // 감독관 탭이 hidden 30초 이상이면 Agora 연결 해제 · visible 복귀 시 재구독 (minute 소진 방지)
+  const [tabActive, setTabActive] = useState(true);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hideTimer = setTimeout(() => setTabActive(false), 30_000);
+      } else {
+        if (hideTimer) {
+          clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+        setTabActive(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, []);
   const webcamClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenUsersRef = useRef<Map<string, IAgoraRTCRemoteUser>>(new Map());
@@ -325,6 +347,7 @@ export function MonitorLive({
   }, [exam.id]);
 
   useEffect(() => {
+    if (!tabActive) return; // 탭 hidden 30초 후엔 Agora 구독 안 함 (minute 절약)
     let cancelled = false;
     const leaveCallbacks: Array<() => Promise<void>> = [];
     const screenUsers = screenUsersRef.current;
@@ -491,7 +514,7 @@ export function MonitorLive({
       });
       for (const leave of leaveCallbacks) void leave();
     };
-  }, [exam.id, mediaPage]);
+  }, [exam.id, mediaPage, tabActive]);
 
   const { alerts, normals } = useMemo(() => {
     const alerts: Session[] = [];
