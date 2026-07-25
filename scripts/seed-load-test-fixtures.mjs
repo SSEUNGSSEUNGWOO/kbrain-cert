@@ -53,7 +53,8 @@ const rows = Array.from({ length: 100 }, (_, i) => {
     name: `LoadTest${idx}`,
     phone: `010-0000-${phone4}`,
     email: `loadtest${idx}@example.invalid`,
-    status: "pending",
+    invite_code: `LT-${examId.slice(0, 8)}-${idx}`,
+    status: "created",
   };
 });
 

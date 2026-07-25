@@ -61,6 +61,12 @@ export const options = {
 const enterFailures = new Counter("enter_failures");
 const submitLatency = new Trend("submit_latency_ms");
 
+function logIfFail(res, label) {
+  if (res.status < 200 || res.status >= 300) {
+    console.warn(`[${label}] status=${res.status} body=${(res.body || "").slice(0, 200)}`);
+  }
+}
+
 export default function () {
   const vu = __VU; // 1..100
   const idx = String(vu).padStart(3, "0");
@@ -76,6 +82,7 @@ export default function () {
       tags: { name: "enter" },
     }
   );
+  logIfFail(enterRes, "enter");
   const enterOk = check(enterRes, {
     "enter 200": (r) => r.status === 200,
     "enter has sessionId": (r) => !!(r.json() || {}).sessionId,
@@ -89,7 +96,7 @@ export default function () {
   sleep(randBetween(0.5, 1.5));
 
   // 2. precheck env
-  http.post(
+  const pcEnv = http.post(
     `${BASE_URL}/api/precheck`,
     JSON.stringify({
       sessionId,
@@ -101,11 +108,12 @@ export default function () {
       tags: { name: "precheck" },
     }
   );
+  logIfFail(pcEnv, "precheck-env");
 
   sleep(randBetween(1, 3));
 
   // 3. precheck pledge
-  http.post(
+  const pcPledge = http.post(
     `${BASE_URL}/api/precheck`,
     JSON.stringify({ sessionId, step: "pledge" }),
     {
@@ -113,11 +121,12 @@ export default function () {
       tags: { name: "precheck" },
     }
   );
+  logIfFail(pcPledge, "precheck-pledge");
 
   sleep(randBetween(1, 2));
 
   // 4. precheck waiting
-  http.post(
+  const pcWait = http.post(
     `${BASE_URL}/api/precheck`,
     JSON.stringify({ sessionId, step: "waiting" }),
     {
@@ -125,6 +134,7 @@ export default function () {
       tags: { name: "precheck" },
     }
   );
+  logIfFail(pcWait, "precheck-waiting");
 
   sleep(1);
 
@@ -132,7 +142,7 @@ export default function () {
   for (const qid of QUESTION_IDS.length ? QUESTION_IDS : [null]) {
     if (!qid) break;
     for (let i = 0; i < 3; i++) {
-      http.post(
+      const saveRes = http.post(
         `${BASE_URL}/api/exam/answers/save`,
         JSON.stringify({
           sessionId,
@@ -144,6 +154,7 @@ export default function () {
           tags: { name: "save" },
         }
       );
+      logIfFail(saveRes, "save");
       sleep(randBetween(2, 4));
     }
   }
@@ -159,6 +170,7 @@ export default function () {
     }
   );
   submitLatency.add(Date.now() - submitStart);
+  logIfFail(submitRes, "submit");
   check(submitRes, {
     "submit 200": (r) => r.status === 200,
   });
