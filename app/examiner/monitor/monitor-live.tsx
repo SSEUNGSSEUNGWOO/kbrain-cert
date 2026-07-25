@@ -107,6 +107,43 @@ export function MonitorLive({
     Record<string, IRemoteVideoTrack>
   >({});
   const sessionIdsRef = useRef<Set<string>>(new Set());
+
+  // 새 high-severity 이벤트 · 채팅 알림음 + document.title flash
+  const prevMaxHighEventIdRef = useRef<number>(0);
+  const prevTotalUnreadRef = useRef<number>(0);
+  const lastBeepAtRef = useRef<number>(0);
+  useEffect(() => {
+    const highIds = events
+      .filter((e) => e.severity === "high")
+      .map((e) => e.id);
+    const maxHighId = highIds.length > 0 ? Math.max(...highIds) : 0;
+    const totalUnread = sessions.reduce(
+      (sum, s) => sum + s.unreadMessageCount,
+      0
+    );
+    const hasNewHigh =
+      prevMaxHighEventIdRef.current > 0 &&
+      maxHighId > prevMaxHighEventIdRef.current;
+    const hasNewChat =
+      prevTotalUnreadRef.current > 0 &&
+      totalUnread > prevTotalUnreadRef.current;
+    if (hasNewHigh || hasNewChat) {
+      const now = Date.now();
+      if (now - lastBeepAtRef.current > 3000) {
+        lastBeepAtRef.current = now;
+        playAlertBeep(hasNewHigh ? "high" : "chat");
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          flashDocumentTitle(hasNewHigh ? "🚨 새 알림" : "💬 새 메시지");
+        }
+      }
+    }
+    prevMaxHighEventIdRef.current = Math.max(
+      prevMaxHighEventIdRef.current,
+      maxHighId
+    );
+    prevTotalUnreadRef.current = totalUnread;
+  }, [events, sessions]);
+
   // 감독관 탭이 hidden 30초 이상이면 Agora 연결 해제 · visible 복귀 시 재구독 (minute 소진 방지)
   const [tabActive, setTabActive] = useState(true);
   useEffect(() => {
@@ -1790,6 +1827,58 @@ function EventItem({
       </div>
     </button>
   );
+}
+
+// Web Audio API로 짧은 beep 생성 (외부 오디오 파일 없이)
+function playAlertBeep(kind: "high" | "chat" = "high") {
+  try {
+    const win = window as unknown as {
+      AudioContext?: typeof AudioContext;
+      webkitAudioContext?: typeof AudioContext;
+    };
+    const AudioCtx = win.AudioContext ?? win.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    // high: 880Hz + 660Hz 두 번 반복 · chat: 660Hz 한 번
+    osc.type = "sine";
+    if (kind === "high") {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } else {
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    }
+    setTimeout(() => void ctx.close().catch(() => {}), 1000);
+  } catch {
+    /* ignore */
+  }
+}
+
+// 탭 hidden 상태에서 감독관 유도 · 6회 blink 후 원복
+function flashDocumentTitle(alertLabel: string) {
+  if (typeof document === "undefined") return;
+  const original = document.title;
+  let flashes = 0;
+  const id = window.setInterval(() => {
+    document.title = flashes % 2 === 0 ? alertLabel : original;
+    flashes += 1;
+    if (flashes >= 12 || document.visibilityState === "visible") {
+      window.clearInterval(id);
+      document.title = original;
+    }
+  }, 700);
 }
 
 function StatusBadge({
