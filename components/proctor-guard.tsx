@@ -69,6 +69,14 @@ export function ProctorGuard({
   // 키보드 단축키 · PrintScreen · F12 · Ctrl+Shift+I/C/P/S · Ctrl+P/S/U · macOS Cmd+Shift+3/4/5
   useEffect(() => {
     if (!active) return;
+    // PrintScreen 은 preventDefault 로 캡쳐 자체를 못 막으므로 클립보드를 즉시 비워 무력화
+    const clearClipboard = () => {
+      try {
+        void navigator.clipboard?.writeText("").catch(() => {});
+      } catch {
+        // clipboard 권한 거부 시 무시 (이벤트 기록은 별도로 남음)
+      }
+    };
     const onKey = (e: KeyboardEvent) => {
       const key = e.key;
       const ctrl = e.ctrlKey || e.metaKey;
@@ -83,6 +91,7 @@ export function ProctorGuard({
       // PrintScreen (Win) or Cmd+Shift+3/4/5 (macOS 스크린샷)
       if (key === "PrintScreen" || (e.metaKey && shift && ["3", "4", "5"].includes(key))) {
         e.preventDefault();
+        clearClipboard();
         onEvent({
           eventType: "screenshot_attempt",
           severity: "high",
@@ -111,8 +120,16 @@ export function ProctorGuard({
         return;
       }
     };
+    // Windows 는 keyup 시점에 클립보드로 복사되므로 keyup 에서도 한 번 더 비움
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") clearClipboard();
+    };
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    window.addEventListener("keyup", onKeyUp, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keyup", onKeyUp, true);
+    };
   }, [active, onEvent]);
 
   // 인쇄 방지

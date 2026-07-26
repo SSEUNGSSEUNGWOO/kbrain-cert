@@ -232,6 +232,49 @@ export function PracticeRunner({
     exam.durationMinutes + (isRealExam ? sessionLive.timeExtensionMinutes : 0);
   const timer = useExamTimer(effectiveStartTime, effectiveDurationMinutes);
 
+  // 잔여 시간 다단계 경고 (5분/3분/1분/30초) · 실 시험만 · 임계값당 1회
+  // work_based 시험은 응시자가 외부 도구에서 작업하다 복귀하므로 적극적으로 알림
+  const [timeWarning, setTimeWarning] = useState<{
+    label: string;
+    desc: string;
+    danger: boolean;
+  } | null>(null);
+  // 이 파일의 로컬 type Set(문항 세트)이 전역 Set 타입을 가리므로 Record 사용
+  const timeWarnedRef = useRef<Record<number, boolean>>({});
+  const timeWarningHideRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isRealExam || tab !== "exam" || timer.expired) return;
+    const secsLeft = timer.remainingMs / 1000;
+    if (secsLeft <= 0) return;
+    const thresholds = [
+      { sec: 300, label: "5분 남았습니다", desc: "시간이 종료되면 답안이 자동 제출됩니다. 마무리해 주세요.", danger: false },
+      { sec: 180, label: "3분 남았습니다", desc: "곧 자동 제출됩니다. 답안을 점검해 주세요.", danger: true },
+      { sec: 60, label: "1분 남았습니다", desc: "잠시 후 자동 제출됩니다.", danger: true },
+      { sec: 30, label: "30초 남았습니다", desc: "곧 자동 제출됩니다.", danger: true },
+    ];
+    // 넘어선 임계값은 모두 소진 처리하되 가장 임박한 것 하나만 표시 (새로고침 시 중복 토스트 방지)
+    let toShow: (typeof thresholds)[number] | null = null;
+    for (const t of thresholds) {
+      if (secsLeft <= t.sec && !timeWarnedRef.current[t.sec]) {
+        timeWarnedRef.current[t.sec] = true;
+        toShow = t;
+      }
+    }
+    if (toShow) {
+      const next = toShow;
+      if (timeWarningHideRef.current) window.clearTimeout(timeWarningHideRef.current);
+      // set-state-in-effect 룰 회피 · 표시/숨김 모두 타이머 콜백에서 수행
+      window.setTimeout(() => setTimeWarning(next), 0);
+      timeWarningHideRef.current = window.setTimeout(() => setTimeWarning(null), 8000);
+    }
+  }, [timer.remainingMs, timer.expired, isRealExam, tab]);
+  useEffect(
+    () => () => {
+      if (timeWarningHideRef.current) window.clearTimeout(timeWarningHideRef.current);
+    },
+    []
+  );
+
   // 타이머 만료 시 자동 제출 (실 시험만) · 실패 시 5초마다 재시도 · 최대 20회 후 done 페이지로
   const submittingRef = useRef(false);
   useEffect(() => {
@@ -455,6 +498,24 @@ export function PracticeRunner({
         active={proctorActive && screenRequired}
         onFailure={reportScreenFailure}
       />
+
+      {timeWarning && (
+        <div
+          role="alert"
+          className={cn(
+            "fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg px-5 py-3 shadow-lg text-white",
+            timeWarning.danger ? "bg-danger animate-pulse" : "bg-warning"
+          )}
+        >
+          <span className="text-lg shrink-0" aria-hidden>
+            ⏰
+          </span>
+          <div className="min-w-0">
+            <div className="font-bold text-sm">{timeWarning.label}</div>
+            <div className="text-xs opacity-90">{timeWarning.desc}</div>
+          </div>
+        </div>
+      )}
 
       {/* 상단 배너 stack · 시험창에서만 · 오프라인 상태 + 감독관 공지 */}
       {tab === "exam" && (
