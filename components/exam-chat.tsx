@@ -22,13 +22,7 @@ export function ExamChat({
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  const hasUnreadAnnouncement =
-    unreadCount > 0 &&
-    messages.some(
-      (message) =>
-        message.is_announcement && message.sender_role === "examiner"
-    );
-  const visibleOpen = open || hasUnreadAnnouncement;
+  const visibleOpen = open || unreadCount > 0;
 
   useEffect(() => {
     if (visibleOpen) {
