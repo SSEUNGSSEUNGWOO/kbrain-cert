@@ -71,6 +71,8 @@ export function PracticeRunner({
     allowNoWebcam?: boolean;
     allowNoScreenShare?: boolean;
     allowDualMonitor?: boolean;
+    /** 테스트 모드 시험 · Agora 송출 생략 (minute 소진 방지) */
+    isTestMode?: boolean;
   };
   sets: Set[];
   questions: Question[];
@@ -489,13 +491,13 @@ export function PracticeRunner({
       <AgoraWebcamPublisher
         sessionId={sessionId ?? null}
         webcamStream={webcamStream}
-        active={proctorActive && webcamRequired}
+        active={proctorActive && webcamRequired && !exam.isTestMode}
         onFailure={reportWebcamFailure}
       />
       <AgoraScreenPublisher
         sessionId={sessionId ?? null}
         screenStream={screenStream}
-        active={proctorActive && screenRequired}
+        active={proctorActive && screenRequired && !exam.isTestMode}
         onFailure={reportScreenFailure}
       />
 

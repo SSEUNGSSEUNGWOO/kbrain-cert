@@ -94,6 +94,7 @@ export default async function ExamSessionTakePage({
         allowDualMonitor:
           (exam.allow_dual_monitor ?? false) ||
           (invitation?.allow_dual_monitor ?? false),
+        isTestMode: exam.is_test_mode ?? false,
       }}
       sets={[]}
       questions={[]}
