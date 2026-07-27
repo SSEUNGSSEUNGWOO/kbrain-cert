@@ -60,6 +60,7 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<Row | null>(null);
+  const [resetTarget, setResetTarget] = useState<Row | null>(null);
   const [exceptions, setExceptions] = useState(() =>
     Object.fromEntries(
       rows.map((row) => [
@@ -235,11 +236,22 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
                   {inv.examTitle}
                 </td>
                 <td className="px-3 py-3">
-                  <span
-                    className={`inline-flex text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-sm ${st.bg} ${st.text}`}
-                  >
-                    {st.label}
-                  </span>
+                  <div className="flex flex-col gap-1 items-start">
+                    <span
+                      className={`inline-flex text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-sm ${st.bg} ${st.text}`}
+                    >
+                      {st.label}
+                    </span>
+                    {inv.session?.submitTime && (
+                      <button
+                        type="button"
+                        onClick={() => setResetTarget(inv)}
+                        className="text-[10px] font-bold text-danger hover:underline"
+                      >
+                        ↺ 초기화
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-3">
                   <PrecheckSummary session={inv.session} onOpen={() => setDetail(inv)} />
@@ -308,8 +320,15 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
         <PrecheckDetailModal
           row={detail}
           onClose={() => setDetail(null)}
+        />
+      )}
+
+      {resetTarget && (
+        <ResetConfirmModal
+          row={resetTarget}
+          onClose={() => setResetTarget(null)}
           onReset={() => {
-            setDetail(null);
+            setResetTarget(null);
             router.refresh();
           }}
         />
@@ -411,11 +430,9 @@ function Dot({ label, ok }: { label: string; ok: boolean }) {
 function PrecheckDetailModal({
   row,
   onClose,
-  onReset,
 }: {
   row: Row;
   onClose: () => void;
-  onReset: () => void;
 }) {
   const s = row.session;
   return (
@@ -546,10 +563,6 @@ function PrecheckDetailModal({
                 </div>
               )}
 
-              {/* 제출 초기화 위험 zone · 제출한 응시자만 */}
-              {s.submitTime && (
-                <ResetZone row={row} onReset={onReset} />
-              )}
             </>
           )}
         </div>
@@ -558,7 +571,15 @@ function PrecheckDetailModal({
   );
 }
 
-function ResetZone({ row, onReset }: { row: Row; onReset: () => void }) {
+function ResetConfirmModal({
+  row,
+  onClose,
+  onReset,
+}: {
+  row: Row;
+  onClose: () => void;
+  onReset: () => void;
+}) {
   const [confirmName, setConfirmName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -587,46 +608,71 @@ function ResetZone({ row, onReset }: { row: Row; onReset: () => void }) {
   }
 
   return (
-    <div className="rounded-md border-2 border-danger bg-danger-soft p-4">
-      <div className="text-[10px] font-bold tracking-widest text-danger uppercase mb-1">
-        위험 · 제출 초기화
-      </div>
-      <div className="text-sm font-bold text-foreground mb-1">
-        이 응시자의 시험을 완전히 초기화합니다
-      </div>
-      <div className="text-xs text-muted-foreground mb-3 leading-relaxed">
-        답안 · 업로드 파일 · 신분증 · 감독 이벤트 · 녹화 기록이 모두 삭제되고,
-        응시자는 처음 상태로 다시 진입할 수 있습니다. 되돌릴 수 없습니다.
-      </div>
-      <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-        확인을 위해 응시자 이름 &quot;{row.name}&quot; 을 입력하세요
-      </label>
-      <input
-        type="text"
-        value={confirmName}
-        onChange={(e) => setConfirmName(e.target.value)}
-        placeholder={row.name}
-        disabled={busy}
-        className="w-full h-9 px-3 rounded-md bg-white border border-border text-sm focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20 mb-2"
-      />
-      {error && (
-        <div role="alert" className="text-xs font-bold text-danger mb-2">
-          {error}
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => void handleReset()}
-        disabled={!canReset}
-        className={cn(
-          "h-9 px-4 rounded-md text-xs font-bold transition",
-          canReset
-            ? "bg-danger text-white hover:bg-danger/90"
-            : "bg-subtle text-muted cursor-not-allowed"
-        )}
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+      onClick={busy ? undefined : onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-md bg-white border-2 border-danger w-full max-w-md overflow-hidden"
       >
-        {busy ? "초기화 중…" : "제출 초기화 실행"}
-      </button>
+        <div className="px-6 py-4 border-b border-border bg-danger-soft">
+          <div className="text-[10px] font-bold tracking-widest text-danger uppercase mb-0.5">
+            위험 · 되돌릴 수 없음
+          </div>
+          <h3 className="font-bold text-base text-foreground">
+            {row.name} 응시자 제출 초기화
+          </h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="text-sm text-foreground leading-relaxed">
+            답안 · 업로드 파일 · 신분증 · 감독 이벤트 · 녹화 기록이 모두
+            삭제되고, 응시자는 처음 상태로 다시 진입할 수 있습니다.
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+              확인을 위해 응시자 이름 &quot;{row.name}&quot; 을 입력하세요
+            </label>
+            <input
+              type="text"
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              placeholder={row.name}
+              disabled={busy}
+              autoFocus
+              className="w-full h-10 px-3 rounded-md bg-white border border-border text-sm focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20"
+            />
+          </div>
+          {error && (
+            <div role="alert" className="text-xs font-bold text-danger">
+              {error}
+            </div>
+          )}
+          <div className="flex gap-2 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="h-10 px-4 rounded-md text-xs font-bold bg-white border border-border text-muted-foreground hover:bg-surface-soft disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleReset()}
+              disabled={!canReset}
+              className={cn(
+                "h-10 px-4 rounded-md text-xs font-bold transition",
+                canReset
+                  ? "bg-danger text-white hover:bg-danger/90"
+                  : "bg-subtle text-muted cursor-not-allowed"
+              )}
+            >
+              {busy ? "초기화 중…" : "제출 초기화 실행"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
