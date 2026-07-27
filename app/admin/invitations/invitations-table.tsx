@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 type Status = "created" | "sent" | "used" | "expired";
@@ -54,6 +55,7 @@ const filterToStatus: Record<Exclude<StatusFilter, "전체">, Status> = {
 };
 
 export function InvitationsTable({ rows }: { rows: Row[] }) {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -303,7 +305,14 @@ export function InvitationsTable({ rows }: { rows: Row[] }) {
       </div>
 
       {detail && (
-        <PrecheckDetailModal row={detail} onClose={() => setDetail(null)} />
+        <PrecheckDetailModal
+          row={detail}
+          onClose={() => setDetail(null)}
+          onReset={() => {
+            setDetail(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
@@ -402,9 +411,11 @@ function Dot({ label, ok }: { label: string; ok: boolean }) {
 function PrecheckDetailModal({
   row,
   onClose,
+  onReset,
 }: {
   row: Row;
   onClose: () => void;
+  onReset: () => void;
 }) {
   const s = row.session;
   return (
@@ -534,10 +545,88 @@ function PrecheckDetailModal({
                   </div>
                 </div>
               )}
+
+              {/* 제출 초기화 위험 zone · 제출한 응시자만 */}
+              {s.submitTime && (
+                <ResetZone row={row} onReset={onReset} />
+              )}
             </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ResetZone({ row, onReset }: { row: Row; onReset: () => void }) {
+  const [confirmName, setConfirmName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canReset = confirmName.trim() === row.name.trim() && !busy;
+
+  async function handleReset() {
+    if (!canReset) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/invitations/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invitationId: row.id,
+          confirmName: confirmName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "초기화 실패");
+      onReset();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "초기화 실패");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border-2 border-danger bg-danger-soft p-4">
+      <div className="text-[10px] font-bold tracking-widest text-danger uppercase mb-1">
+        위험 · 제출 초기화
+      </div>
+      <div className="text-sm font-bold text-foreground mb-1">
+        이 응시자의 시험을 완전히 초기화합니다
+      </div>
+      <div className="text-xs text-muted-foreground mb-3 leading-relaxed">
+        답안 · 업로드 파일 · 신분증 · 감독 이벤트 · 녹화 기록이 모두 삭제되고,
+        응시자는 처음 상태로 다시 진입할 수 있습니다. 되돌릴 수 없습니다.
+      </div>
+      <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+        확인을 위해 응시자 이름 &quot;{row.name}&quot; 을 입력하세요
+      </label>
+      <input
+        type="text"
+        value={confirmName}
+        onChange={(e) => setConfirmName(e.target.value)}
+        placeholder={row.name}
+        disabled={busy}
+        className="w-full h-9 px-3 rounded-md bg-white border border-border text-sm focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20 mb-2"
+      />
+      {error && (
+        <div role="alert" className="text-xs font-bold text-danger mb-2">
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => void handleReset()}
+        disabled={!canReset}
+        className={cn(
+          "h-9 px-4 rounded-md text-xs font-bold transition",
+          canReset
+            ? "bg-danger text-white hover:bg-danger/90"
+            : "bg-subtle text-muted cursor-not-allowed"
+        )}
+      >
+        {busy ? "초기화 중…" : "제출 초기화 실행"}
+      </button>
     </div>
   );
 }
