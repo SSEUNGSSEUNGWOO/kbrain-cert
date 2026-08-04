@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/admin/questions", label: "문제은행", key: "questions" },
   { href: "/admin/exams", label: "시험", key: "exams" },
   { href: "/admin/invitations", label: "응시자", key: "invitations" },
+  { href: "/admin/accounts", label: "계정", key: "accounts" },
   { href: "/examiner/monitor", label: "감독", key: "monitor" },
 ];
 
@@ -15,6 +16,7 @@ export type AdminNavKey =
   | "questions"
   | "exams"
   | "invitations"
+  | "accounts"
   | "monitor"
   | "grading";
 

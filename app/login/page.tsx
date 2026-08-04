@@ -2,11 +2,30 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signIn } from "./actions";
 
+const MIN_GREETING_MS = 1200;
+
+function timeGreeting(hour: number) {
+  if (hour >= 5 && hour < 11) return "좋은 아침입니다";
+  if (hour >= 11 && hour < 17) return "좋은 하루입니다";
+  if (hour >= 17 && hour < 22) return "오늘도 수고 많으셨습니다";
+  return "늦은 시간까지 고생 많으십니다";
+}
+
+function greetingLine(name: string | null, position: string | null) {
+  const greeting = timeGreeting(new Date().getHours());
+  if (!name) return greeting;
+  const honorific = position ? `${name} ${position}님` : `${name}님`;
+  return `${honorific}, ${greeting}`;
+}
+
 export default function LoginPage() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -16,9 +35,28 @@ export default function LoginPage() {
       const result = await signIn(formData);
       if (result?.error) {
         setError(result.error);
+        return;
       }
+      setGreeting(greetingLine(result?.name ?? null, result?.position ?? null));
+      await new Promise((resolve) => setTimeout(resolve, MIN_GREETING_MS));
+      router.push("/");
     });
   };
+
+  if (greeting) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-[#FAFAF5]">
+        <div
+          aria-hidden
+          className="w-10 h-10 rounded-full border-4 border-[#0B1F3A]/15 border-t-[#0B1F3A] animate-spin"
+        />
+        <div className="text-center space-y-1">
+          <p className="font-bold text-lg text-[#0B1F3A]">{greeting}</p>
+          <p className="text-sm text-[#0A0A0A]/60">대시보드를 준비하고 있습니다.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
