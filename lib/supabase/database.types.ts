@@ -18,6 +18,7 @@
  *   - 20260720000003_test_exam_attempts (테스트 시험 다회차)
  *   - 20260805000001_add_agora_shard (exam_sessions.agora_shard)
  *   - 20260805000002_monitor_ack (exam_sessions.monitor_acked_at)
+ *   - 20260805000003_monitor_answer_progress (함수만)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
@@ -519,6 +520,14 @@ export type Database = {
       cleanup_exam_entry_attempts: {
         Args: Record<PropertyKey, never>;
         Returns: number;
+      };
+      monitor_answer_progress: {
+        Args: { p_exam_id: string };
+        Returns: Array<{
+          session_id: string;
+          set_id: string;
+          answered: number;
+        }>;
       };
       validate_exam_answers: {
         Args: {

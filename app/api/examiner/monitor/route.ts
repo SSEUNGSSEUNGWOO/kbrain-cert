@@ -53,6 +53,8 @@ export async function GET(request: Request) {
     { data: eventCounts },
     { data: unreadMessages },
     { data: latestMessages },
+    { data: progressRows },
+    { data: examQuestions },
   ] =
     await Promise.all([
       invitationIds.length
@@ -101,7 +103,42 @@ export async function GET(request: Request) {
             .order("created_at", { ascending: false })
             .limit(500)
         : Promise.resolve({ data: [] as Array<{ session_id: string; sender_role: string; content: string; created_at: string }> }),
+      // 세트별 작성현황 · RPC 집계 (함수 미적용 시 null → 빈 값으로 동작)
+      admin.rpc("monitor_answer_progress", { p_exam_id: examId }),
+      admin.from("exam_questions").select("question_id").eq("exam_id", examId),
     ]);
+
+  // 세트 메타 (제목 · 순서 · 세트별 총 문항 수)
+  const questionIds = (examQuestions ?? []).map(
+    (q: { question_id: string }) => q.question_id
+  );
+  const { data: questionRows } = questionIds.length
+    ? await admin.from("questions").select("id, set_id").in("id", questionIds)
+    : { data: [] };
+  const setTotals: Record<string, number> = {};
+  for (const q of (questionRows ?? []) as Array<{ id: string; set_id: string | null }>) {
+    if (q.set_id) setTotals[q.set_id] = (setTotals[q.set_id] ?? 0) + 1;
+  }
+  const setIds = Object.keys(setTotals);
+  const { data: setRows } = setIds.length
+    ? await admin.from("question_sets").select("id, title, order_num").in("id", setIds)
+    : { data: [] };
+  const answerSets = ((setRows ?? []) as Array<{ id: string; title: string; order_num: number }>)
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      orderNum: s.order_num,
+      total: setTotals[s.id] ?? 0,
+    }))
+    .sort((a, b) => a.orderNum - b.orderNum);
+  const answeredBySession: Record<string, Record<string, number>> = {};
+  for (const row of (progressRows ?? []) as Array<{
+    session_id: string;
+    set_id: string;
+    answered: number;
+  }>) {
+    (answeredBySession[row.session_id] ??= {})[row.set_id] = row.answered;
+  }
 
   const invMap: Record<
     string,
@@ -196,6 +233,7 @@ export async function GET(request: Request) {
       isFlagged: s.is_flagged,
       agoraShard:
         (s as { agora_shard?: number | null }).agora_shard ?? null,
+      answeredBySet: answeredBySession[s.id] ?? {},
       applicantName: inv?.name ?? (inv?.email ? inv.email.split("@")[0] : "-"),
       applicantEmail: inv?.email ?? "-",
       organization: inv?.organization ?? "-",
@@ -217,6 +255,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     sessions: enrichedSessions,
+    answerSets,
     events: (recentEvents ?? []).map((e) => {
       const s = (sessions ?? []).find((x) => x.id === e.session_id);
       const inv = s?.invitation_id ? invMap[s.invitation_id] : null;

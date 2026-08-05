@@ -11,12 +11,20 @@ import type {
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
 
+type AnswerSetMeta = {
+  id: string;
+  title: string;
+  orderNum: number;
+  total: number;
+};
+
 type Session = {
   sessionId: string;
   status: string;
   startTime: string | null;
   isFlagged: boolean;
   agoraShard: number | null;
+  answeredBySet: Record<string, number>;
   applicantName: string;
   applicantEmail: string;
   organization: string;
@@ -83,6 +91,26 @@ const REALTIME_REFRESH_DELAY_MS = 750;
 const shardOf = (session: Session) =>
   resolveAgoraShard(session.sessionId, session.agoraShard);
 
+// "1세트 5/10 · 2세트 2/13" 형태 세트별 작성현황 라벨
+function setProgressLabel(app: Session, answerSets: AnswerSetMeta[]) {
+  if (answerSets.length === 0) return null;
+  return answerSets
+    .map(
+      (set, index) =>
+        `${index + 1}세트 ${app.answeredBySet[set.id] ?? 0}/${set.total}`
+    )
+    .join(" · ");
+}
+
+function totalProgress(app: Session, answerSets: AnswerSetMeta[]) {
+  const answered = answerSets.reduce(
+    (sum, set) => sum + (app.answeredBySet[set.id] ?? 0),
+    0
+  );
+  const total = answerSets.reduce((sum, set) => sum + set.total, 0);
+  return { answered, total };
+}
+
 export function MonitorLive({
   exam,
 }: {
@@ -90,6 +118,7 @@ export function MonitorLive({
 }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [events, setEvents] = useState<MonitorEvent[]>([]);
+  const [answerSets, setAnswerSets] = useState<AnswerSetMeta[]>([]);
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
@@ -282,6 +311,7 @@ export function MonitorLive({
         }
         setSessions(data.sessions ?? []);
         setEvents(data.events ?? []);
+        setAnswerSets(data.answerSets ?? []);
         sessionIdsRef.current = new Set(
           (data.sessions ?? []).map((s: Session) => s.sessionId)
         );
@@ -831,6 +861,7 @@ export function MonitorLive({
           screenTrack={screenTracks[selectedApplicant.sessionId]}
           onViewChange={setExpandedView}
           onClose={() => setSelectedSession(null)}
+          answerSets={answerSets}
           onAck={
             selectedApplicant.highCount > 0 || selectedApplicant.isFlagged
               ? () => {
@@ -1118,6 +1149,7 @@ export function MonitorLive({
                       selected={selectedSession === app.sessionId}
                       onSelect={() => openApplicant(app.sessionId)}
                       videoTrack={videoTracks[app.sessionId]}
+                      answerSets={answerSets}
                     />
                     <button
                       type="button"
@@ -1154,6 +1186,7 @@ export function MonitorLive({
                     selected={selectedSession === app.sessionId}
                     onSelect={() => openApplicant(app.sessionId)}
                     videoTrack={videoTracks[app.sessionId]}
+                    answerSets={answerSets}
                   />
                 ))}
               </div>
@@ -1557,6 +1590,7 @@ function ExpandedMonitor({
   onViewChange,
   onClose,
   onAck,
+  answerSets = [],
 }: {
   applicant: Session;
   view: "screen" | "webcam";
@@ -1565,8 +1599,10 @@ function ExpandedMonitor({
   onViewChange: (view: "screen" | "webcam") => void;
   onClose: () => void;
   onAck?: () => void;
+  answerSets?: AnswerSetMeta[];
 }) {
   const track = view === "screen" ? screenTrack : webcamTrack;
+  const progressLabel = setProgressLabel(applicant, answerSets);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6">
       <div className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-md border border-white/20 bg-slate-950 shadow-2xl">
@@ -1578,6 +1614,11 @@ function ExpandedMonitor({
             <div className="font-bold">
               {applicant.applicantName} · {applicant.organization}
             </div>
+            {progressLabel && (
+              <div className="mt-0.5 font-tabular text-xs text-white/70">
+                작성 {progressLabel}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1789,14 +1830,18 @@ function ApplicantCard({
   selected,
   onSelect,
   videoTrack,
+  answerSets = [],
 }: {
   app: Session;
   size: "sm" | "md" | "lg";
   selected: boolean;
   onSelect: () => void;
   videoTrack?: IRemoteVideoTrack;
+  answerSets?: AnswerSetMeta[];
 }) {
   const hasHigh = app.highCount > 0 || app.isFlagged;
+  const progressLabel = setProgressLabel(app, answerSets);
+  const progress = totalProgress(app, answerSets);
 
   const borderClass = selected
     ? "border-primary ring-1 ring-primary-soft"
@@ -1895,6 +1940,11 @@ function ApplicantCard({
             {app.applicantName}
           </div>
           <StatusBadge status={app.status} compact />
+          {progress.total > 0 && (
+            <div className="mt-0.5 font-tabular text-[9px] text-muted">
+              {progress.answered}/{progress.total}
+            </div>
+          )}
         </div>
       ) : (
         <div className="px-4 py-3">
@@ -1943,6 +1993,11 @@ function ApplicantCard({
               ? `시작 ${new Date(app.startTime).toLocaleTimeString("ko-KR")}`
               : "미시작"}
           </div>
+          {progressLabel && (
+            <div className="mt-1 font-tabular text-[10px] font-bold text-primary">
+              작성 {progressLabel}
+            </div>
+          )}
         </div>
       )}
     </button>
