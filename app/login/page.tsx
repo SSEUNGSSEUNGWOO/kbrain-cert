@@ -54,7 +54,7 @@ export default function LoginPage() {
       weekday: "short",
     }).format(new Date());
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_50%_35%,hsl(220_60%_26%),hsl(220_65%_13%))]">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-primary">
         <div className="text-center">
           <p className="greeting-rise text-[10px] font-bold tracking-[0.45em] uppercase text-white/50">
             kbrain-cert
