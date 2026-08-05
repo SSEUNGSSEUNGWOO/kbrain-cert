@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const { data: sessions } = await admin
     .from("exam_sessions")
     .select(
-      "id, status, start_time, submit_time, is_flagged, auto_submitted, invitation_id, agora_shard"
+      "id, status, start_time, submit_time, is_flagged, auto_submitted, invitation_id, agora_shard, monitor_acked_at"
     )
     .eq("exam_id", examId)
     .is("submit_time", null)
@@ -77,12 +77,12 @@ export async function GET(request: Request) {
       sessionIds.length
         ? admin
             .from("monitoring_events")
-            .select("session_id, severity")
+            .select("session_id, severity, detected_at")
             .in("session_id", sessionIds)
             .eq("severity", "high")
             .order("detected_at", { ascending: false })
             .limit(5000)
-        : Promise.resolve({ data: [] as Array<{ session_id: string; severity: string }> }),
+        : Promise.resolve({ data: [] as Array<{ session_id: string; severity: string; detected_at: string }> }),
       sessionIds.length
         ? admin
             .from("session_messages")
@@ -125,8 +125,21 @@ export async function GET(request: Request) {
     };
   }
 
+  // 감독관 확인(ack) 시각 이전의 high 이벤트는 주목 필요 카운트에서 제외
+  const ackedAtMs: Record<string, number> = {};
+  for (const s of sessions ?? []) {
+    const acked = (s as { monitor_acked_at?: string | null }).monitor_acked_at;
+    if (acked) ackedAtMs[s.id] = new Date(acked).getTime();
+  }
   const highCount: Record<string, number> = {};
   for (const e of eventCounts ?? []) {
+    const acked = ackedAtMs[e.session_id];
+    if (
+      acked != null &&
+      new Date((e as { detected_at: string }).detected_at).getTime() <= acked
+    ) {
+      continue;
+    }
     highCount[e.session_id] = (highCount[e.session_id] ?? 0) + 1;
   }
 

@@ -30,7 +30,7 @@ export async function POST(
   const { id: sessionId } = await params;
   const body = await _request.json().catch(() => null);
   const { action, minutes, reason } = (body ?? {}) as {
-    action?: "force_submit" | "extend_time";
+    action?: "force_submit" | "extend_time" | "ack_alerts";
     minutes?: number;
     reason?: string;
   };
@@ -100,6 +100,16 @@ export async function POST(
       content: `감독관이 시험 시간을 ${n}분 연장했습니다 (누적 +${next}분).`,
     });
     return NextResponse.json({ ok: true, timeExtensionMinutes: next });
+  }
+
+  if (action === "ack_alerts") {
+    // 감독관 확인 처리 · 이 시각 이전 high 이벤트는 주목 필요 판정에서 제외
+    // is_flagged 해제 → 이후 새 이탈/부정 이벤트가 오면 DB 트리거가 다시 flag
+    await admin
+      .from("exam_sessions")
+      .update({ monitor_acked_at: nowIso, is_flagged: false, updated_at: nowIso })
+      .eq("id", sessionId);
+    return NextResponse.json({ ok: true, ackedAt: nowIso });
   }
 
   return NextResponse.json({ error: "unknown action" }, { status: 400 });

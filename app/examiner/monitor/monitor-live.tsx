@@ -620,6 +620,29 @@ export function MonitorLive({
   const selectedApplicant = sessions.find(
     (session) => session.sessionId === selectedSession
   );
+  const [ackBusy, setAckBusy] = useState<string | null>(null);
+  const ackAlerts = useCallback(async (sessionId: string) => {
+    setAckBusy(sessionId);
+    try {
+      const response = await fetch(`/api/examiner/session/${sessionId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "ack_alerts" }),
+      });
+      if (response.ok) {
+        // 낙관적 반영 · 다음 refetch 전까지 카드를 즉시 정상으로 내림
+        setSessions((current) =>
+          current.map((session) =>
+            session.sessionId === sessionId
+              ? { ...session, highCount: 0, isFlagged: false }
+              : session
+          )
+        );
+      }
+    } finally {
+      setAckBusy(null);
+    }
+  }, []);
   const openApplicant = (sessionId: string) => {
     const target = sessions.find((session) => session.sessionId === sessionId);
     setMediaPage(
@@ -795,6 +818,14 @@ export function MonitorLive({
           screenTrack={screenTracks[selectedApplicant.sessionId]}
           onViewChange={setExpandedView}
           onClose={() => setSelectedSession(null)}
+          onAck={
+            selectedApplicant.highCount > 0 || selectedApplicant.isFlagged
+              ? () => {
+                  void ackAlerts(selectedApplicant.sessionId);
+                  setSelectedSession(null);
+                }
+              : undefined
+          }
         />
       )}
       {batchEndOpen && (
@@ -1009,7 +1040,7 @@ export function MonitorLive({
             step="01"
             titleKor="주목 필요"
             tag="ALERT"
-            subtitle="HIGH severity · is_flagged · 즉각 개입 검토"
+            subtitle="미확인 HIGH · flag · 확인 처리하면 정상으로 내려가고 새 위반 시 다시 올라옵니다"
             count={pageAlerts.length}
             tone="danger"
           >
@@ -1018,14 +1049,24 @@ export function MonitorLive({
             ) : (
               <div className="grid grid-cols-3 gap-4">
                 {pageAlerts.map((app) => (
-                  <ApplicantCard
-                    key={app.sessionId}
-                    app={app}
-                    size="lg"
-                    selected={selectedSession === app.sessionId}
-                    onSelect={() => openApplicant(app.sessionId)}
-                    videoTrack={videoTracks[app.sessionId]}
-                  />
+                  <div key={app.sessionId} className="relative">
+                    <ApplicantCard
+                      app={app}
+                      size="lg"
+                      selected={selectedSession === app.sessionId}
+                      onSelect={() => openApplicant(app.sessionId)}
+                      videoTrack={videoTracks[app.sessionId]}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void ackAlerts(app.sessionId)}
+                      disabled={ackBusy === app.sessionId}
+                      title="확인 처리 · 정상 그룹으로 내리고 새 위반 시 다시 올라옵니다"
+                      className="absolute right-1.5 top-9 z-10 h-7 rounded-md border border-border bg-white/95 px-2.5 text-[10px] font-bold text-success shadow-sm transition hover:border-success disabled:opacity-50"
+                    >
+                      {ackBusy === app.sessionId ? "처리 중…" : "✓ 확인"}
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -1453,6 +1494,7 @@ function ExpandedMonitor({
   screenTrack,
   onViewChange,
   onClose,
+  onAck,
 }: {
   applicant: Session;
   view: "screen" | "webcam";
@@ -1460,6 +1502,7 @@ function ExpandedMonitor({
   screenTrack?: IRemoteVideoTrack;
   onViewChange: (view: "screen" | "webcam") => void;
   onClose: () => void;
+  onAck?: () => void;
 }) {
   const track = view === "screen" ? screenTrack : webcamTrack;
   return (
@@ -1497,6 +1540,15 @@ function ExpandedMonitor({
             >
               웹캠
             </button>
+            {onAck && (
+              <button
+                onClick={onAck}
+                title="확인 처리 · 정상 그룹으로 내리고 새 위반 시 다시 올라옵니다"
+                className="h-9 rounded-md bg-success px-4 text-xs font-bold text-white"
+              >
+                ✓ 확인 처리
+              </button>
+            )}
             <Link
               href={`/examiner/session/${applicant.sessionId}`}
               className="inline-flex h-9 items-center rounded-md bg-white px-4 text-xs font-bold text-slate-950"
