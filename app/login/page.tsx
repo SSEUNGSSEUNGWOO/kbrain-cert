@@ -48,21 +48,21 @@ export default function LoginPage() {
 
   if (greeting) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-[#FAFAF5]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-background">
         <div className="text-center space-y-1.5">
           {greeting.honorific && (
-            <p className="greeting-rise font-bold text-2xl text-[#0B1F3A]">
+            <p className="greeting-rise font-bold text-2xl text-heading">
               {greeting.honorific},
             </p>
           )}
           <p
-            className="greeting-rise font-bold text-2xl text-[#0B1F3A]"
+            className="greeting-rise font-bold text-2xl text-heading"
             style={{ animationDelay: "0.18s" }}
           >
             {greeting.greeting}
           </p>
           <p
-            className="greeting-rise text-sm text-[#0A0A0A]/60 pt-2"
+            className="greeting-rise text-sm text-muted-foreground pt-2"
             style={{ animationDelay: "0.38s" }}
           >
             대시보드를 준비하고 있습니다.
@@ -73,7 +73,7 @@ export default function LoginPage() {
           className="greeting-rise"
           style={{ animationDelay: "0.55s" }}
         >
-          <div className="w-8 h-8 rounded-full border-4 border-[#0B1F3A]/15 border-t-[#0B1F3A] animate-spin" />
+          <div className="w-8 h-8 rounded-full border-4 border-primary/15 border-t-primary animate-spin" />
         </div>
       </div>
     );
