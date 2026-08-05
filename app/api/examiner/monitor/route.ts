@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const { data: sessions } = await admin
     .from("exam_sessions")
     .select(
-      "id, status, start_time, submit_time, is_flagged, auto_submitted, invitation_id"
+      "id, status, start_time, submit_time, is_flagged, auto_submitted, invitation_id, agora_shard"
     )
     .eq("exam_id", examId)
     .is("submit_time", null)
@@ -181,6 +181,8 @@ export async function GET(request: Request) {
       status: s.status,
       startTime: s.start_time,
       isFlagged: s.is_flagged,
+      agoraShard:
+        (s as { agora_shard?: number | null }).agora_shard ?? null,
       applicantName: inv?.name ?? (inv?.email ? inv.email.split("@")[0] : "-"),
       applicantEmail: inv?.email ?? "-",
       organization: inv?.organization ?? "-",

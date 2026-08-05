@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClientSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { AGORA_SHARD_COUNT, getAgoraShard } from "@/lib/agora-channel";
+import { AGORA_SHARD_COUNT, resolveAgoraShard } from "@/lib/agora-channel";
 import type {
   IAgoraRTCClient,
   IAgoraRTCRemoteUser,
@@ -16,6 +16,7 @@ type Session = {
   status: string;
   startTime: string | null;
   isFlagged: boolean;
+  agoraShard: number | null;
   applicantName: string;
   applicantEmail: string;
   organization: string;
@@ -78,6 +79,9 @@ const EVENT_LABEL: Record<string, string> = {
 type SeverityFilter = "all" | "high" | "info";
 const MAX_LIVE_WEBCAMS = 8;
 const REALTIME_REFRESH_DELAY_MS = 750;
+
+const shardOf = (session: Session) =>
+  resolveAgoraShard(session.sessionId, session.agoraShard);
 
 export function MonitorLive({
   exam,
@@ -179,7 +183,7 @@ export function MonitorLive({
 
   useEffect(() => {
     const ordered = sessions.filter(
-      (session) => getAgoraShard(session.sessionId) === mediaPage
+      (session) => shardOf(session) === mediaPage
     ).sort((a, b) => {
       if (a.sessionId === selectedSession) return -1;
       if (b.sessionId === selectedSession) return 1;
@@ -593,10 +597,10 @@ export function MonitorLive({
     return { alerts, normals };
   }, [sessions]);
   const pageAlerts = alerts.filter(
-    (session) => getAgoraShard(session.sessionId) === mediaPage
+    (session) => shardOf(session) === mediaPage
   );
   const pageNormals = normals.filter(
-    (session) => getAgoraShard(session.sessionId) === mediaPage
+    (session) => shardOf(session) === mediaPage
   );
 
   const filteredEvents = useMemo(
@@ -617,13 +621,21 @@ export function MonitorLive({
     (session) => session.sessionId === selectedSession
   );
   const openApplicant = (sessionId: string) => {
-    setMediaPage(getAgoraShard(sessionId));
+    const target = sessions.find((session) => session.sessionId === sessionId);
+    setMediaPage(
+      target ? shardOf(target) : resolveAgoraShard(sessionId, null)
+    );
     setExpandedView("screen");
     setSelectedSession(sessionId);
   };
   const pageSessions = sessions.filter(
-    (session) => getAgoraShard(session.sessionId) === mediaPage
+    (session) => shardOf(session) === mediaPage
   );
+  const shardRemaining = useMemo(() => {
+    const counts = new Array<number>(AGORA_SHARD_COUNT).fill(0);
+    for (const session of sessions) counts[shardOf(session)] += 1;
+    return counts;
+  }, [sessions]);
   const chatSessions = sessions.filter(
     (session) => session.unreadMessageCount > 0
   ).sort(
@@ -944,7 +956,7 @@ export function MonitorLive({
               <div>
                 <div className="text-xs font-bold">감독 영상 페이지</div>
                 <div className="text-[10px] text-muted-foreground">
-                  현재 페이지의 웹캠·화면공유 채널만 연결합니다.
+                  현재 페이지의 웹캠·화면공유 채널만 연결합니다. 버튼 숫자는 페이지별 미제출 인원입니다.
                 </div>
               </div>
               <span className="text-xs font-bold text-primary">
@@ -952,25 +964,44 @@ export function MonitorLive({
               </span>
             </div>
             <div className="grid grid-cols-10 gap-2">
-              {Array.from({ length: AGORA_SHARD_COUNT }, (_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSession(null);
-                    setMediaPage(index);
-                  }}
-                  aria-current={mediaPage === index ? "page" : undefined}
-                  className={cn(
-                    "h-9 rounded-md border text-xs font-bold transition",
-                    mediaPage === index
-                      ? "border-primary bg-primary text-white"
-                      : "border-border bg-white text-muted-foreground hover:border-primary"
-                  )}
-                >
-                  {index + 1}
-                </button>
-              ))}
+              {Array.from({ length: AGORA_SHARD_COUNT }, (_, index) => {
+                const remaining = shardRemaining[index];
+                const empty = remaining === 0;
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSession(null);
+                      setMediaPage(index);
+                    }}
+                    disabled={empty && mediaPage !== index}
+                    aria-current={mediaPage === index ? "page" : undefined}
+                    className={cn(
+                      "flex h-11 flex-col items-center justify-center rounded-md border text-xs font-bold leading-tight transition",
+                      mediaPage === index
+                        ? "border-primary bg-primary text-white"
+                        : empty
+                        ? "cursor-not-allowed border-border bg-surface-soft text-muted/40"
+                        : "border-border bg-white text-muted-foreground hover:border-primary"
+                    )}
+                  >
+                    <span>{index + 1}</span>
+                    <span
+                      className={cn(
+                        "font-tabular text-[9px]",
+                        mediaPage === index
+                          ? "text-white/70"
+                          : empty
+                          ? "text-muted/40"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {remaining}명
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </nav>
 

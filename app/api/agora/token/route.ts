@@ -8,8 +8,8 @@ import {
   verifySessionCookieValue,
 } from "@/lib/exam/session-cookie";
 import {
-  getAgoraShard,
   isAgoraShard,
+  resolveAgoraShard,
 } from "@/lib/agora-channel";
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 6;
@@ -43,14 +43,14 @@ export async function POST(request: Request) {
   if (body?.mode === "applicant" && sessionId) {
     const { data: session } = await admin
       .from("exam_sessions")
-      .select("id, exam_id, submit_time")
+      .select("id, exam_id, submit_time, agora_shard")
       .eq("id", sessionId)
       .maybeSingle();
     if (!session || session.submit_time) {
       return NextResponse.json({ error: "invalid session" }, { status: 403 });
     }
     examId = session.exam_id;
-    shard = getAgoraShard(session.id);
+    shard = resolveAgoraShard(session.id, session.agora_shard);
     const uidPrefix =
       media === "screen"
         ? `screen-${session.id}-`
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
     clientRole = "audience";
   }
 
-  // 웹캠·화면공유를 각각 20개 채널로 분산한다. 세션 ID 기반 배정이라
-  // 응시자가 재접속해도 같은 채널을 사용한다.
+  // 웹캠·화면공유를 각각 20개 채널로 분산한다. 세션에 저장된 샤드(구 세션은
+  // ID 해시 폴백) 기반이라 응시자가 재접속해도 같은 채널을 사용한다.
   const channel = `exam-${examId}-${media}-${shard}`;
   const token = RtcTokenBuilder.buildTokenWithUserAccount(
     appId,

@@ -16,6 +16,7 @@
  *   - 20260720000001_exam_slug_and_phone_entry (slug + phone + guest_otp_codes drop)
  *   - 20260720000002_single_session_per_invitation (invitation당 단일 session)
  *   - 20260720000003_test_exam_attempts (테스트 시험 다회차)
+ *   - 20260805000001_add_agora_shard (exam_sessions.agora_shard)
  */
 
 export type AppRole = "admin" | "examiner" | "grader" | "applicant";
@@ -298,6 +299,7 @@ export type Database = {
           monitoring_notes: string | null;
           auto_submitted: boolean;
           time_extension_minutes: number;
+          agora_shard: number | null;
           precheck_env_result: Json | null;
           precheck_pledge_accepted_at: string | null;
           precheck_waiting_entered_at: string | null;
@@ -323,6 +325,7 @@ export type Database = {
           monitoring_notes?: string | null;
           auto_submitted?: boolean;
           time_extension_minutes?: number;
+          agora_shard?: number | null;
           precheck_env_result?: Json | null;
           precheck_pledge_accepted_at?: string | null;
           precheck_waiting_entered_at?: string | null;

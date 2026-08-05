@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createHmac } from "node:crypto";
 import { createAdminSupabase } from "@/lib/supabase/server";
+import { AGORA_SHARD_CAPACITY, AGORA_SHARD_COUNT } from "@/lib/agora-channel";
 import {
   SESSION_COOKIE_NAME,
   COOKIE_MAX_AGE_SECONDS,
@@ -132,6 +133,28 @@ export async function POST(request: Request) {
   if (existingSession) {
     sessionId = existingSession.id;
   } else {
+    // 순차 채움 샤드 배정 · 미제출 인원이 정원 미만인 가장 앞 샤드
+    // (앞 페이지 응시자가 제출하면 그 빈자리를 신규 입장자가 채움)
+    const { data: shardRows } = await admin
+      .from("exam_sessions")
+      .select("agora_shard")
+      .eq("exam_id", examId)
+      .eq("is_test_attempt", exam.is_test_mode)
+      .is("submit_time", null)
+      .not("agora_shard", "is", null);
+    const shardCounts = new Array<number>(AGORA_SHARD_COUNT).fill(0);
+    for (const row of (shardRows ?? []) as Array<{ agora_shard: number }>) {
+      if (row.agora_shard >= 0 && row.agora_shard < AGORA_SHARD_COUNT) {
+        shardCounts[row.agora_shard] += 1;
+      }
+    }
+    let agoraShard = shardCounts.findIndex(
+      (count) => count < AGORA_SHARD_CAPACITY
+    );
+    if (agoraShard === -1) {
+      agoraShard = shardCounts.indexOf(Math.min(...shardCounts));
+    }
+
     const { data: session, error: sessionErr } = await admin
       .from("exam_sessions")
       .insert({
@@ -140,6 +163,7 @@ export async function POST(request: Request) {
         invitation_id: invitation.id,
         is_test_attempt: exam.is_test_mode,
         status: "waiting",
+        agora_shard: agoraShard,
       })
       .select("id")
       .single();
