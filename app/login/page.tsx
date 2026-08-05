@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "./actions";
 
-const MIN_GREETING_MS = 2200;
+const MIN_GREETING_MS = 2500;
 
 function timeGreeting(hour: number) {
   if (hour >= 5 && hour < 11) return "좋은 아침입니다";
@@ -15,10 +15,7 @@ function timeGreeting(hour: number) {
 }
 
 function greetingParts(name: string | null, position: string | null) {
-  const greeting = timeGreeting(new Date().getHours());
-  if (!name) return { honorific: null, greeting };
-  const honorific = position ? `${name} ${position}님` : `${name}님`;
-  return { honorific, greeting };
+  return { name, position, greeting: timeGreeting(new Date().getHours()) };
 }
 
 export default function LoginPage() {
@@ -26,7 +23,8 @@ export default function LoginPage() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [greeting, setGreeting] = useState<{
-    honorific: string | null;
+    name: string | null;
+    position: string | null;
     greeting: string;
   } | null>(null);
 
@@ -47,51 +45,37 @@ export default function LoginPage() {
   };
 
   if (greeting) {
-    const today = new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-    }).format(new Date());
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-primary">
-        <div className="text-center">
-          <p className="greeting-rise text-[10px] font-bold tracking-[0.45em] uppercase text-white/50">
-            kbrain-cert
-          </p>
-          <div
-            aria-hidden
-            className="greeting-rise mx-auto mt-4 mb-8 w-10 h-px bg-white/30"
-            style={{ animationDelay: "0.12s" }}
-          />
-          {greeting.honorific && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          {greeting.name && (
+            <p className="greeting-rise text-3xl font-bold text-heading">
+              {greeting.name}
+            </p>
+          )}
+          {greeting.name && (
             <p
-              className="greeting-rise font-bold text-4xl leading-snug text-white"
-              style={{ animationDelay: "0.25s" }}
+              className="greeting-rise text-lg font-medium text-primary"
+              style={{ animationDelay: "0.4s" }}
             >
-              {greeting.honorific},
+              {greeting.position ? `${greeting.position}님` : "님"}
             </p>
           )}
           <p
-            className="greeting-rise font-bold text-4xl leading-snug text-white"
-            style={{ animationDelay: "0.42s" }}
+            className="greeting-rise mt-2 text-base text-muted-foreground"
+            style={{ animationDelay: greeting.name ? "0.8s" : "0s" }}
           >
-            {greeting.greeting}
+            안녕하세요, {greeting.greeting}
           </p>
-          <p
-            className="greeting-rise mt-5 text-sm text-white/55"
-            style={{ animationDelay: "0.62s" }}
+          <div
+            aria-hidden
+            className="greeting-rise mt-6 h-0.5 w-32 rounded-full bg-subtle overflow-hidden"
+            style={{ animationDelay: "1.2s", animationDuration: "0.4s" }}
           >
-            {today} · 대시보드를 준비하고 있습니다
-          </p>
-        </div>
-        <div
-          aria-hidden
-          className="greeting-rise mt-14"
-          style={{ animationDelay: "0.85s" }}
-        >
-          <div className="w-44 h-0.5 rounded-full bg-white/15 overflow-hidden">
-            <div className="greeting-sweep w-2/5 h-full rounded-full bg-white/80" />
+            <div
+              className="greeting-fill h-full rounded-full bg-primary"
+              style={{ animationDelay: "1.3s" }}
+            />
           </div>
         </div>
       </div>
