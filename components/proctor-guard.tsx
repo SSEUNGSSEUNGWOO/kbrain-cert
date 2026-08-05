@@ -11,14 +11,20 @@ import type { MonitorEvent } from "@/lib/hooks/use-monitor-events";
  * - 인쇄 방지 (beforeprint)
  * - 페이지 벗어남 방지 (beforeunload)
  *
+ * allowUnloadRef.current=true 면 beforeunload 트랩을 통과시킨다.
+ * 제출 완료 등 의도된 페이지 이동 직전에 부모가 동기적으로 세팅 —
+ * 그렇지 않으면 브라우저 이탈 확인 대화상자가 이동을 가로챈다.
+ *
  * 모든 위반은 onEvent 콜백으로 상위에 전달 (부모가 monitoring_events 저장)
  */
 export function ProctorGuard({
   active,
   onEvent,
+  allowUnloadRef,
 }: {
   active: boolean;
   onEvent: (event: MonitorEvent) => void;
+  allowUnloadRef?: { current: boolean };
 }) {
   // 복사·붙여넣기·잘라내기 차단 (input/textarea/contenteditable 제외)
   useEffect(() => {
@@ -146,13 +152,14 @@ export function ProctorGuard({
   useEffect(() => {
     if (!active) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (allowUnloadRef?.current) return;
       e.preventDefault();
       e.returnValue = "시험 중입니다. 정말로 나가시겠습니까?";
       onEvent({ eventType: "navigation_attempt", severity: "warn" });
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [active, onEvent]);
+  }, [active, onEvent, allowUnloadRef]);
 
   // 탭 hidden/visible 감지 · 다른 프로그램/탭으로 이탈
   useEffect(() => {

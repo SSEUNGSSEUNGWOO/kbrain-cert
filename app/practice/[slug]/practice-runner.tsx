@@ -138,6 +138,8 @@ export function PracticeRunner({
   const [activeUploads, setActiveUploads] = useState(0);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // 의도된 페이지 이동(제출 완료·강제 종료) 직전에 true — ProctorGuard beforeunload 트랩 통과용
+  const allowUnloadRef = useRef(false);
 
   // 응시자 네트워크 오프라인 감지 · 답안 오프라인 큐로 백업되고 있음을 명시적으로 안내
   const [isOffline, setIsOffline] = useState(false);
@@ -218,6 +220,7 @@ export function PracticeRunner({
   // 감독관이 강제 종료했으면 done 페이지로 이동
   useEffect(() => {
     if (sessionLive.isSubmitted && sessionId && tab === "exam") {
+      allowUnloadRef.current = true;
       window.location.href = `/exam/session/${sessionId}/done`;
     }
   }, [sessionLive.isSubmitted, sessionId, tab]);
@@ -297,6 +300,7 @@ export function PracticeRunner({
         window.clearInterval(retryId);
         // 클라이언트 재시도 소진 · 서버 pg_cron 이 완료 처리하므로 done 페이지로 강제 이동
         if (sessionId) {
+          allowUnloadRef.current = true;
           window.location.href = `/exam/session/${sessionId}/done`;
         }
         return;
@@ -342,8 +346,11 @@ export function PracticeRunner({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "제출 실패");
+      allowUnloadRef.current = true;
       window.location.href = `/exam/session/${sessionId}/done`;
     } catch (err) {
+      // 제출 실패로 시험 화면에 남는 경우 이탈 방지 트랩 재무장
+      allowUnloadRef.current = false;
       setSubmitError(err instanceof Error ? err.message : "제출 실패");
       setSubmitting(false);
     }
@@ -481,6 +488,7 @@ export function PracticeRunner({
       <ProctorGuard
         active={proctorActive}
         onEvent={fireMonitorEvent}
+        allowUnloadRef={allowUnloadRef}
       />
       <TopBar
         exam={exam}
