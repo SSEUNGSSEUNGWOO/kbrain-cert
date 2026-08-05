@@ -90,6 +90,7 @@ export function MonitorLive({
 }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [events, setEvents] = useState<MonitorEvent[]>([]);
+  const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [mediaPage, setMediaPage] = useState(0);
@@ -654,6 +655,18 @@ export function MonitorLive({
   const pageSessions = sessions.filter(
     (session) => shardOf(session) === mediaPage
   );
+  const searchTerm = search.trim();
+  const searchResults = useMemo(
+    () =>
+      searchTerm
+        ? sessions.filter(
+            (session) =>
+              session.applicantName.includes(searchTerm) ||
+              session.organization.includes(searchTerm)
+          )
+        : [],
+    [searchTerm, sessions]
+  );
   const shardRemaining = useMemo(() => {
     const counts = new Array<number>(AGORA_SHARD_COUNT).fill(0);
     for (const session of sessions) counts[shardOf(session)] += 1;
@@ -1035,6 +1048,55 @@ export function MonitorLive({
               })}
             </div>
           </nav>
+
+          <div className="rounded-md border border-border bg-white p-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="응시자 이름 · 소속 검색 — 전체 페이지에서 찾습니다"
+                aria-label="응시자 검색"
+                className="h-10 w-full rounded-md border border-border bg-surface-soft pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted">
+                ⌕
+              </div>
+            </div>
+            {searchTerm && (
+              <div className="mt-3 border-t border-border divide-y divide-border">
+                {searchResults.length === 0 && (
+                  <div className="py-4 text-center text-xs text-muted-foreground">
+                    일치하는 응시자가 없습니다.
+                  </div>
+                )}
+                {searchResults.map((session) => (
+                  <button
+                    key={session.sessionId}
+                    type="button"
+                    onClick={() => openApplicant(session.sessionId)}
+                    className="flex w-full items-center gap-3 px-1 py-2.5 text-left transition hover:bg-surface-soft"
+                  >
+                    <span className="flex-1 truncate text-sm font-bold">
+                      {session.applicantName}
+                    </span>
+                    <span className="max-w-40 truncate text-xs text-muted-foreground">
+                      {session.organization}
+                    </span>
+                    {session.highCount > 0 && (
+                      <span className="rounded-sm bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        HIGH {session.highCount}
+                      </span>
+                    )}
+                    <StatusBadge status={session.status} />
+                    <span className="font-tabular text-[10px] font-bold text-primary">
+                      {shardOf(session) + 1}페이지 →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <Section
             step="01"
