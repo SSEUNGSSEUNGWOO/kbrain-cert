@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "./actions";
 
-const MIN_GREETING_MS = 1800;
+const MIN_GREETING_MS = 2200;
 
 function timeGreeting(hour: number) {
   if (hour >= 5 && hour < 11) return "좋은 아침입니다";
@@ -47,33 +47,52 @@ export default function LoginPage() {
   };
 
   if (greeting) {
+    const today = new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    }).format(new Date());
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-background">
-        <div className="text-center space-y-1.5">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_50%_35%,hsl(220_60%_26%),hsl(220_65%_13%))]">
+        <div className="text-center">
+          <p className="greeting-rise text-[10px] font-bold tracking-[0.45em] uppercase text-white/50">
+            kbrain-cert
+          </p>
+          <div
+            aria-hidden
+            className="greeting-rise mx-auto mt-4 mb-8 w-10 h-px bg-white/30"
+            style={{ animationDelay: "0.12s" }}
+          />
           {greeting.honorific && (
-            <p className="greeting-rise font-bold text-2xl text-heading">
+            <p
+              className="greeting-rise font-bold text-4xl leading-snug text-white"
+              style={{ animationDelay: "0.25s" }}
+            >
               {greeting.honorific},
             </p>
           )}
           <p
-            className="greeting-rise font-bold text-2xl text-heading"
-            style={{ animationDelay: "0.18s" }}
+            className="greeting-rise font-bold text-4xl leading-snug text-white"
+            style={{ animationDelay: "0.42s" }}
           >
             {greeting.greeting}
           </p>
           <p
-            className="greeting-rise text-sm text-muted-foreground pt-2"
-            style={{ animationDelay: "0.38s" }}
+            className="greeting-rise mt-5 text-sm text-white/55"
+            style={{ animationDelay: "0.62s" }}
           >
-            대시보드를 준비하고 있습니다.
+            {today} · 대시보드를 준비하고 있습니다
           </p>
         </div>
         <div
           aria-hidden
-          className="greeting-rise"
-          style={{ animationDelay: "0.55s" }}
+          className="greeting-rise mt-14"
+          style={{ animationDelay: "0.85s" }}
         >
-          <div className="w-8 h-8 rounded-full border-4 border-primary/15 border-t-primary animate-spin" />
+          <div className="w-44 h-0.5 rounded-full bg-white/15 overflow-hidden">
+            <div className="greeting-sweep w-2/5 h-full rounded-full bg-white/80" />
+          </div>
         </div>
       </div>
     );
