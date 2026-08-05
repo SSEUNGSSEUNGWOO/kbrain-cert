@@ -32,7 +32,7 @@ node --env-file=.env.local scripts/add-practice-slug.mjs
 
 ### Database migrations
 
-Migrations under `supabase/migrations/` are **applied manually** by pasting into the Supabase SQL Editor (dev project first, then prod). There is no `supabase db push` workflow wired up. When a migration adds/renames columns, also update `lib/supabase/database.types.ts` (see below).
+Migrations under `supabase/migrations/` are **applied manually** by pasting into the Supabase SQL Editor. There is a **single Supabase project** (no separate dev/prod — the project in `.env.local` is the live one, so migrations take effect immediately for real users). There is no `supabase db push` workflow wired up. When a migration adds/renames columns, also update `lib/supabase/database.types.ts` (see below).
 
 ## Architecture
 
