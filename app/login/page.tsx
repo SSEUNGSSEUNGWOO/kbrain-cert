@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "./actions";
 
-const MIN_GREETING_MS = 1200;
+const MIN_GREETING_MS = 1800;
 
 function timeGreeting(hour: number) {
   if (hour >= 5 && hour < 11) return "좋은 아침입니다";
@@ -14,18 +14,21 @@ function timeGreeting(hour: number) {
   return "늦은 시간까지 고생 많으십니다";
 }
 
-function greetingLine(name: string | null, position: string | null) {
+function greetingParts(name: string | null, position: string | null) {
   const greeting = timeGreeting(new Date().getHours());
-  if (!name) return greeting;
+  if (!name) return { honorific: null, greeting };
   const honorific = position ? `${name} ${position}님` : `${name}님`;
-  return `${honorific}, ${greeting}`;
+  return { honorific, greeting };
 }
 
 export default function LoginPage() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [greeting, setGreeting] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<{
+    honorific: string | null;
+    greeting: string;
+  } | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,7 +40,7 @@ export default function LoginPage() {
         setError(result.error);
         return;
       }
-      setGreeting(greetingLine(result?.name ?? null, result?.position ?? null));
+      setGreeting(greetingParts(result?.name ?? null, result?.position ?? null));
       await new Promise((resolve) => setTimeout(resolve, MIN_GREETING_MS));
       router.push("/");
     });
@@ -45,14 +48,32 @@ export default function LoginPage() {
 
   if (greeting) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-[#FAFAF5]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-[#FAFAF5]">
+        <div className="text-center space-y-1.5">
+          {greeting.honorific && (
+            <p className="greeting-rise font-bold text-2xl text-[#0B1F3A]">
+              {greeting.honorific},
+            </p>
+          )}
+          <p
+            className="greeting-rise font-bold text-2xl text-[#0B1F3A]"
+            style={{ animationDelay: "0.18s" }}
+          >
+            {greeting.greeting}
+          </p>
+          <p
+            className="greeting-rise text-sm text-[#0A0A0A]/60 pt-2"
+            style={{ animationDelay: "0.38s" }}
+          >
+            대시보드를 준비하고 있습니다.
+          </p>
+        </div>
         <div
           aria-hidden
-          className="w-10 h-10 rounded-full border-4 border-[#0B1F3A]/15 border-t-[#0B1F3A] animate-spin"
-        />
-        <div className="text-center space-y-1">
-          <p className="font-bold text-lg text-[#0B1F3A]">{greeting}</p>
-          <p className="text-sm text-[#0A0A0A]/60">대시보드를 준비하고 있습니다.</p>
+          className="greeting-rise"
+          style={{ animationDelay: "0.55s" }}
+        >
+          <div className="w-8 h-8 rounded-full border-4 border-[#0B1F3A]/15 border-t-[#0B1F3A] animate-spin" />
         </div>
       </div>
     );

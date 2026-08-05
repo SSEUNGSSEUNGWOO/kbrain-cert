@@ -122,3 +122,20 @@
     background: var(--color-border-strong);
   }
 }
+
+/* 로그인 인사 화면 — 한 줄씩 아래에서 올라오는 스태거 */
+@keyframes greeting-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.greeting-rise {
+  opacity: 0;
+  animation: greeting-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
